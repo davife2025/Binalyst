@@ -1,19 +1,22 @@
 'use client'
 
 import { useStore } from '@/lib/store'
-
 const TAB_TITLES: Record<string, { title: string; sub: string }> = {
-  chat:      { title: 'AI Assistant',    sub: 'Powered by Claude + live Binance data' },
-  markets:   { title: 'Live Markets',    sub: 'Real-time prices & analysis' },
-  events:    { title: 'Events Radar',    sub: 'Listings, airdrops, launchpool & more' },
-  learn:     { title: 'Crypto Academy',  sub: 'Learn Binance products & trading' },
-  portfolio: { title: 'My Portfolio',    sub: 'Holdings, P&L & AI advisor' },
-  settings:  { title: 'Settings',        sub: 'API keys, preferences & auto-trade' },
+  chat:      { title: 'AI Assistant',        sub: 'Powered by Claude + live Binance data' },
+  markets:   { title: 'Live Markets',        sub: 'Real-time prices & analysis' },
+  events:    { title: 'Events Radar',        sub: 'Listings, airdrops, launchpool & more' },
+  learn:     { title: 'Crypto Academy',      sub: 'Learn Binance products & trading' },
+  portfolio: { title: 'My Portfolio',        sub: 'Holdings, P&L & AI advisor' },
+  trading:   { title: 'Trading',             sub: 'Place and manage Binance orders' },
+  alerts:    { title: 'Price Alerts',        sub: 'Browser push notifications on price targets' },
+  agent:     { title: 'Autonomous Agent',    sub: 'Rules engine · checks every 2 min' },
+  web3:      { title: 'Web3 Intelligence',   sub: 'On-chain analytics · Binance Skills Hub' },
+  settings:  { title: 'Settings',            sub: 'API keys, preferences & auto-trade' },
 }
 
 export default function Header() {
   const { activeTab, isConnected, autoTradeEnabled } = useStore()
-  const meta = TAB_TITLES[activeTab] ?? TAB_TITLES.chat
+ const meta = TAB_TITLES[activeTab] ?? TAB_TITLES.chat
 
   return (
     <header

@@ -593,6 +593,12 @@ video {
 .mt-4 {
   margin-top: 1rem;
 }
+.mt-3 {
+  margin-top: 0.75rem;
+}
+.mb-0\.5 {
+  margin-bottom: 0.125rem;
+}
 .inline-block {
   display: inline-block;
 }
@@ -701,11 +707,17 @@ video {
 .w-full {
   width: 100%;
 }
+.w-24 {
+  width: 6rem;
+}
 .min-w-0 {
   min-width: 0px;
 }
 .min-w-24 {
   min-width: 6rem;
+}
+.min-w-32 {
+  min-width: 8rem;
 }
 .max-w-2xl {
   max-width: 42rem;
@@ -981,6 +993,10 @@ video {
   padding-top: 2rem;
   padding-bottom: 2rem;
 }
+.py-12 {
+  padding-top: 3rem;
+  padding-bottom: 3rem;
+}
 .pb-3 {
   padding-bottom: 0.75rem;
 }
@@ -1051,6 +1067,10 @@ video {
 .text-xs {
   font-size: 0.75rem;
   line-height: 1rem;
+}
+.text-4xl {
+  font-size: 2.25rem;
+  line-height: 2.5rem;
 }
 .font-bold {
   font-weight: 700;

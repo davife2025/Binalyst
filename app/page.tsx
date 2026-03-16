@@ -9,6 +9,11 @@ import EventsTab from '@/components/tabs/EventsTab'
 import LearnTab from '@/components/tabs/LearnTab'
 import PortfolioTab from '@/components/tabs/PortfolioTab'
 import SettingsTab from '@/components/tabs/SettingsTab'
+import Web3Tab from '@/components/tabs/Web3Tab'
+import TradingTab from '@/components/tabs/TradeTab'
+import AlertsTab from '@/components/tabs/AlertsTab'
+import AgentTab from '@/components/tabs/AgentTab'
+
 
 export default function Dashboard() {
   const activeTab = useStore(s => s.activeTab)
@@ -25,6 +30,10 @@ export default function Dashboard() {
           {activeTab === 'learn'     && <LearnTab />}
           {activeTab === 'portfolio' && <PortfolioTab />}
           {activeTab === 'settings'  && <SettingsTab />}
+          {activeTab === 'trading'   && <TradingTab />}
+          {activeTab === 'alerts'    && <AlertsTab />}
+          {activeTab === 'agent'     && <AgentTab />}
+          {activeTab === 'web3'      && <Web3Tab />}
         </main>
       </div>
     </div>
