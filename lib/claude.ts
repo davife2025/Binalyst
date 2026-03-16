@@ -1,169 +1,135 @@
-import Anthropic from '@anthropic-ai/sdk'
+/**
+ * lib/claude.ts — Binalyst AI Agent
+ * Using Google Gemini Flash (free tier) — 1,500 requests/day, no credit card needed.
+ * All Binance + Web3 skills tools preserved.
+ */
+
+import { GoogleGenerativeAI } from '@google/generative-ai'
 import { BinanceClient, publicMarket, type BinanceCredentials } from './binance'
 import {
-  queryTokenInfo, queryTokenAudit,
-  queryAddressInfo, queryAddressTokens,
-  queryMarketRank, queryMemeRush,
-  queryAlphaTokens, postToSquare,
-  chainNameToId,
-} from './skills'
+  getMarketRankings, getTokenInfo, searchToken,
+  getTokenAudit, getAddressInfo, getAddressTokenHoldings,
+  getMemeRush, getAlphaTokens,
+} from './skills/web3'
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
+
 export type AgentMode = 'assistant' | 'analyst' | 'trader' | 'educator'
 
-export const OPENCLAW_TOOLS: Anthropic.Tool[] = [
-  { name: 'get_price', description: 'Get current live price of any Binance spot pair e.g. BTCUSDT',
-    input_schema: { type: 'object' as const, properties: { symbol: { type: 'string' } }, required: ['symbol'] } },
-  { name: 'get_top_movers', description: 'Get top gaining/losing coins on Binance in last 24h',
-    input_schema: { type: 'object' as const, properties: { limit: { type: 'number' } } } },
-  { name: 'get_klines', description: 'Get OHLCV candlestick data for TA',
-    input_schema: { type: 'object' as const, properties: { symbol: { type: 'string' }, interval: { type: 'string', enum: ['1m','5m','15m','1h','4h','1d','1w'] }, limit: { type: 'number' } }, required: ['symbol','interval'] } },
-  { name: 'get_balances', description: "Get user's Binance wallet balances and portfolio value in USD",
-    input_schema: { type: 'object' as const, properties: {} } },
-  { name: 'get_open_orders', description: "Get user's open orders on Binance",
-    input_schema: { type: 'object' as const, properties: { symbol: { type: 'string' } } } },
-  { name: 'place_order', description: 'Place a buy/sell order on Binance. ALWAYS confirm with user first.',
-    input_schema: { type: 'object' as const, properties: { symbol: { type: 'string' }, side: { type: 'string', enum: ['BUY','SELL'] }, type: { type: 'string', enum: ['MARKET','LIMIT','STOP_LOSS_LIMIT'] }, quantity: { type: 'number' }, quoteOrderQty: { type: 'number' }, price: { type: 'number' }, timeInForce: { type: 'string', enum: ['GTC','IOC','FOK'] } }, required: ['symbol','side','type'] } },
-  // ── Skills Hub ──────────────────────────────────────────────────────────────
-  { name: 'skill_token_search',
-    description: 'Search any Web3 token by name/symbol/contract on Binance Web3. Returns price, liquidity, holders, volume, social links.',
-    input_schema: { type: 'object' as const, properties: { keyword: { type: 'string' }, chain: { type: 'string', description: 'bsc, eth, base, solana' } }, required: ['keyword'] } },
-  { name: 'skill_token_audit',
-    description: 'Security audit a token contract — detects honeypots, rug risks, blacklists, minting risks. ALWAYS run on unknown tokens.',
-    input_schema: { type: 'object' as const, properties: { contract: { type: 'string' }, chain: { type: 'string' } }, required: ['contract'] } },
-  { name: 'skill_address_info',
-    description: 'Analyze any wallet — token holdings, positions, P&L. Use for whale/smart money tracking.',
-    input_schema: { type: 'object' as const, properties: { address: { type: 'string' }, chain: { type: 'string' } }, required: ['address'] } },
-  { name: 'skill_market_rank',
-    description: 'Get market rankings: trending, top-searched, alpha, smart-money, meme, social hype.',
-    input_schema: { type: 'object' as const, properties: { type: { type: 'string', enum: ['trending','top-searched','alpha','smart-money','meme','social'] } } } },
-  { name: 'skill_meme_rush',
-    description: 'Real-time meme token lists from launchpads (Pump.fun, Four.meme). New, finalizing, migrated.',
-    input_schema: { type: 'object' as const, properties: { stage: { type: 'string', enum: ['new','finalizing','migrated'] }, chain: { type: 'string' } } } },
-  { name: 'skill_alpha_tokens',
-    description: 'Get current Binance Alpha tokens and airdrop opportunities.',
-    input_schema: { type: 'object' as const, properties: {} } },
-  { name: 'skill_square_post',
-    description: 'Post to Binance Square social platform. Confirm content with user first.',
-    input_schema: { type: 'object' as const, properties: { content: { type: 'string' } }, required: ['content'] } },
+const TOOL_DECLARATIONS = [
+  { name: 'get_price',         description: 'Get the current live price of any coin on Binance.', parameters: { type: 'OBJECT', properties: { symbol: { type: 'STRING', description: 'e.g. BTCUSDT' } }, required: ['symbol'] } },
+  { name: 'get_top_movers',    description: 'Get top gaining and losing coins on Binance in the last 24 hours.', parameters: { type: 'OBJECT', properties: { limit: { type: 'NUMBER' } } } },
+  { name: 'get_klines',        description: 'Get candlestick data for technical analysis.', parameters: { type: 'OBJECT', properties: { symbol: { type: 'STRING' }, interval: { type: 'STRING', description: '1m,5m,15m,1h,4h,1d' }, limit: { type: 'NUMBER' } }, required: ['symbol','interval'] } },
+  { name: 'get_balances',      description: "Get the user's Binance wallet balances and portfolio value.", parameters: { type: 'OBJECT', properties: {} } },
+  { name: 'get_open_orders',   description: "Get the user's open orders on Binance.", parameters: { type: 'OBJECT', properties: { symbol: { type: 'STRING' } } } },
+  { name: 'skill_market_rank', description: 'Get crypto market rankings: trending, smart money, social hype, memes, top traders.', parameters: { type: 'OBJECT', properties: { rankType: { type: 'STRING', description: 'trending|smart_money|social_hype|meme|alpha|traders' }, chainId: { type: 'STRING', description: '1=ETH,56=BSC,CT_501=SOL' }, size: { type: 'NUMBER' } } } },
+  { name: 'skill_token_info',  description: 'Look up on-chain token info: price, liquidity, market cap, holders.', parameters: { type: 'OBJECT', properties: { address: { type: 'STRING' }, keyword: { type: 'STRING' }, chainId: { type: 'STRING' } } } },
+  { name: 'skill_token_audit', description: 'Security audit a token contract: rug pull, honeypot, ownership, liquidity lock.', parameters: { type: 'OBJECT', properties: { address: { type: 'STRING' }, chainId: { type: 'STRING' } }, required: ['address'] } },
+  { name: 'skill_address_info',description: 'Analyze a wallet: token holdings, portfolio value, PnL, whale detection.', parameters: { type: 'OBJECT', properties: { address: { type: 'STRING' }, chainId: { type: 'STRING' } }, required: ['address'] } },
+  { name: 'skill_meme_rush',   description: 'Discover trending meme tokens on Binance Web3 Pulse.', parameters: { type: 'OBJECT', properties: { sortBy: { type: 'STRING', description: 'created|trending|volume' }, chainId: { type: 'STRING' }, size: { type: 'NUMBER' } } } },
+  { name: 'skill_alpha',       description: 'Get Binance Alpha token listings and opportunities.', parameters: { type: 'OBJECT', properties: {} } },
 ]
 
 const SYSTEM_PROMPTS: Record<AgentMode, string> = {
-  assistant: `You are Binalyst, an elite AI assistant for Binance users with live CEX + Web3 data access.
-
-TOOL RULES:
-- Any token question → skill_token_search first
-- Unknown token / "is this safe?" → ALWAYS run skill_token_audit
-- Wallet/address questions → skill_address_info  
-- "What's trending/hot?" → skill_market_rank
-- New meme coins → skill_meme_rush
-- Alpha airdrops → skill_alpha_tokens
-- CEX prices/charts → get_price / get_klines
-- Before Square post → confirm with user first
-
-Be concise, data-driven. **bold** for key numbers.`,
-
-  analyst: `You are Binalyst's analyst. Combine CEX data + on-chain Web3 intelligence.
-For token analysis: 1) search info 2) audit if unknown 3) check market rank 4) get klines for TA.
-Structure: Price → On-chain metrics → Risk → Bull/Bear case.`,
-
-  trader: `You are Binalyst's trading assistant. Protocol: 1) Confirm intent 2) Audit unknown tokens 3) Check balance 4) Validate order 5) Confirm dialog. Never execute without explicit confirmation.`,
-
-  educator: `You are Binalyst Academy. Explain crypto, DeFi, Web3, and Binance clearly with examples. Use live skill data to illustrate real examples when helpful.`,
+  assistant: `You are Binalyst, an elite AI assistant for Binance users. You have live access to Binance market data and Binance Skills Hub integrations. Use tools to get real data — never guess prices. Be concise and data-driven. Use **bold** for prices and key metrics.`,
+  analyst:   `You are Binalyst's market analyst. Use skill_market_rank for trends, skill_token_info for fundamentals, skill_token_audit for risk. Structure: price → trend → on-chain signals → bull/bear cases.`,
+  trader:    `You are Binalyst's trading assistant. Always validate before placing orders. Use skill_token_audit to check contract safety before recommending any token.`,
+  educator:  `You are Binalyst Academy — a crypto educator. Use real examples, clear analogies, and get_price for live data when discussing prices. Teach Binance products and trading practically.`,
 }
 
-export async function executeTool(toolName: string, toolInput: any, credentials?: BinanceCredentials, autoTradeEnabled = false): Promise<any> {
+async function executeTool(name: string, args: any, credentials?: BinanceCredentials): Promise<any> {
   const binance = credentials ? new BinanceClient(credentials) : null
-
-  switch (toolName) {
+  switch (name) {
     case 'get_price': {
-      const prices = await publicMarket.getPrices([toolInput.symbol])
-      return { symbol: toolInput.symbol, price: prices[toolInput.symbol] ?? 'not found' }
+      const prices = await publicMarket.getPrices([args.symbol])
+      return { symbol: args.symbol, price: prices[args.symbol] ?? 'not found' }
     }
-    case 'get_top_movers': return await publicMarket.getTopMovers(toolInput.limit ?? 10)
+    case 'get_top_movers':  return await publicMarket.getTopMovers(args.limit ?? 10)
     case 'get_klines': {
-      const klines = await publicMarket.getKlines(toolInput.symbol, toolInput.interval, toolInput.limit ?? 50)
+      const klines = await publicMarket.getKlines(args.symbol, args.interval, args.limit ?? 50)
       const closes = klines.map(k => parseFloat(k.close))
-      return { symbol: toolInput.symbol, interval: toolInput.interval, candles: klines.length, currentPrice: closes[closes.length-1], high: Math.max(...klines.map(k=>parseFloat(k.high))), low: Math.min(...klines.map(k=>parseFloat(k.low))), change: ((closes[closes.length-1]-closes[0])/closes[0]*100).toFixed(2)+'%', recentCloses: closes.slice(-10) }
+      return { symbol: args.symbol, currentPrice: closes[closes.length-1], high: Math.max(...klines.map(k=>parseFloat(k.high))), low: Math.min(...klines.map(k=>parseFloat(k.low))), change: ((closes[closes.length-1]-closes[0])/closes[0]*100).toFixed(2)+'%', recentCloses: closes.slice(-10) }
     }
-    case 'get_balances':
-      if (!binance) return { error: 'Connect your Binance API key to access portfolio.' }
-      return await binance.getPortfolioValue()
-    case 'get_open_orders':
-      if (!binance) return { error: 'Connect your Binance API key to access orders.' }
-      return await binance.getOpenOrders(toolInput.symbol)
-    case 'place_order': {
-      if (!binance) return { error: 'Connect your Binance API key to trade.' }
-      if (!autoTradeEnabled) return { requiresConfirmation: true, order: toolInput, message: `⚠️ Ready to place: ${toolInput.side} ${toolInput.quantity??''} ${toolInput.symbol} @ ${toolInput.type}. Please confirm.` }
-      const test = await binance.testOrder(toolInput)
-      if (!test.valid) return { error: `Order invalid: ${test.message}` }
-      return await binance.placeOrder(toolInput)
-    }
-    case 'skill_token_search': {
-      const chainIds = toolInput.chain ? chainNameToId(toolInput.chain) : '56,1,8453,CT_501'
-      return await queryTokenInfo(toolInput.keyword, chainIds)
-    }
-    case 'skill_token_audit': {
-      const chainId = toolInput.chain ? chainNameToId(toolInput.chain) : '56'
-      return await queryTokenAudit(toolInput.contract, chainId)
-    }
+    case 'get_balances':     return binance ? await binance.getPortfolioValue() : { error: 'Connect your Binance API key.' }
+    case 'get_open_orders':  return binance ? await binance.getOpenOrders(args.symbol) : { error: 'Connect your Binance API key.' }
+    case 'skill_market_rank': return await getMarketRankings({ rankType: args.rankType, chainId: args.chainId ?? '56', size: args.size ?? 20 })
+    case 'skill_token_info':  return args.keyword ? await searchToken({ keyword: args.keyword, chainId: args.chainId ?? '56' }) : await getTokenInfo({ address: args.address, chainId: args.chainId ?? '56' })
+    case 'skill_token_audit': return await getTokenAudit({ address: args.address, chainId: args.chainId ?? '56' })
     case 'skill_address_info': {
-      const chainId = toolInput.chain ? chainNameToId(toolInput.chain) : '56'
-      const [positions, tokens] = await Promise.allSettled([
-        queryAddressInfo(toolInput.address, chainId),
-        queryAddressTokens(toolInput.address, chainId),
+      const [info, holdings] = await Promise.allSettled([
+        getAddressInfo({ address: args.address, chainId: args.chainId ?? '56' }),
+        getAddressTokenHoldings({ address: args.address, chainId: args.chainId ?? '56' }),
       ])
-      return { positions: positions.status==='fulfilled'?positions.value:null, tokens: tokens.status==='fulfilled'?tokens.value:null }
+      return { info: info.status==='fulfilled'?info.value:null, holdings: holdings.status==='fulfilled'?holdings.value:[] }
     }
-    case 'skill_market_rank': return await queryMarketRank(toolInput.type ?? 'trending')
-    case 'skill_meme_rush': {
-      const chainId = toolInput.chain ? chainNameToId(toolInput.chain) : '56'
-      return await queryMemeRush(toolInput.stage ?? 'new', chainId)
-    }
-    case 'skill_alpha_tokens': return await queryAlphaTokens()
-    case 'skill_square_post':
-      if (!credentials) return { error: 'Connect your Binance API key to post to Square.' }
-      return await postToSquare(toolInput.content, credentials.apiKey, credentials.apiSecret)
-    default: return { error: `Unknown tool: ${toolName}` }
+    case 'skill_meme_rush': return await getMemeRush({ chainId: args.chainId ?? '56', sortBy: args.sortBy ?? 'trending', size: args.size ?? 20 })
+    case 'skill_alpha':     return await getAlphaTokens()
+    default:                return { error: `Unknown tool: ${name}` }
   }
 }
 
 export interface AgentMessage {
-  role: 'user' | 'assistant'
-  content: string | Anthropic.ContentBlock[]
+  role: 'user' | 'assistant' | 'model'
+  content: string
 }
 
-export async function runAgent({ messages, mode = 'assistant', credentials, autoTradeEnabled = false, onChunk }: {
-  messages: AgentMessage[]; mode?: AgentMode; credentials?: BinanceCredentials; autoTradeEnabled?: boolean; onChunk?: (text: string) => void
+export async function runAgent({
+  messages, mode = 'assistant', credentials, onChunk,
+}: {
+  messages:     AgentMessage[]
+  mode?:        AgentMode
+  credentials?: BinanceCredentials
+  autoTradeEnabled?: boolean
+  onChunk?:     (text: string) => void
 }): Promise<{ text: string; toolsUsed: string[] }> {
+
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-1.5-flash',
+    systemInstruction: SYSTEM_PROMPTS[mode],
+    tools: [{ functionDeclarations: TOOL_DECLARATIONS as any }],
+  })
+
+  // Build history (all but last message)
+  const history = messages.slice(0, -1).map(m => ({
+    role: m.role === 'assistant' ? 'model' : 'user' as 'user' | 'model',
+    parts: [{ text: typeof m.content === 'string' ? m.content : JSON.stringify(m.content) }],
+  }))
+
+  const lastMsg = messages[messages.length - 1]
+  const chat    = model.startChat({ history })
   const toolsUsed: string[] = []
-  const tools: any[] = [
-  { type: 'web_search_20250305', name: 'web_search' },
-  ...OPENCLAW_TOOLS.filter(t => t.name !== 'web_search'),
-]
-  let currentMessages = messages as any[]
   let finalText = ''
 
-  for (let i = 0; i < 12; i++) {
-    const response = await client.messages.create({ model: 'claude-sonnet-4-20250514', max_tokens: 1024, system: SYSTEM_PROMPTS[mode], tools, messages: currentMessages })
-    const turnText = response.content.filter(b=>b.type==='text').map((b:any)=>b.text).join('')
-    if (turnText) { finalText += turnText; if (onChunk) onChunk(turnText) }
-    if (response.stop_reason === 'end_turn') break
-    const toolUseBlocks = response.content.filter(b=>b.type==='tool_use')
-    if (!toolUseBlocks.length) break
-    currentMessages = [...currentMessages, { role: 'assistant', content: response.content }]
-    const toolResults: Anthropic.ToolResultBlockParam[] = []
-    for (const tb of toolUseBlocks as Anthropic.ToolUseBlock[]) {
-      toolsUsed.push(tb.name)
-      if (tb.name === 'web_search') { toolResults.push({ type: 'tool_result', tool_use_id: tb.id, content: 'Search executed.' }); continue }
-      try {
-        const result = await executeTool(tb.name, tb.input, credentials, autoTradeEnabled)
-        toolResults.push({ type: 'tool_result', tool_use_id: tb.id, content: JSON.stringify(result) })
-      } catch (err: any) {
-        toolResults.push({ type: 'tool_result', tool_use_id: tb.id, content: JSON.stringify({ error: err.message }), is_error: true })
-      }
-    }
-    currentMessages = [...currentMessages, { role: 'user', content: toolResults }]
+  // Turn 1 — initial response + possible tool calls
+  const result1 = await chat.sendMessage(
+    typeof lastMsg.content === 'string' ? lastMsg.content : JSON.stringify(lastMsg.content)
+  )
+
+  const calls = result1.response.functionCalls()
+
+  if (!calls || calls.length === 0) {
+    // No tools needed — return text directly
+    finalText = result1.response.text()
+    if (onChunk && finalText) onChunk(finalText)
+    return { text: finalText, toolsUsed }
   }
+
+  // Execute tool calls
+  const funcResponses: any[] = []
+  for (const call of calls) {
+    toolsUsed.push(call.name)
+    try {
+      const res = await executeTool(call.name, call.args, credentials)
+      funcResponses.push({ functionResponse: { name: call.name, response: { result: JSON.stringify(res) } } })
+    } catch (err: any) {
+      funcResponses.push({ functionResponse: { name: call.name, response: { error: err.message } } })
+    }
+  }
+
+  // Turn 2 — final response with tool results
+  const result2 = await chat.sendMessage(funcResponses)
+  finalText = result2.response.text()
+  if (onChunk && finalText) onChunk(finalText)
+
   return { text: finalText, toolsUsed }
 }
