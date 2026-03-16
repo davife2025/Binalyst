@@ -8,11 +8,33 @@ export interface Database {
         Insert: { id: string; email: string; display_name?: string | null; avatar_url?: string | null }
         Update: { email?: string; display_name?: string | null; avatar_url?: string | null; updated_at?: string }
       }
-      user_settings: {
-        Row:    { id: string; user_id: string; binance_key_enc: string | null; binance_sec_enc: string | null; auto_trade: boolean; chat_mode: string; created_at: string; updated_at: string }
-       Insert: { user_id: string; binance_key_enc?: string | null; binance_sec_enc?: string | null; auto_trade?: boolean; chat_mode?: string; updated_at?: string }
-        Update: { binance_key_enc?: string | null; binance_sec_enc?: string | null; auto_trade?: boolean; chat_mode?: string; updated_at?: string }
-      }
+    user_settings: {
+  Row: {
+    id: string
+    user_id: string
+    binance_key_enc: string | null
+    binance_sec_enc: string | null
+    auto_trade: boolean
+    chat_mode: string
+    created_at: string
+    updated_at: string
+  }
+  Insert: {
+    user_id: string
+    binance_key_enc?: string | null
+    binance_sec_enc?: string | null
+    auto_trade?: boolean
+    chat_mode?: string
+    updated_at?: string
+  }
+  Update: {
+    binance_key_enc?: string | null
+    binance_sec_enc?: string | null
+    auto_trade?: boolean
+    chat_mode?: string
+    updated_at?: string
+  }
+}
       alerts: {
         Row:    { id: string; user_id: string; symbol: string; condition: 'above'|'below'; target: number; note: string | null; active: boolean; triggered_at: string | null; created_at: string }
         Insert: { user_id: string; symbol: string; condition: 'above'|'below'; target: number; note?: string | null }
