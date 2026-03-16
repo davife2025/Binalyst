@@ -1,8 +1,8 @@
-// File: C:\Users\USER\Desktop\binalyst\app\api\binance\trade\route.ts
-import * as entry from '../../../../../../app/api/binance/trade/route.js'
+// File: C:\Users\USER\Desktop\binalyst\app\api\skills\square\route.ts
+import * as entry from '../../../../../../app/api/skills/square/route.js'
 import type { NextRequest } from 'next/server.js'
 
-type TEntry = typeof import('../../../../../../app/api/binance/trade/route.js')
+type TEntry = typeof import('../../../../../../app/api/skills/square/route.js')
 
 // Check that the entry is a valid entry
 checkFields<Diff<{

@@ -55,7 +55,7 @@ interface OpenClawStore {
 
   // ── Settings ───────────────────────────────────────────────────────────────
   theme: 'dark' | 'light'
-  activeTab: 'chat' | 'markets' | 'events' | 'learn' | 'portfolio' | 'trading' | 'alerts' | 'agent' | 'web3' | 'settings'
+  activeTab: 'chat' | 'markets' | 'events' | 'learn' | 'portfolio' | 'trading' | 'alerts' | 'agent' | 'web3' | 'square' | 'settings'
   setActiveTab: (tab: OpenClawStore['activeTab']) => void
 }
 
