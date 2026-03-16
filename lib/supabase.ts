@@ -1,25 +1,14 @@
-/**
- * lib/supabase.ts
- * Supabase client for Binalyst.
- * Browser client for client components, server client for API routes.
- */
-
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from './database.types'
 
-const URL    = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const ANON   = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY!
+const SUPABASE_URL  = process.env.NEXT_PUBLIC_SUPABASE_URL  || 'https://placeholder.supabase.co'
+const SUPABASE_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key'
+const SUPABASE_SVC  = process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder-service-key'
 
-// ── Browser client (use in components) ───────────────────────────────────────
-  export const supabase = createClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_ANON)
 
-// ── Server client (use in API routes — bypasses RLS when needed) ─────────────
 export function createServerClient() {
-  return createClient<Database>(URL, SERVICE, {
+  return createClient<Database>(SUPABASE_URL, SUPABASE_SVC, {
     auth: { persistSession: false }
   })
 }
