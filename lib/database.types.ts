@@ -1,0 +1,33 @@
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
+
+export interface Database {
+  public: {
+    Tables: {
+      profiles: {
+        Row:    { id: string; email: string; display_name: string | null; avatar_url: string | null; created_at: string; updated_at: string }
+        Insert: { id: string; email: string; display_name?: string | null; avatar_url?: string | null }
+        Update: { email?: string; display_name?: string | null; avatar_url?: string | null; updated_at?: string }
+      }
+      user_settings: {
+        Row:    { id: string; user_id: string; binance_key_enc: string | null; binance_sec_enc: string | null; auto_trade: boolean; chat_mode: string; created_at: string; updated_at: string }
+        Insert: { user_id: string; binance_key_enc?: string | null; binance_sec_enc?: string | null; auto_trade?: boolean; chat_mode?: string }
+        Update: { binance_key_enc?: string | null; binance_sec_enc?: string | null; auto_trade?: boolean; chat_mode?: string; updated_at?: string }
+      }
+      alerts: {
+        Row:    { id: string; user_id: string; symbol: string; condition: 'above'|'below'; target: number; note: string | null; active: boolean; triggered_at: string | null; created_at: string }
+        Insert: { user_id: string; symbol: string; condition: 'above'|'below'; target: number; note?: string | null }
+        Update: { active?: boolean; triggered_at?: string | null }
+      }
+      agent_rules: {
+        Row:    { id: string; user_id: string; name: string; symbol: string; trigger_type: string; trigger_value: number; action_type: string; active: boolean; last_triggered: string | null; created_at: string }
+        Insert: { user_id: string; name: string; symbol: string; trigger_type: string; trigger_value: number; action_type: string }
+        Update: { active?: boolean; last_triggered?: string | null }
+      }
+      square_posts: {
+        Row:    { id: string; user_id: string; content: string; tags: string[]; status: 'draft'|'published'; square_id: string | null; published_at: string | null; created_at: string }
+        Insert: { user_id: string; content: string; tags?: string[]; status?: 'draft'|'published'; square_id?: string | null; published_at?: string | null }
+        Update: { status?: 'draft'|'published'; square_id?: string | null; published_at?: string | null }
+      }
+    }
+  }
+}
