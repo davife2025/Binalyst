@@ -12,7 +12,10 @@ const ANON   = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
 // ── Browser client (use in components) ───────────────────────────────────────
-export const supabase = createClient<Database>(URL, ANON)
+  export const supabase = createClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
 
 // ── Server client (use in API routes — bypasses RLS when needed) ─────────────
 export function createServerClient() {
