@@ -1,9 +1,5 @@
-import type { NextConfig } from 'next'
-
-const nextConfig: NextConfig = {
-  experimental: {
-    serverComponentsExternalPackages: ['ws'],
-  },
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   async headers() {
     return [
       {
@@ -11,7 +7,7 @@ const nextConfig: NextConfig = {
         headers: [
           { key: 'Access-Control-Allow-Origin', value: '*' },
           { key: 'Access-Control-Allow-Methods', value: 'GET,POST,PUT,DELETE,OPTIONS' },
-          { key: 'Access-Control-Allow-Headers', value: 'Content-Type, Authorization, x-api-key, x-api-secret' },
+          { key: 'Access-Control-Allow-Headers', value: 'Content-Type, Authorization, x-binance-key, x-binance-secret' },
         ],
       },
     ]
