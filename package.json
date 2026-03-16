@@ -1,0 +1,40 @@
+{
+  "name": "openclaw",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "next": "14.2.5",
+    "react": "^18",
+    "react-dom": "^18",
+    "@anthropic-ai/sdk": "^0.27.0",
+    "binance": "^2.8.0",
+    "crypto-js": "^4.2.0",
+    "axios": "^1.7.2",
+    "ws": "^8.18.0",
+    "zustand": "^4.5.4",
+    "date-fns": "^3.6.0",
+    "@vercel/kv": "^2.0.0",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.408.0"
+  },
+  "devDependencies": {
+    "typescript": "^5",
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "@types/ws": "^8.5.12",
+    "@types/crypto-js": "^4.2.2",
+    "tailwindcss": "^3.4.1",
+    "postcss": "^8",
+    "autoprefixer": "^10.0.1",
+    "eslint": "^8",
+    "eslint-config-next": "14.2.5"
+  }
+}

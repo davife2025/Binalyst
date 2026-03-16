@@ -1,0 +1,16 @@
+{
+  "crons": [
+    {
+      "path": "/api/events/scan",
+      "schedule": "0 * * * *"
+    }
+  ],
+  "functions": {
+    "app/api/ai/chat/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/events/scan/route.ts": {
+      "maxDuration": 60
+    }
+  }
+}
