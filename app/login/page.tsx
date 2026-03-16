@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { signUp, resetPassword, supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import AuthBridge from '@/components/Authbridge'
 
 type Mode = 'login' | 'signup' | 'reset'
 
@@ -61,6 +62,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4" style={{ background: 'var(--bg)' }}>
+      <AuthBridge /> 
       <div className="fixed inset-0 pointer-events-none opacity-25"
         style={{ backgroundImage: 'linear-gradient(var(--bg3) 1px,transparent 1px),linear-gradient(90deg,var(--bg3) 1px,transparent 1px)', backgroundSize: '40px 40px' }} />
 
