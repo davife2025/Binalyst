@@ -46,8 +46,8 @@ export function rateLimit(key: string, type: keyof typeof LIMITS = 'default'): {
 if (typeof setInterval !== 'undefined') {
   setInterval(() => {
     const now = Date.now()
-    for (const [key, entry] of rateLimitMap.entries()) {
-      if (now > entry.resetAt) rateLimitMap.delete(key)
-    }
+    rateLimitMap.forEach((entry, key) => {
+  if (now > entry.resetAt) rateLimitMap.delete(key)
+})
   }, 300_000)
 }
