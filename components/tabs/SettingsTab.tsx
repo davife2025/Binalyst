@@ -1,10 +1,19 @@
 'use client'
 
 import { useState } from 'react'
+import { signOut, useSession } from 'next-auth/react'
 import { useStore } from '@/lib/store'
 
 export default function SettingsTab() {
   const { apiKey, apiSecret, isConnected, autoTradeEnabled, setCredentials, clearCredentials, setAutoTrade } = useStore()
+  const { data: session } = useSession()
+  const [signingOut, setSigningOut] = useState(false)
+
+  async function handleSignOut() {
+    setSigningOut(true)
+    clearCredentials()
+    await signOut({ callbackUrl: '/login' })
+  }
 
   const [keyInput, setKeyInput]       = useState('')
   const [secretInput, setSecretInput] = useState('')
@@ -246,6 +255,49 @@ export default function SettingsTab() {
               ⚠ Auto-trade is ON. The AI can place real orders. Use Binance testnet to trial first.
             </div>
           )}
+        </div>
+      </section>
+
+      {/* ── Account ──────────────────────────────────────────────── */}
+      <section>
+        <SectionTitle label="Account" />
+        <div
+          className="rounded-xl p-5 flex items-center justify-between gap-4"
+          style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}
+        >
+          <div className="flex items-center gap-3">
+            <div
+              className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0"
+              style={{ background: 'var(--yellow)', color: '#000' }}
+            >
+              {(session?.user?.name ?? session?.user?.email ?? 'U').slice(0, 1).toUpperCase()}
+            </div>
+            <div>
+              <div className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
+                {session?.user?.name ?? 'User'}
+              </div>
+              <div className="mono text-xs mt-0.5" style={{ color: 'var(--text3)' }}>
+                {session?.user?.email ?? '—'}
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={handleSignOut}
+            disabled={signingOut}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all shrink-0"
+            style={{
+              background: 'rgba(246,70,93,0.08)',
+              border: '1px solid rgba(246,70,93,0.25)',
+              color: 'var(--red)',
+              cursor: signingOut ? 'not-allowed' : 'pointer',
+              opacity: signingOut ? 0.6 : 1,
+            }}
+          >
+            {signingOut && (
+              <span className="w-3 h-3 rounded-full border-2 border-current border-t-transparent animate-spin-slow" />
+            )}
+            {signingOut ? 'Signing out...' : 'Sign out'}
+          </button>
         </div>
       </section>
 

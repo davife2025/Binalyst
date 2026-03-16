@@ -1,7 +1,8 @@
 'use client'
 
 import { useStore } from '@/lib/store'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { signOut, useSession } from 'next-auth/react'
 
 type Tab = 'chat' | 'markets' | 'events' | 'learn' | 'portfolio' | 'trading' | 'alerts' | 'agent' | 'web3' | 'square' | 'settings'
 
@@ -25,7 +26,9 @@ interface MobileDrawerProps {
 }
 
 export default function MobileDrawer({ open, onClose }: MobileDrawerProps) {
-  const { activeTab, setActiveTab, isConnected } = useStore()
+  const { activeTab, setActiveTab, isConnected, clearCredentials } = useStore()
+  const { data: session } = useSession()
+  const [signingOut, setSigningOut] = useState(false)
 
   useEffect(() => {
     if (open) document.body.style.overflow = 'hidden'
@@ -65,14 +68,42 @@ export default function MobileDrawer({ open, onClose }: MobileDrawerProps) {
         <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--border2)', margin: '0 auto 1rem' }} />
 
         {/* Status */}
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg mb-4"
+        <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg mb-3"
           style={{ background: 'var(--bg3)' }}>
-          <span className="w-2 h-2 rounded-full"
-            style={{ background: isConnected ? 'var(--green)' : 'var(--text3)', animation: isConnected ? 'blink 2s infinite' : 'none' }} />
-          <span className="mono text-xs" style={{ color: 'var(--text2)' }}>
-            {isConnected ? 'Binance connected' : 'No API key — connect in Settings'}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full"
+              style={{ background: isConnected ? 'var(--green)' : 'var(--text3)', animation: isConnected ? 'blink 2s infinite' : 'none' }} />
+            <span className="mono text-xs" style={{ color: 'var(--text2)' }}>
+              {isConnected ? 'Binance connected' : 'No API key'}
+            </span>
+          </div>
+          {session?.user?.email && (
+            <span className="mono text-[10px] truncate max-w-[120px]" style={{ color: 'var(--text3)' }}>
+              {session.user.email}
+            </span>
+          )}
         </div>
+
+        {/* Sign out */}
+        <button
+          onClick={async () => {
+            setSigningOut(true)
+            clearCredentials()
+            await signOut({ callbackUrl: '/login' })
+          }}
+          disabled={signingOut}
+          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold mb-4 transition-all"
+          style={{
+            background: 'rgba(246,70,93,0.08)',
+            border: '1px solid rgba(246,70,93,0.2)',
+            color: 'var(--red)',
+            cursor: signingOut ? 'not-allowed' : 'pointer',
+            opacity: signingOut ? 0.6 : 1,
+          }}
+        >
+          {signingOut && <span className="w-3 h-3 rounded-full border-2 border-current border-t-transparent animate-spin-slow" />}
+          {signingOut ? 'Signing out...' : 'Sign out'}
+        </button>
 
         {/* All tabs */}
         <div className="grid gap-2" style={{ gridTemplateColumns: '1fr 1fr' }}>
