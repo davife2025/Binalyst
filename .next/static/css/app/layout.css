@@ -599,6 +599,12 @@ video {
 .mb-0\.5 {
   margin-bottom: 0.125rem;
 }
+.ml-1 {
+  margin-left: 0.25rem;
+}
+.ml-auto {
+  margin-left: auto;
+}
 .inline-block {
   display: inline-block;
 }
@@ -844,6 +850,9 @@ video {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.whitespace-pre-wrap {
+  white-space: pre-wrap;
+}
 .rounded {
   border-radius: 0.25rem;
 }
@@ -1081,6 +1090,9 @@ video {
 .font-semibold {
   font-weight: 600;
 }
+.font-normal {
+  font-weight: 400;
+}
 .uppercase {
   text-transform: uppercase;
 }
@@ -1111,6 +1123,9 @@ video {
 }
 .opacity-40 {
   opacity: 0.4;
+}
+.opacity-60 {
+  opacity: 0.6;
 }
 .outline-none {
   outline: 2px solid transparent;
