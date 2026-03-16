@@ -15,7 +15,7 @@ export interface BinanceEvent {
 async function scanBinanceEvents(): Promise<BinanceEvent[]> {
   const today = new Date().toISOString().split('T')[0]
 
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
 
   const prompt = `Today is ${today}. Search your knowledge for upcoming Binance exchange events in the next 30 days. Include: new coin listings, new trading pairs, HODLer airdrops, Binance Alpha claiming events, Launchpool projects, Launchpad IDOs, token generation events (TGEs), futures launches.
 

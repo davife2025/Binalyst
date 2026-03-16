@@ -84,7 +84,7 @@ export async function runAgent({
 }): Promise<{ text: string; toolsUsed: string[] }> {
 
   const model = genAI.getGenerativeModel({
-    model: 'gemini-1.5-flash',
+    model: 'gemini-2.0-flash',
     systemInstruction: SYSTEM_PROMPTS[mode],
     tools: [{ functionDeclarations: TOOL_DECLARATIONS as any }],
   })
