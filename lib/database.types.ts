@@ -10,7 +10,7 @@ export interface Database {
       }
       user_settings: {
         Row:    { id: string; user_id: string; binance_key_enc: string | null; binance_sec_enc: string | null; auto_trade: boolean; chat_mode: string; created_at: string; updated_at: string }
-        Insert: { user_id: string; binance_key_enc?: string | null; binance_sec_enc?: string | null; auto_trade?: boolean; chat_mode?: string }
+       Insert: { user_id: string; binance_key_enc?: string | null; binance_sec_enc?: string | null; auto_trade?: boolean; chat_mode?: string; updated_at?: string }
         Update: { binance_key_enc?: string | null; binance_sec_enc?: string | null; auto_trade?: boolean; chat_mode?: string; updated_at?: string }
       }
       alerts: {
