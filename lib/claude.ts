@@ -137,7 +137,10 @@ export async function runAgent({ messages, mode = 'assistant', credentials, auto
   messages: AgentMessage[]; mode?: AgentMode; credentials?: BinanceCredentials; autoTradeEnabled?: boolean; onChunk?: (text: string) => void
 }): Promise<{ text: string; toolsUsed: string[] }> {
   const toolsUsed: string[] = []
-  const tools: any[] = [{ type: 'web_search_20250305', name: 'web_search' }, ...OPENCLAW_TOOLS]
+  const tools: any[] = [
+  { type: 'web_search_20250305', name: 'web_search' },
+  ...OPENCLAW_TOOLS.filter(t => t.name !== 'web_search'),
+]
   let currentMessages = messages as any[]
   let finalText = ''
 
