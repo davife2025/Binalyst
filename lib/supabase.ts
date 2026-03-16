@@ -75,7 +75,7 @@ export async function upsertUserSettings(userId: string, settings: {
 }) {
   const { error } = await supabase
     .from('user_settings')
-    .upsert({ user_id: userId, ...settings, updated_at: new Date().toISOString() })
+   .upsert({ user_id: userId, ...settings, updated_at: new Date().toISOString() } as any)
   return { error }
 }
 
@@ -94,7 +94,7 @@ export async function createAlert(userId: string, alert: {
 }) {
   const { data, error } = await supabase
     .from('alerts')
-    .insert({ user_id: userId, ...alert })
+    .insert({ user_id: userId, ...alert } as any)
     .select()
     .single()
   return { data, error }
@@ -120,7 +120,7 @@ export async function createAgentRule(userId: string, rule: {
 }) {
   const { data, error } = await supabase
     .from('agent_rules')
-    .insert({ user_id: userId, ...rule })
+    .insert({ user_id: userId, ...rule } as any)
     .select()
     .single()
   return { data, error }
@@ -149,7 +149,7 @@ export async function saveSquarePost(userId: string, post: {
     .insert({
       user_id: userId, ...post,
       published_at: post.status === 'published' ? new Date().toISOString() : null,
-    })
+    } as any)
     .select()
     .single()
   return { data, error }
