@@ -324,7 +324,7 @@ function OrderForm_({ apiKey, apiSecret, autoTradeEnabled }: { apiKey: string; a
             {validating ? 'Validating...' : 'Dry Run'}
           </button>
           <button
-            onClick={() => { if (validation?.ok) setShowConfirm(true) else validate().then(() => {}) }}
+            onClick={() => { if (validation?.ok) setShowConfirm(true); else validate().then(() => {}) }}
             disabled={!autoTradeEnabled}
             className="flex-1 py-2.5 rounded-xl mono text-sm font-bold transition-all"
             style={{
