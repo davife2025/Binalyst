@@ -2,9 +2,8 @@
 
 import { useState } from 'react'
 import { signIn } from 'next-auth/react'
-import { signUp, resetPassword, supabase } from '@/lib/supabase'
+import { signUp, resetPassword } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
-import AuthBridge from '@/components/Authbridge'
 
 type Mode = 'login' | 'signup' | 'reset'
 
@@ -22,18 +21,13 @@ export default function LoginPage() {
 
   function reset() { setError(''); setSuccess('') }
 
+  // ── Google — goes through NextAuth directly ───────────────────
   async function loginWithGoogle() {
     setGoogleLoad(true); reset()
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-        queryParams: { access_type: 'offline', prompt: 'consent' },
-      },
-    })
-    if (error) { setError(error.message); setGoogleLoad(false) }
+    await signIn('google', { callbackUrl: '/' })
   }
 
+  // ── Email/password ────────────────────────────────────────────
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true); reset()
@@ -62,7 +56,6 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4" style={{ background: 'var(--bg)' }}>
-      <AuthBridge /> 
       <div className="fixed inset-0 pointer-events-none opacity-25"
         style={{ backgroundImage: 'linear-gradient(var(--bg3) 1px,transparent 1px),linear-gradient(90deg,var(--bg3) 1px,transparent 1px)', backgroundSize: '40px 40px' }} />
 
@@ -77,7 +70,6 @@ export default function LoginPage() {
         <div className="rounded-2xl p-6 flex flex-col gap-4" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
           <div className="mono text-[10px] uppercase tracking-widest" style={{ color: 'var(--text3)' }}>{LABELS[mode]}</div>
 
-          {/* Google OAuth button */}
           {mode !== 'reset' && (
             <>
               <button onClick={loginWithGoogle} disabled={googleLoad}
@@ -161,7 +153,7 @@ export default function LoginPage() {
         </div>
 
         <p className="mono text-[10px] text-center" style={{ color: 'var(--text3)' }}>
-          Powered by Supabase · Google OAuth
+          Powered by Supabase + NextAuth
         </p>
       </div>
     </div>
