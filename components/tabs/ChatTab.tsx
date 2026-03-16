@@ -45,7 +45,7 @@ function fmtContent(text: string) {
 }
 
 function ToolBadges({ tools }: { tools: string[] }) {
-  const unique = [...new Set(tools)]
+ const unique = Array.from(new Set(tools))
   return (
     <div className="flex flex-wrap gap-1.5 mt-2">
       {unique.map(t => {

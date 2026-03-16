@@ -33,6 +33,7 @@ interface OpenClawStore {
   setCredentials: (key: string, secret: string) => void
   clearCredentials: () => void
   setAutoTrade: (enabled: boolean) => void
+  
 
   // ── Chat ───────────────────────────────────────────────────────────────────
   chatMessages: ChatMessage[]
