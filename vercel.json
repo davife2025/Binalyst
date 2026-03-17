@@ -1,7 +1,7 @@
 {
   "regions": ["sin1"],
   "crons": [
-    { "path": "/api/events/scan", "schedule": "0 * * * *" }
+    { "path": "/api/events/scan", "schedule": "0 0 * * *" }
   ],
   "functions": {
     "app/api/binance/**": { "maxDuration": 30 },
