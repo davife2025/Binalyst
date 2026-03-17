@@ -12,20 +12,19 @@ import MarketsTab from '@/components/tabs/MarketsTab'
 import EventsTab from '@/components/tabs/EventsTab'
 import LearnTab from '@/components/tabs/LearnTab'
 import PortfolioTab from '@/components/tabs/PortfolioTab'
-import TradingTab from '@/components/tabs/TradeTab'
+import TradingTab from '@/components/tabs/TradingTab'
 import AlertsTab from '@/components/tabs/AlertsTab'
 import AgentTab from '@/components/tabs/AgentTab'
 import Web3Tab from '@/components/tabs/Web3Tab'
 import SquareTab from '@/components/tabs/SquareTab'
 import SettingsTab from '@/components/tabs/SettingsTab'
 
-export default function Dashboard() {
+export default function App() {
   const activeTab = useStore(s => s.activeTab)
   const [drawer, setDrawer] = useState(false)
 
-  const Content = () => (
+  const InnerContent = () => (
     <>
-      {activeTab === 'home'      && <DashboardTab />}
       {activeTab === 'chat'      && <ChatTab />}
       {activeTab === 'markets'   && <MarketsTab />}
       {activeTab === 'events'    && <EventsTab />}
@@ -40,6 +39,31 @@ export default function Dashboard() {
     </>
   )
 
+  // ── Dashboard — full screen, no sidebar ──────────────────────────────────
+  if (activeTab === 'home') {
+    return (
+      <>
+        {/* Desktop: sidebar still visible for navigation */}
+        <div className="hidden md:flex h-screen overflow-hidden" style={{ background: 'var(--bg)' }}>
+          <Sidebar />
+          <main className="flex-1 overflow-y-auto">
+            <DashboardTab />
+          </main>
+        </div>
+
+        {/* Mobile: full screen no header */}
+        <div className="flex md:hidden flex-col" style={{ background: 'var(--bg)', minHeight: '100dvh' }}>
+          <main className="flex-1 overflow-y-auto" style={{ paddingBottom: 68 }}>
+            <DashboardTab />
+          </main>
+          <BottomNav />
+          <MobileDrawer open={drawer} onClose={() => setDrawer(false)} />
+        </div>
+      </>
+    )
+  }
+
+  // ── All other tabs — sidebar layout ──────────────────────────────────────
   return (
     <>
       {/* Desktop */}
@@ -47,7 +71,7 @@ export default function Dashboard() {
         <Sidebar />
         <div className="flex flex-col flex-1 min-w-0">
           <Header />
-          <main className="flex-1 overflow-y-auto"><Content /></main>
+          <main className="flex-1 overflow-y-auto"><InnerContent /></main>
         </div>
       </div>
 
@@ -60,10 +84,12 @@ export default function Dashboard() {
             <span className="font-extrabold text-sm" style={{ color: 'var(--text)' }}>Binalyst</span>
           </div>
           <button onClick={() => setDrawer(true)} className="flex flex-col items-center justify-center gap-1 w-9 h-9 rounded-lg" style={{ background: 'var(--bg3)' }}>
-            {[16,16,10].map((w,i) => <span key={i} style={{ width: w, height: 1.5, background: 'var(--text2)', borderRadius: 1, display: 'block' }} />)}
+            {[16, 16, 10].map((w, i) => <span key={i} style={{ width: w, height: 1.5, background: 'var(--text2)', borderRadius: 1, display: 'block' }} />)}
           </button>
         </div>
-        <main className="flex-1 overflow-y-auto" style={{ paddingBottom: 68 }}><Content /></main>
+        <main className="flex-1 overflow-y-auto" style={{ paddingBottom: 68 }}>
+          <InnerContent />
+        </main>
         <BottomNav />
         <MobileDrawer open={drawer} onClose={() => setDrawer(false)} />
       </div>
