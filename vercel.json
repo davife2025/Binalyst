@@ -1,21 +1,9 @@
 {
   "regions": ["sin1"],
-<<<<<<< HEAD
   "crons": [
-    { "path": "/api/events/scan", "schedule": "0 * * * *" }
-  ],
-  "functions": {
-    "app/api/binance/**": { "maxDuration": 30 },
-    "app/api/ai/**": { "maxDuration": 60 },
-    "app/api/events/**": { "maxDuration": 60 },
-    "app/api/skills/**": { "maxDuration": 30 }
-  }
+    {
+      "path": "/api/events/scan",
+      "schedule": "0 * * * *"
+    }
+  ]
 }
-=======
-  "crons": [{ "path": "/api/events/scan", "schedule": "0 * * * *" }],
-  "functions": {
-    "app/api/binance/**": { "maxDuration": 30 },
-    "app/api/ai/**": { "maxDuration": 60 }
-  }
-}
->>>>>>> 20ae63137dbddbeadf41ee68daaafa4a5b808032
