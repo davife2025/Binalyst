@@ -7,24 +7,24 @@ import {
 
 export const dynamic = 'force-dynamic'
 
-const CHAIN_MAP: Record<string, string> = {
+const CM: Record<string, string> = {
   bsc: '56', eth: '1', base: '8453', solana: 'CT_501', polygon: '137',
-  '56': '56', '1': '1', '8453': '8453', CT_501: 'CT_501', '137': '137',
+  '56': '56', '1': '1', CT_501: 'CT_501',
 }
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const skill = searchParams.get('skill') ?? ''
-  const chain = CHAIN_MAP[searchParams.get('chain') ?? 'bsc'] ?? '56'
+  const chain = CM[searchParams.get('chain') ?? 'bsc'] ?? '56'
 
   try {
     switch (skill) {
 
       case 'token-search': {
-        const keyword = searchParams.get('keyword') ?? ''
-        const data = keyword.startsWith('0x') || keyword.length > 30
-          ? await getTokenInfo({ address: keyword, chainId: chain })
-          : await searchToken({ keyword, chainId: chain })
+        const kw = searchParams.get('keyword') ?? ''
+        const data = kw.startsWith('0x') || kw.length > 30
+          ? await getTokenInfo({ address: kw, chainId: chain })
+          : await searchToken({ keyword: kw, chainId: chain })
         return NextResponse.json({ success: true, data })
       }
 
@@ -54,19 +54,19 @@ export async function GET(req: NextRequest) {
 
       case 'market-rank': {
         const type = searchParams.get('type') ?? 'trending'
-        const rankMap: Record<string, any> = {
+        const rm: Record<string, any> = {
           trending: 'trending', 'top-searched': 'trending',
           alpha: 'alpha', 'smart-money': 'smart_money',
           meme: 'meme', social: 'social_hype',
         }
-        const data = await getMarketRankings({ rankType: rankMap[type] ?? 'trending', chainId: chain, size: 20 })
+        const data = await getMarketRankings({ rankType: rm[type] ?? 'trending', chainId: chain, size: 20 })
         return NextResponse.json({ success: true, data: { list: Array.isArray(data) ? data : [] } })
       }
 
       case 'meme-rush': {
         const stage = searchParams.get('stage') ?? 'new'
-        const sortMap: Record<string, any> = { new: 'created', finalizing: 'trending', migrated: 'volume' }
-        const data = await getMemeRush({ chainId: chain, sortBy: sortMap[stage] ?? 'created', size: 20 })
+        const sm: Record<string, any> = { new: 'created', finalizing: 'trending', migrated: 'volume' }
+        const data = await getMemeRush({ chainId: chain, sortBy: sm[stage] ?? 'created', size: 20 })
         return NextResponse.json({ success: true, data: { list: Array.isArray(data) ? data : [] } })
       }
 
