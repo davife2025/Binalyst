@@ -15,22 +15,28 @@ export default function LoginPage() {
   const [name,       setName]       = useState('')
   const [loading,    setLoading]    = useState(false)
   const [googleLoad, setGoogleLoad] = useState(false)
+  const [guestLoad,  setGuestLoad]  = useState(false)
   const [error,      setError]      = useState('')
   const [success,    setSuccess]    = useState('')
   const [showPass,   setShowPass]   = useState(false)
 
-  function reset() { setError(''); setSuccess('') }
+  function resetState() { setError(''); setSuccess('') }
 
-  // ── Google — goes through NextAuth directly ───────────────────
   async function loginWithGoogle() {
-    setGoogleLoad(true); reset()
+    setGoogleLoad(true); resetState()
     await signIn('google', { callbackUrl: '/' })
   }
 
-  // ── Email/password ────────────────────────────────────────────
+  async function loginAsGuest() {
+    setGuestLoad(true); resetState()
+    const res = await signIn('credentials', { anonymous: 'true', redirect: false })
+    if (res?.ok) router.push('/')
+    else { setError('Guest login failed. Try again.'); setGuestLoad(false) }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setLoading(true); reset()
+    setLoading(true); resetState()
     try {
       if (mode === 'reset') {
         const { error } = await resetPassword(email)
@@ -60,8 +66,9 @@ export default function LoginPage() {
         style={{ backgroundImage: 'linear-gradient(var(--bg3) 1px,transparent 1px),linear-gradient(90deg,var(--bg3) 1px,transparent 1px)', backgroundSize: '40px 40px' }} />
 
       <div className="relative w-full max-w-sm flex flex-col gap-6">
+        {/* Logo */}
         <div className="text-center">
-          <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl font-extrabold mx-auto mb-4 animate-float"
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl font-extrabold mx-auto mb-4"
             style={{ background: 'var(--yellow)', color: '#000' }}>B</div>
           <h1 className="text-2xl font-extrabold" style={{ color: 'var(--text)' }}>Binalyst</h1>
           <p className="mono text-xs mt-1" style={{ color: 'var(--text3)' }}>AI-powered Binance assistant</p>
@@ -72,6 +79,7 @@ export default function LoginPage() {
 
           {mode !== 'reset' && (
             <>
+              {/* Google */}
               <button onClick={loginWithGoogle} disabled={googleLoad}
                 className="flex items-center justify-center gap-3 py-3 rounded-xl text-sm font-semibold w-full transition-all"
                 style={{ background: 'var(--bg3)', border: '1px solid var(--border2)', color: 'var(--text)', cursor: googleLoad ? 'not-allowed' : 'pointer', opacity: googleLoad ? 0.6 : 1 }}>
@@ -88,14 +96,26 @@ export default function LoginPage() {
                 {googleLoad ? 'Redirecting...' : 'Continue with Google'}
               </button>
 
+              {/* Guest */}
+              <button onClick={loginAsGuest} disabled={guestLoad}
+                className="flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold w-full transition-all"
+                style={{ background: 'var(--bg3)', border: '1px solid var(--border)', color: 'var(--text2)', cursor: guestLoad ? 'not-allowed' : 'pointer', opacity: guestLoad ? 0.6 : 1 }}>
+                {guestLoad
+                  ? <span className="w-4 h-4 rounded-full border-2 border-current border-t-transparent animate-spin-slow" />
+                  : <span style={{ fontSize: 16 }}>👤</span>
+                }
+                {guestLoad ? 'Loading...' : 'Continue as Guest'}
+              </button>
+
               <div className="flex items-center gap-3">
                 <div className="flex-1 h-px" style={{ background: 'var(--border)' }} />
-                <span className="mono text-[10px]" style={{ color: 'var(--text3)' }}>or</span>
+                <span className="mono text-[10px]" style={{ color: 'var(--text3)' }}>or sign in with email</span>
                 <div className="flex-1 h-px" style={{ background: 'var(--border)' }} />
               </div>
             </>
           )}
 
+          {/* Email form */}
           <form onSubmit={handleSubmit} className="flex flex-col gap-3">
             {mode === 'signup' && (
               <div className="flex flex-col gap-1.5">
@@ -108,8 +128,8 @@ export default function LoginPage() {
             <div className="flex flex-col gap-1.5">
               <label className="mono text-[9px] uppercase tracking-widest" style={{ color: 'var(--text3)' }}>Email</label>
               <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-                placeholder="you@example.com" required className="mono text-sm px-4 py-3 rounded-xl outline-none"
-                style={inp} onFocus={focus} onBlur={blur} />
+                placeholder="you@example.com" required
+                className="mono text-sm px-4 py-3 rounded-xl outline-none" style={inp} onFocus={focus} onBlur={blur} />
             </div>
 
             {mode !== 'reset' && (
@@ -121,12 +141,13 @@ export default function LoginPage() {
                     className="w-full mono text-sm px-4 py-3 pr-16 rounded-xl outline-none"
                     style={inp} onFocus={focus} onBlur={blur} />
                   <button type="button" onClick={() => setShowPass(v => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 mono text-[10px]" style={{ color: 'var(--text3)' }}>
+                    className="absolute right-3 top-1/2 -translate-y-1/2 mono text-[10px]"
+                    style={{ color: 'var(--text3)' }}>
                     {showPass ? 'hide' : 'show'}
                   </button>
                 </div>
                 {mode === 'login' && (
-                  <button type="button" onClick={() => { setMode('reset'); reset() }}
+                  <button type="button" onClick={() => { setMode('reset'); resetState() }}
                     className="mono text-[10px] self-end" style={{ color: 'var(--text3)' }}>
                     Forgot password?
                   </button>
@@ -146,14 +167,15 @@ export default function LoginPage() {
           </form>
 
           <div className="flex items-center justify-center gap-3">
-            {mode !== 'login'  && <button onClick={() => { setMode('login');  reset() }} className="mono text-xs" style={{ color: 'var(--text2)' }}>Sign in</button>}
+            {mode !== 'login'  && <button onClick={() => { setMode('login');  resetState() }} className="mono text-xs" style={{ color: 'var(--text2)' }}>Sign in</button>}
             {mode !== 'login'  && mode !== 'signup' && <span style={{ color: 'var(--text3)' }}>·</span>}
-            {mode !== 'signup' && <button onClick={() => { setMode('signup'); reset() }} className="mono text-xs" style={{ color: 'var(--text2)' }}>Create account</button>}
+            {mode !== 'signup' && <button onClick={() => { setMode('signup'); resetState() }} className="mono text-xs" style={{ color: 'var(--text2)' }}>Create account</button>}
           </div>
         </div>
 
+        {/* Guest disclaimer */}
         <p className="mono text-[10px] text-center" style={{ color: 'var(--text3)' }}>
-          Powered by Supabase + NextAuth
+          Guest sessions are temporary · Sign up to save your data
         </p>
       </div>
     </div>

@@ -102,7 +102,7 @@ function CoinCard({ ticker }: { ticker: Ticker }) {
   )
 }
 
-function AiQuickBar({ onNavigate }: { onNavigate: (tab: string) => void }) {
+function AiQuickBar({ onNavigate }: { onNavigate: (tab: any) => void }) {
   const [query,    setQuery]    = useState('')
   const [loading,  setLoading]  = useState(false)
   const [response, setResponse] = useState('')
@@ -339,7 +339,7 @@ export default function DashboardTab() {
             {QUICK_ACTIONS.map(a => (
               <button
                 key={a.id}
-                onClick={() => setActiveTab(a.id)}
+                onClick={() => setActiveTab(a.id as any)}
                 className="flex flex-col items-start gap-2 p-4 rounded-xl text-left transition-all group"
                 style={{ background: 'var(--bg2)', border: '1px solid var(--border)', cursor: 'pointer' }}
                 onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(240,185,11,0.4)'; (e.currentTarget as HTMLElement).style.background = 'var(--yellow-glow)' }}

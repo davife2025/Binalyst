@@ -1,85 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server'
-import {
-  getMarketRankings, getTokenInfo, searchToken,
-  getTokenAudit, getAddressInfo, getAddressTokenHoldings,
-  getMemeRush, getAlphaTokens,
-} from '@/lib/skills/web3'
+import { publishSquarePost, getMySquarePosts, getSquareFeed } from '@/lib/skills/square'
+import { getCredentialsFromHeaders } from '@/lib/binance'
+import { rateLimit } from '@/lib/rateLimit'
 
 export const dynamic = 'force-dynamic'
 
-const CM: Record<string, string> = {
-  bsc: '56', eth: '1', base: '8453', solana: 'CT_501', polygon: '137',
-  '56': '56', '1': '1', CT_501: 'CT_501',
-}
+export async function POST(req: NextRequest) {
+  const ip = req.headers.get('x-forwarded-for') ?? 'unknown'
+  const rl = rateLimit(`square:${ip}`, 'default')
+  if (!rl.allowed) return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
 
-export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url)
-  const skill = searchParams.get('skill') ?? ''
-  const chain = CM[searchParams.get('chain') ?? 'bsc'] ?? '56'
+  const body   = await req.json()
+  const { action, ...params } = body
+  const creds  = getCredentialsFromHeaders(req.headers)
 
   try {
-    switch (skill) {
-
-      case 'token-search': {
-        const kw = searchParams.get('keyword') ?? ''
-        const data = kw.startsWith('0x') || kw.length > 30
-          ? await getTokenInfo({ address: kw, chainId: chain })
-          : await searchToken({ keyword: kw, chainId: chain })
-        return NextResponse.json({ success: true, data })
+    switch (action) {
+      case 'publish': {
+        if (!creds) return NextResponse.json({ error: 'Binance API key required to post' }, { status: 401 })
+        const result = await publishSquarePost({ ...params, apiKey: creds.apiKey, apiSecret: creds.apiSecret })
+        return NextResponse.json({ success: result.success, data: result })
       }
-
-      case 'token-audit': {
-        const contract = searchParams.get('contract') ?? ''
-        if (!contract) return NextResponse.json({ error: 'contract required' }, { status: 400 })
-        const data = await getTokenAudit({ address: contract, chainId: chain })
-        return NextResponse.json({ success: true, data })
+      case 'my_posts': {
+        if (!creds) return NextResponse.json({ error: 'Binance API key required' }, { status: 401 })
+        const posts = await getMySquarePosts({ apiKey: creds.apiKey, apiSecret: creds.apiSecret, page: params.page, size: params.size })
+        return NextResponse.json({ success: true, data: posts })
       }
-
-      case 'address-tokens': {
-        const address = searchParams.get('address') ?? ''
-        if (!address) return NextResponse.json({ error: 'address required' }, { status: 400 })
-        const [info, holdings] = await Promise.allSettled([
-          getAddressInfo({ address, chainId: chain }),
-          getAddressTokenHoldings({ address, chainId: chain }),
-        ])
-        return NextResponse.json({
-          success: true,
-          data: {
-            info:   info.status === 'fulfilled' ? info.value : null,
-            list:   holdings.status === 'fulfilled' ? holdings.value : [],
-            tokens: holdings.status === 'fulfilled' ? holdings.value : [],
-          },
-        })
+      case 'feed': {
+        const posts = await getSquareFeed({ page: params.page, size: params.size })
+        return NextResponse.json({ success: true, data: posts })
       }
-
-      case 'market-rank': {
-        const type = searchParams.get('type') ?? 'trending'
-        const rm: Record<string, any> = {
-          trending: 'trending', 'top-searched': 'trending',
-          alpha: 'alpha', 'smart-money': 'smart_money',
-          meme: 'meme', social: 'social_hype',
-        }
-        const data = await getMarketRankings({ rankType: rm[type] ?? 'trending', chainId: chain, size: 20 })
-        return NextResponse.json({ success: true, data: { list: Array.isArray(data) ? data : [] } })
-      }
-
-      case 'meme-rush': {
-        const stage = searchParams.get('stage') ?? 'new'
-        const sm: Record<string, any> = { new: 'created', finalizing: 'trending', migrated: 'volume' }
-        const data = await getMemeRush({ chainId: chain, sortBy: sm[stage] ?? 'created', size: 20 })
-        return NextResponse.json({ success: true, data: { list: Array.isArray(data) ? data : [] } })
-      }
-
-      case 'alpha-tokens': {
-        const data = await getAlphaTokens()
-        return NextResponse.json({ success: true, data: Array.isArray(data) ? data : [] })
-      }
-
       default:
-        return NextResponse.json({ error: `Unknown skill: ${skill}` }, { status: 400 })
+        return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
     }
   } catch (err: any) {
-    console.error(`[skills] ${skill}:`, err.message)
     return NextResponse.json({ error: err.message }, { status: 500 })
   }
 }
