@@ -12,14 +12,10 @@ const CHAIN_MAP: Record<string, string> = {
   '56': '56', '1': '1', '8453': '8453', CT_501: 'CT_501', '137': '137',
 }
 
-function chainId(chain?: string | null): string {
-  return CHAIN_MAP[chain ?? 'bsc'] ?? '56'
-}
-
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
-  const skill  = searchParams.get('skill')
-  const chain  = chainId(searchParams.get('chain'))
+  const skill = searchParams.get('skill') ?? ''
+  const chain = CHAIN_MAP[searchParams.get('chain') ?? 'bsc'] ?? '56'
 
   try {
     switch (skill) {
@@ -49,9 +45,9 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({
           success: true,
           data: {
-            info:     info.status === 'fulfilled' ? info.value : null,
-            tokens:   holdings.status === 'fulfilled' ? holdings.value : [],
-            list:     holdings.status === 'fulfilled' ? holdings.value : [],
+            info:   info.status === 'fulfilled' ? info.value : null,
+            list:   holdings.status === 'fulfilled' ? holdings.value : [],
+            tokens: holdings.status === 'fulfilled' ? holdings.value : [],
           },
         })
       }
@@ -59,35 +55,24 @@ export async function GET(req: NextRequest) {
       case 'market-rank': {
         const type = searchParams.get('type') ?? 'trending'
         const rankMap: Record<string, any> = {
-          trending:     'trending',
-          'top-searched': 'trending',
-          alpha:        'alpha',
-          'smart-money': 'smart_money',
-          meme:         'meme',
-          social:       'social_hype',
+          trending: 'trending', 'top-searched': 'trending',
+          alpha: 'alpha', 'smart-money': 'smart_money',
+          meme: 'meme', social: 'social_hype',
         }
-        const data = await getMarketRankings({
-          rankType: rankMap[type] ?? 'trending',
-          chainId:  chain,
-          size:     20,
-        })
-        return NextResponse.json({ success: true, data: { list: data } })
+        const data = await getMarketRankings({ rankType: rankMap[type] ?? 'trending', chainId: chain, size: 20 })
+        return NextResponse.json({ success: true, data: { list: Array.isArray(data) ? data : [] } })
       }
 
       case 'meme-rush': {
-        const stage   = searchParams.get('stage') ?? 'new'
+        const stage = searchParams.get('stage') ?? 'new'
         const sortMap: Record<string, any> = { new: 'created', finalizing: 'trending', migrated: 'volume' }
-        const data = await getMemeRush({
-          chainId: chain,
-          sortBy:  sortMap[stage] ?? 'created',
-          size:    20,
-        })
-        return NextResponse.json({ success: true, data: { list: data } })
+        const data = await getMemeRush({ chainId: chain, sortBy: sortMap[stage] ?? 'created', size: 20 })
+        return NextResponse.json({ success: true, data: { list: Array.isArray(data) ? data : [] } })
       }
 
       case 'alpha-tokens': {
         const data = await getAlphaTokens()
-        return NextResponse.json({ success: true, data })
+        return NextResponse.json({ success: true, data: Array.isArray(data) ? data : [] })
       }
 
       default:
