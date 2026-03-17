@@ -2,7 +2,7 @@
 
 import { useStore } from '@/lib/store'
 
-type Tab = 'home' | 'chat' | 'markets' | 'events' | 'learn' | 'portfolio' | 'trading' | 'alerts' | 'agent' | 'web3' | 'square' | 'settings'
+type Tab = 'home' | 'chat' | 'markets' | 'events' | 'learn' | 'portfolio' | 'trading' | 'alerts' | 'agent' | 'web3' | 'square' | 'messaging' | 'settings'
 
 const NAV: { id: Tab; label: string; icon: string; dot?: boolean; badge?: string }[] = [
   { id: 'home',      label: 'Dashboard',  icon: '⊞' },
@@ -11,6 +11,7 @@ const NAV: { id: Tab; label: string; icon: string; dot?: boolean; badge?: string
   { id: 'events',    label: 'Events',     icon: '◎', dot: true },
   { id: 'web3',      label: 'Web3',       icon: '⬡' },
   { id: 'square',    label: 'Square',     icon: '✦' },
+  { id: 'messaging', label: 'Messaging',  icon: '📱', badge: 'NEW' },
   { id: 'learn',     label: 'Learn',      icon: '◉' },
   { id: 'portfolio', label: 'Portfolio',  icon: '◑' },
   { id: 'trading',   label: 'Trading',    icon: '⚡' },

@@ -1,30 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import OpenAI from 'openai'
 
 export const dynamic     = 'force-dynamic'
 export const maxDuration = 60
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
+const kimi = new OpenAI({ apiKey: process.env.MOONSHOT_API_KEY!, baseURL: 'https://api.moonshot.ai/v1' })
 
 async function scanEvents() {
   const today = new Date().toISOString().split('T')[0]
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
-
-  const result = await model.generateContent(
-    `Today is ${today}. List upcoming Binance exchange events in the next 30 days.
-Include: new coin listings, new trading pairs, HODLer airdrops, Binance Alpha events, Launchpool projects, Launchpad IDOs, TGEs, futures launches.
+  const response = await kimi.chat.completions.create({
+    model: 'kimi-k2.5',
+    messages: [{
+      role: 'user',
+      content: `Today is ${today}. List upcoming Binance exchange events in the next 30 days. Include: new coin listings, trading pairs, HODLer airdrops, Binance Alpha events, Launchpool projects, Launchpad IDOs, TGEs, futures launches.
 
 Return ONLY a valid JSON array. No markdown, no explanation.
 Each item: { id, title, datetime (ISO UTC), type (listing|trading|airdrop|launchpool|other), description, url }
-Up to 15 events sorted by datetime. Return [] if nothing found.`
-  )
+Up to 15 events sorted by datetime. Return [] if nothing found.`,
+    }],
+  })
 
-  const text  = result.response.text().replace(/```json|```/g, '').trim()
-  const start = text.indexOf('[')
-  const end   = text.lastIndexOf(']')
+  const text  = response.choices[0].message.content ?? ''
+  const clean = text.replace(/```json|```/g, '').trim()
+  const start = clean.indexOf('['); const end = clean.lastIndexOf(']')
   if (start === -1 || end === -1) return []
 
-  const events = JSON.parse(text.slice(start, end + 1))
+  const events = JSON.parse(clean.slice(start, end + 1))
   const scannedAt = new Date().toISOString()
   return events.filter((e: any) => e.title && e.datetime).map((e: any) => ({ ...e, scannedAt }))
 }
