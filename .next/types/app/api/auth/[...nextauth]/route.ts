@@ -1,8 +1,8 @@
 // File: C:\Users\USER\Desktop\binalyst\app\api\auth\[...nextauth]\route.ts
-import * as entry from '../../../../../../app/api/auth/callback/route.js'
+import * as entry from '../../../../../../app/api/auth/[...nextauth]/route.js'
 import type { NextRequest } from 'next/server.js'
 
-type TEntry = typeof import('../../../../../../app/api/auth/callback/route.js')
+type TEntry = typeof import('../../../../../../app/api/auth/[...nextauth]/route.js')
 
 // Check that the entry is a valid entry
 checkFields<Diff<{
