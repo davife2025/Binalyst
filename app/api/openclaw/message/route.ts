@@ -39,7 +39,7 @@ async function handleCommand(cmd: string, args: string): Promise<string> {
         const prices = await publicMarket.getPrices([pair])
         const price  = prices[pair]
         if (!price) return `❌ Could not find price for ${symbol}.`
-        return `💰 *${symbol}* price\n$${parseFloat(price).toLocaleString('en', { maximumFractionDigits: 4 })}\n\n_via Binalyst · binalyst.vercel.app_`
+        return `💰 *${symbol}* price\n$${price.toLocaleString('en', { maximumFractionDigits: 4 })}\n\n_via Binalyst · binalyst.vercel.app_`
       } catch {
         return `❌ Failed to fetch ${symbol} price. Try again.`
       }
@@ -47,7 +47,7 @@ async function handleCommand(cmd: string, args: string): Promise<string> {
 
     case 'movers': {
       try {
-        const data = await publicMarket.getTopMovers(5)
+        const data = await publicMarket.getTopMovers(5) as unknown as { gainers: any[]; losers: any[] }
         const g = data.gainers?.slice(0,3).map((m: any) => `🟢 ${m.symbol?.replace('USDT','')} +${parseFloat(m.priceChangePercent).toFixed(2)}%`).join('\n') ?? ''
         const l = data.losers?.slice(0,3).map((m: any) => `🔴 ${m.symbol?.replace('USDT','')} ${parseFloat(m.priceChangePercent).toFixed(2)}%`).join('\n') ?? ''
         return `📊 *Top Movers (24h)*\n\n*Gainers*\n${g}\n\n*Losers*\n${l}\n\n_via Binalyst · binalyst.vercel.app_`
