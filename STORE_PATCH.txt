@@ -1,0 +1,7 @@
+// In lib/store.ts, find this line:
+// activeTab: 'chat' | 'markets' | 'events' | 'learn' | 'portfolio' | 'trading' | 'alerts' | 'agent' | 'settings'
+//
+// Replace with:
+// activeTab: 'chat' | 'markets' | 'events' | 'learn' | 'portfolio' | 'trading' | 'alerts' | 'agent' | 'web3' | 'settings'
+//
+// Also update setActiveTab param type to match.
