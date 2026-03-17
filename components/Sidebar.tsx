@@ -2,14 +2,15 @@
 
 import { useStore } from '@/lib/store'
 
-type Tab = 'chat' | 'markets' | 'events' | 'learn' | 'portfolio' | 'trading' | 'alerts' | 'agent' | 'web3' | 'square' | 'settings'
+type Tab = 'home' | 'chat' | 'markets' | 'events' | 'learn' | 'portfolio' | 'trading' | 'alerts' | 'agent' | 'web3' | 'square' | 'settings'
 
 const NAV: { id: Tab; label: string; icon: string; dot?: boolean; badge?: string }[] = [
+  { id: 'home',      label: 'Dashboard',  icon: '⊞' },
   { id: 'chat',      label: 'Assistant',  icon: '◈' },
   { id: 'markets',   label: 'Markets',    icon: '◐' },
   { id: 'events',    label: 'Events',     icon: '◎', dot: true },
   { id: 'web3',      label: 'Web3',       icon: '⬡' },
-  { id: 'square',    label: 'Square',     icon: '✦', badge: 'NEW' },
+  { id: 'square',    label: 'Square',     icon: '✦' },
   { id: 'learn',     label: 'Learn',      icon: '◉' },
   { id: 'portfolio', label: 'Portfolio',  icon: '◑' },
   { id: 'trading',   label: 'Trading',    icon: '⚡' },
@@ -38,12 +39,8 @@ export default function Sidebar() {
               style={{ background: active ? 'var(--yellow-glow)' : 'transparent', color: active ? 'var(--yellow)' : 'var(--text2)', border: active ? '1px solid rgba(240,185,11,0.25)' : '1px solid transparent' }}>
               <span className="text-sm w-4 text-center leading-none">{item.icon}</span>
               <span className="text-sm font-semibold flex-1">{item.label}</span>
-              {item.badge && (
-                <span className="mono text-[8px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'var(--yellow)', color: '#000' }}>{item.badge}</span>
-              )}
-              {item.dot && !item.badge && (
-                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: 'var(--green)', animation: 'blink 2s infinite' }} />
-              )}
+              {item.badge && <span className="mono text-[8px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'var(--yellow)', color: '#000' }}>{item.badge}</span>}
+              {item.dot && !item.badge && <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: 'var(--green)', animation: 'blink 2s infinite' }} />}
             </button>
           )
         })}
