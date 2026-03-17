@@ -7,8 +7,16 @@
 
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import type { BinanceEvent } from '@/app/api/events/scan/route'
 
+export interface BinanceEvent {
+  id: string
+  title: string
+  datetime: string
+  type: 'listing' | 'trading' | 'airdrop' | 'launchpool' | 'other'
+  description: string
+  url: string
+  scannedAt: string
+}
 export interface ChatMessage {
   id: string
   role: 'user' | 'assistant' | 'system'
