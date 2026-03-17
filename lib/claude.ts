@@ -94,7 +94,7 @@ export async function runAgent({
     ...messages.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })),
   ]
 
-  for (let i = 0; i < 8; i++) {
+ for (let i = 0; i < 8; i++) {
     const response = await kimi.chat.completions.create({
       model: 'kimi-k2.5',
       messages: history,
@@ -112,6 +112,7 @@ export async function runAgent({
 
     // Execute tool calls
     for (const tc of msg.tool_calls) {
+      if (tc.type !== 'function') continue
       toolsUsed.push(tc.function.name)
       try {
         const args   = JSON.parse(tc.function.arguments)
