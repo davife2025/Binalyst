@@ -309,6 +309,7 @@ export default function DashboardTab() {
       </div>
 
       <br></br>
+      <br></br>
 
       {/* ── Features — centered at fixed width ── */}
       <div style={{ maxWidth:530, margin:'0 auto' }}>
