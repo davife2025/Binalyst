@@ -126,7 +126,7 @@ export const useStore = create<OpenClawStore>()(
 
       // ── Settings ──────────────────────────────────────────────────────────
       theme: 'dark',
-      activeTab: 'chat',
+      activeTab: 'home',
       setActiveTab: (tab) => set({ activeTab: tab }),
     }),
     {
