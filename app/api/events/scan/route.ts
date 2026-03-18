@@ -4,12 +4,15 @@ import OpenAI from 'openai'
 export const dynamic     = 'force-dynamic'
 export const maxDuration = 60
 
-const kimi = new OpenAI({ apiKey: process.env.MOONSHOT_API_KEY!, baseURL: 'https://api.moonshot.ai/v1' })
+const kimi = new OpenAI({
+  apiKey:  process.env.HUGGINGFACE_API_KEY!,
+  baseURL: 'https://router.huggingface.co/v1',
+})
 
 async function scanEvents() {
   const today = new Date().toISOString().split('T')[0]
   const response = await kimi.chat.completions.create({
-    model: 'kimi-k2.5',
+    model: 'moonshotai/Kimi-K2-Instruct',
     messages: [{
       role: 'user',
       content: `Today is ${today}. List upcoming Binance exchange events in the next 30 days. Include: new coin listings, trading pairs, HODLer airdrops, Binance Alpha events, Launchpool projects, Launchpad IDOs, TGEs, futures launches.
