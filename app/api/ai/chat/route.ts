@@ -7,7 +7,7 @@ export const maxDuration = 60
 
 const kimi = new OpenAI({
   apiKey:  process.env.HUGGINGFACE_API_KEY!,
-  baseURL: 'https://api-inference.huggingface.co/v1',
+  baseURL: 'https://router.huggingface.co/v1',
 })
 
 const SYSTEM: Record<string, string> = {
