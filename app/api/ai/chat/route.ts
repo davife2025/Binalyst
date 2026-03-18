@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { rateLimit } from '@/lib/rateLimit'
-import { getCredentialsFromHeaders } from '@/lib/binance'
 
 export const dynamic     = 'force-dynamic'
 export const maxDuration = 60
 
 const kimi = new OpenAI({
-  apiKey:  process.env.MOONSHOT_API_KEY!,
-  baseURL: 'https://api.moonshot.ai/v1',
+  apiKey:  process.env.HUGGINGFACE_API_KEY!,
+  baseURL: 'https://api-inference.huggingface.co/v1',
 })
 
 const SYSTEM: Record<string, string> = {
@@ -29,11 +28,14 @@ export async function POST(req: NextRequest) {
 
     const history = [
       { role: 'system' as const, content: SYSTEM[mode] ?? SYSTEM.assistant },
-      ...messages.map((m: any) => ({ role: m.role as 'user' | 'assistant', content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content) })),
+      ...messages.map((m: any) => ({
+        role: m.role as 'user' | 'assistant',
+        content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content),
+      })),
     ]
 
     const response = await kimi.chat.completions.create({
-      model: 'kimi-k2.5',
+      model: 'moonshotai/Kimi-K2-Instruct',
       messages: history,
       stream: true,
     })
@@ -54,7 +56,11 @@ export async function POST(req: NextRequest) {
     })
 
     return new NextResponse(stream, {
-      headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', 'Connection': 'keep-alive' },
+      headers: {
+        'Content-Type':  'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection':    'keep-alive',
+      },
     })
   } catch (err: any) {
     console.error('[ai/chat]', err.message)
