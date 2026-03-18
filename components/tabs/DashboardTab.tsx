@@ -259,7 +259,8 @@ export default function DashboardTab() {
   }
 
   return (
-    <div style={{ minHeight:'100%', background:'var(--bg)', fontFamily:"'DM Mono','Space Mono',monospace", padding:'20px 16px 40px' }}>
+    <div style={{ minHeight:'100%', background:'var(--bg)', fontFamily:"'DM Mono','Space Mono',monospace" }}>
+    <div style={{ maxWidth:520, margin:'0 auto', padding:'20px 20px 40px' }}>
 
       {/* Header */}
       <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:18 }}>
@@ -338,6 +339,7 @@ export default function DashboardTab() {
       </div>
 
       <style>{`@keyframes bnPulse { 0%,100%{opacity:1} 50%{opacity:0.3} }`}</style>
+    </div>
     </div>
   )
 }
