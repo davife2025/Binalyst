@@ -259,8 +259,7 @@ export default function DashboardTab() {
   }
 
   return (
-    <div style={{ minHeight:'100%', background:'var(--bg)', fontFamily:"'DM Mono','Space Mono',monospace" }}>
-    <div style={{ maxWidth:520, margin:'0 auto', padding:'20px 20px 40px' }}>
+    <div style={{ minHeight:'100%', background:'var(--bg)', fontFamily:"'DM Mono','Space Mono',monospace", padding:'20px 20px 40px' }}>
 
       {/* Header */}
       <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:18 }}>
@@ -283,53 +282,57 @@ export default function DashboardTab() {
         </div>
       </div>
 
-      {/* ── Navigate ── */}
-      <Divider label="Navigate" />
-      <div style={wrap}>
-        <div ref={navRef} style={track}>
-          {NAV_COLS.map((pair, ci) => (
-            <div key={ci} style={col}>
-              {pair.map(item => (
-                <button
-                  key={item.id}
-                  onClick={() => setActiveTab(item.id as any)}
-                  style={navCard}
-                  onMouseEnter={e => hover(e, true)}
-                  onMouseLeave={e => hover(e, false)}
-                >
-                  <span style={{ fontSize:15, opacity:0.75 }}>{item.icon}</span>
-                  <div style={{ fontSize:10, fontWeight:600, color:'var(--text2)' }}>{item.label}</div>
-                  <div style={{ fontSize:9, color:'var(--text3)' }}>{item.desc}</div>
-                </button>
-              ))}
-            </div>
-          ))}
+      {/* ── Navigate — centered at fixed width ── */}
+      <div style={{ maxWidth:360, margin:'0 auto' }}>
+        <Divider label="Navigate" />
+        <div style={wrap}>
+          <div ref={navRef} style={track}>
+            {NAV_COLS.map((pair, ci) => (
+              <div key={ci} style={col}>
+                {pair.map(item => (
+                  <button
+                    key={item.id}
+                    onClick={() => setActiveTab(item.id as any)}
+                    style={navCard}
+                    onMouseEnter={e => hover(e, true)}
+                    onMouseLeave={e => hover(e, false)}
+                  >
+                    <span style={{ fontSize:15, opacity:0.75 }}>{item.icon}</span>
+                    <div style={{ fontSize:10, fontWeight:600, color:'var(--text2)' }}>{item.label}</div>
+                    <div style={{ fontSize:9, color:'var(--text3)' }}>{item.desc}</div>
+                  </button>
+                ))}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* ── Features ── */}
-      <Divider label="Features" />
-      <div style={wrap}>
-        <div ref={featRef} style={track}>
-          {FEAT_COLS.map((pair, ci) => (
-            <div key={ci} style={col}>
-              {pair.map(({ id, icon, name: fn, sub, Preview }) => (
-                <button
-                  key={id}
-                  onClick={() => setActiveTab(id as any)}
-                  style={featCard}
-                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.borderColor = 'var(--yellow)'}
-                  onMouseLeave={e => (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'}
-                >
-                  <Preview />
-                  <div style={{ padding:'6px 8px' }}>
-                    <div style={{ fontSize:9, fontWeight:700, color:'var(--text)' }}>{icon} {fn}</div>
-                    <div style={{ fontSize:8, color:'var(--text3)', marginTop:1 }}>{sub}</div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          ))}
+      {/* ── Features — centered at fixed width ── */}
+      <div style={{ maxWidth:360, margin:'0 auto' }}>
+        <Divider label="Features" />
+        <div style={wrap}>
+          <div ref={featRef} style={track}>
+            {FEAT_COLS.map((pair, ci) => (
+              <div key={ci} style={col}>
+                {pair.map(({ id, icon, name: fn, sub, Preview }) => (
+                  <button
+                    key={id}
+                    onClick={() => setActiveTab(id as any)}
+                    style={featCard}
+                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.borderColor = 'var(--yellow)'}
+                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'}
+                  >
+                    <Preview />
+                    <div style={{ padding:'6px 8px' }}>
+                      <div style={{ fontSize:9, fontWeight:700, color:'var(--text)' }}>{icon} {fn}</div>
+                      <div style={{ fontSize:8, color:'var(--text3)', marginTop:1 }}>{sub}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -339,7 +342,6 @@ export default function DashboardTab() {
       </div>
 
       <style>{`@keyframes bnPulse { 0%,100%{opacity:1} 50%{opacity:0.3} }`}</style>
-    </div>
     </div>
   )
 }
