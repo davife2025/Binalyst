@@ -306,3 +306,4 @@ MIT — feel free to fork and build on it.
 - [Kimi K2](https://huggingface.co/moonshotai/Kimi-K2-Instruct) — AI model via Hugging Face
 - [Supabase](https://supabase.com) — auth and database
 - [Vercel](https://vercel.com) — deployment
+<img width="1340" height="705" alt="opopop" src="https://github.com/user-attachments/assets/e19debc9-0743-4389-a192-77089deca5a8" />
