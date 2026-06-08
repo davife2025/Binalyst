@@ -1,81 +1,76 @@
-# Binalyst — Session C: Strategy Engine & AI Decision Layer
+# Binalyst — Session D: Autonomous Agent Loop + Competition Tab
 
 ## What was built
 
 ### New files
 ```
-lib/twak/client.ts                    — REPLACES Session A: full 149-token list + competition guardrail checker
-app/api/agent/strategy/route.ts       — POST: AI parses natural language → StrategyRule[] JSON
-app/api/agent/execute/route.ts        — POST: guardrail check → dry-run quote → live TWAK swap on BSC
-components/tabs/StrategyBuilder.tsx   — Full strategy builder UI: templates, write, parse, rules editor, config
+lib/agentLoop.ts                        — Core loop engine: cycle logic, drawdown safety, forced DCA, rule evaluation
+app/api/agent/loop/route.ts             — POST: server-side cycle (signals → rules → guardrails → TWAK execute)
+hooks/useAgentLoop.ts                   — React hook: drives the loop from browser, syncs to agentStore
+components/agent/DrawdownGauge.tsx      — Animated SVG drawdown risk meter + inline bar variant
+components/tabs/CompetitionTab.tsx      — Full competition dashboard: PnL · drawdown · trade log · decisions
+vercel.json                             — REPLACES existing: adds /api/agent/loop cron every 2 min
 ```
 
 ### Integration steps
 
-1. **Replace** `lib/twak/client.ts` with Session C version (adds full 149-token list + guardrails)
+1. **Drop** new files into the repo
 
-2. **Add** new API routes (new files, no conflicts):
-   ```
-   app/api/agent/strategy/route.ts
-   app/api/agent/execute/route.ts
-   ```
+2. **Replace** `vercel.json` with Session D version
 
 3. **Add** to `app/page.tsx`:
    ```tsx
-   import StrategyBuilder from '@/components/tabs/StrategyBuilder'
+   import CompetitionTab from '@/components/tabs/CompetitionTab'
    // in TABS:
-   'strategy': <StrategyBuilder />,
+   'competition': <CompetitionTab />,
    ```
 
 4. **Add** to `Sidebar.tsx` NAV_MAIN:
    ```ts
-   { id: 'strategy', label: 'Strategy', icon: '⚡' }
+   { id: 'competition', label: 'Competition', icon: '🏆', dot: true }
    ```
 
-5. **Add** `'strategy'` to `activeTab` union in `lib/store.ts`
+5. **Add** `'competition'` to `activeTab` union in `lib/store.ts`
 
-## Competition rules enforced (Session C additions)
+## Agent loop flow (every 2 minutes)
 
-All 149 eligible symbols from the competition spec are now in `ALL_ELIGIBLE_SYMBOLS[]`.
-
-`checkCompetitionGuardrails()` enforces:
-- Token must be in eligible list → trade blocked if not
-- Portfolio ≤ $1 → blocked (sub-$1 = 0% for that hour)  
-- Drawdown ≥ 30% → blocked + DISQUALIFIED flag
-- Drawdown ≥ 24% (80% of cap) → WARNING emitted
-- Per-trade size limit → blocked if exceeds config
-- Slippage > 5% → blocked
-
-## Strategy parsing
-
-POST `/api/agent/strategy` with `{ strategyText: "..." }`:
-- AI (Kimi K2) parses to StrategyRule[] JSON
-- Validates all symbols against eligible list
-- Caps sizePct at 25% max
-- Returns summary, riskLevel, warnings
-- Falls back to fast regex parser if AI JSON is malformed
-
-## Trade execution
-
-POST `/api/agent/execute` with:
-```json
-{
-  "privateKey": "0x...",
-  "symbol": "ETH",
-  "action": "BUY",
-  "amountUSDT": 50,
-  "portfolioUSD": 500,
-  "drawdownPct": 5.2,
-  "tradesToday": 1,
-  "dryRun": true
-}
+```
+Browser timer / Vercel cron
+  ↓
+POST /api/agent/loop
+  ↓
+1. Get portfolio value via TWAK (BSC on-chain)
+2. Compute drawdown vs peak
+   ├─ ≥ 30% → return status: 'disqualified'
+   └─ ≥ 27.9% → return status: 'paused'
+3. Fetch CMC signals (batch)
+4. Evaluate StrategyRules against snapshots
+5. Forced DCA if 0 trades today & hour ≥ 22
+6. For each fired rule:
+   ├─ checkCompetitionGuardrails()
+   ├─ if blocked → log, skip
+   └─ if passed → (dryRun? simulate : TWAK approve + swap)
+7. Return cycle result → agentStore → UI update
 ```
 
-Always defaults to `dryRun: true` — set `dryRun: false` explicitly for live execution.
+## Safety layers (4 levels)
 
-## What's next — Session D
-- Full autonomous agent loop: signal → rule eval → decision → TWAK execute
-- 2-minute polling cycle with rule evaluation
-- CompetitionTab: live PnL, drawdown gauge, trade log with BSCScan links
-- Auto-pause when drawdown approaches 30% threshold
-- Daily trade count tracker (ensures 1/day minimum)
+| Level | Trigger | Effect |
+|---|---|---|
+| Symbol check | Token not in 149 eligible list | Trade blocked |
+| Portfolio floor | Portfolio ≤ $1 | Trade blocked |
+| Warning zone | Drawdown ≥ 24% | Trade allowed + warning |
+| Auto-pause | Drawdown ≥ 27.9% | Loop paused, no trades |
+| Disqualify cap | Drawdown ≥ 30% | Loop stopped, disqualified |
+
+## Competition minimum trades
+
+- Forced DCA fires at 22:00 if 0 trades that day
+- Picks highest-signal eligible token at 5% portfolio size
+- Ensures minimum 1 trade/day (7 total) to qualify
+
+## What's next — Session E
+- Dorahacks submission generator (strategy writeup)
+- End-to-end demo mode (guided walkthrough)
+- Performance export (CSV trade log + PnL chart)
+- Final guardrail audit
