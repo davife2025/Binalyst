@@ -1,0 +1,9 @@
+{
+  "_comment": "Add these to your existing package.json dependencies, then run: npm install",
+  "dependencies_to_add": {
+    "ethers": "^6.13.4"
+  },
+  "_note_twak": "Trust Wallet Agent Kit — install from portal.trustwallet.com once you have your TWAK_API_KEY. The ethers package above is sufficient for Session A local signing.",
+  "_note_bnb": "BNB AI Agent SDK — install in Session D when we wire the full execution loop: npm install @bnb-chain/bnbagent-sdk",
+  "_install_command": "npm install ethers@^6.13.4"
+}
