@@ -1,60 +1,81 @@
-# Binalyst — Session B: CMC Signal Engine
+# Binalyst — Session C: Strategy Engine & AI Decision Layer
 
 ## What was built
 
 ### New files
 ```
-lib/signalEngine.ts                    — Core signal computation: momentum + F&G + volume spike → scored snapshot
-hooks/useSignals.ts                    — React hook: polls CMC every 60s, caches in agentStore
-components/agent/FearGreedGauge.tsx    — Animated SVG arc gauge + mini inline variant + 30d history sparkline
-components/agent/SignalCard.tsx        — Token signal card: score bar, direction badge, tags, reasoning
-components/tabs/SignalDashboard.tsx    — Full dashboard: F&G gauge + signal grid + summary + filter/sort
-app/api/cmc/route.ts                   — REPLACES Session A version: adds full SignalSnapshot computation
+lib/twak/client.ts                    — REPLACES Session A: full 149-token list + competition guardrail checker
+app/api/agent/strategy/route.ts       — POST: AI parses natural language → StrategyRule[] JSON
+app/api/agent/execute/route.ts        — POST: guardrail check → dry-run quote → live TWAK swap on BSC
+components/tabs/StrategyBuilder.tsx   — Full strategy builder UI: templates, write, parse, rules editor, config
 ```
 
 ### Integration steps
 
-1. **Replace** `app/api/cmc/route.ts` with the Session B version
-2. **Add** to `app/page.tsx` TABS:
+1. **Replace** `lib/twak/client.ts` with Session C version (adds full 149-token list + guardrails)
+
+2. **Add** new API routes (new files, no conflicts):
+   ```
+   app/api/agent/strategy/route.ts
+   app/api/agent/execute/route.ts
+   ```
+
+3. **Add** to `app/page.tsx`:
    ```tsx
-   import SignalDashboard from '@/components/tabs/SignalDashboard'
+   import StrategyBuilder from '@/components/tabs/StrategyBuilder'
    // in TABS:
-   'signals': <SignalDashboard />,
+   'strategy': <StrategyBuilder />,
    ```
-3. **Add** to `Sidebar.tsx` NAV_MAIN:
+
+4. **Add** to `Sidebar.tsx` NAV_MAIN:
    ```ts
-   { id: 'signals', label: 'Signals', icon: '◈', dot: true }
+   { id: 'strategy', label: 'Strategy', icon: '⚡' }
    ```
-4. **Add** `'signals'` to the `activeTab` union in `lib/store.ts`
 
-## Signal scoring formula
+5. **Add** `'strategy'` to `activeTab` union in `lib/store.ts`
 
+## Competition rules enforced (Session C additions)
+
+All 149 eligible symbols from the competition spec are now in `ALL_ELIGIBLE_SYMBOLS[]`.
+
+`checkCompetitionGuardrails()` enforces:
+- Token must be in eligible list → trade blocked if not
+- Portfolio ≤ $1 → blocked (sub-$1 = 0% for that hour)  
+- Drawdown ≥ 30% → blocked + DISQUALIFIED flag
+- Drawdown ≥ 24% (80% of cap) → WARNING emitted
+- Per-trade size limit → blocked if exceeds config
+- Slippage > 5% → blocked
+
+## Strategy parsing
+
+POST `/api/agent/strategy` with `{ strategyText: "..." }`:
+- AI (Kimi K2) parses to StrategyRule[] JSON
+- Validates all symbols against eligible list
+- Caps sizePct at 25% max
+- Returns summary, riskLevel, warnings
+- Falls back to fast regex parser if AI JSON is malformed
+
+## Trade execution
+
+POST `/api/agent/execute` with:
+```json
+{
+  "privateKey": "0x...",
+  "symbol": "ETH",
+  "action": "BUY",
+  "amountUSDT": 50,
+  "portfolioUSD": 500,
+  "drawdownPct": 5.2,
+  "tradesToday": 1,
+  "dryRun": true
+}
 ```
-signalScore = 50
-  + momentum * 0.4          // price 1h/24h/7d weighted
-  + fgBias                  // -25 to +25 based on Fear & Greed zone
-  + trendBoost              // 0-10 if CMC trending top 20
-  + volBoost                // 0-10 if volume spike ≥ 2x
 
-BUY  if score ≥ 68
-SELL if score ≤ 32
-HOLD otherwise
+Always defaults to `dryRun: true` — set `dryRun: false` explicitly for live execution.
 
-HIGH confidence:   BUY ≥ 82 or SELL ≤ 18
-MEDIUM confidence: BUY 68-81 or SELL 19-32
-```
-
-## Tags generated
-- `extreme_fear` / `extreme_greed` — F&G zones
-- `volume_spike` — 2.5x+ above avg 24h volume
-- `strong_momentum` — abs(momentum) ≥ 50
-- `dca_zone` — F&G ≤ 25 AND momentum positive
-- `oversold` / `overbought` — 24h change ≤ -15% / ≥ +15%
-- `trending_cmc` — in CMC trending top 10
-- `reversal_watch` — big 24h move with opposing 1h
-
-## What's next — Session C
-- Natural-language strategy builder (AI parses "buy ETH when fear < 25")
-- Strategy → structured StrategyRule[] via Kimi K2
-- Backtester: replay signals against historical CMC data
-- StrategyBuilder UI component
+## What's next — Session D
+- Full autonomous agent loop: signal → rule eval → decision → TWAK execute
+- 2-minute polling cycle with rule evaluation
+- CompetitionTab: live PnL, drawdown gauge, trade log with BSCScan links
+- Auto-pause when drawdown approaches 30% threshold
+- Daily trade count tracker (ensures 1/day minimum)
