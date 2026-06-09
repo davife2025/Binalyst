@@ -1,14 +1,20 @@
 /**
- * lib/agentStore.ts
- * Zustand store for the autonomous agent wallet.
- * Private key is NEVER persisted — held in memory only for the session.
- * Encrypted keystore (password-protected) is stored in localStorage.
+ * lib/agentStore.ts — Session H: FINAL complete version
+ * Merges all patches from Sessions A-G into one canonical file.
+ * REPLACES all previous agentStore.ts and agentStore.PATCH.ts files.
  */
 
-import { create } from 'zustand'
+import { create }                 from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import type { AgentConfig } from './twak/client'
-import { DEFAULT_AGENT_CONFIG } from './twak/client'
+import type { AgentConfig }       from './twak/client'
+import { DEFAULT_AGENT_CONFIG }   from './twak/client'
+
+export type AgentNetwork = 'mainnet' | 'testnet'
+
+export const NETWORK_LABELS: Record<AgentNetwork, string> = {
+  mainnet: 'BSC Mainnet',
+  testnet: 'BSC Testnet',
+}
 
 export interface TradeRecord {
   id:          string
@@ -26,47 +32,63 @@ export interface TradeRecord {
 }
 
 export interface AgentSession {
-  startedAt:     number
-  startValueUSDT: number
+  startedAt:        number
+  startValueUSDT:   number
   currentValueUSDT: number
-  peakValueUSDT:  number
-  drawdownPct:    number
-  totalTrades:    number
-  todayTrades:    number
-  isRegistered:   boolean
-  registrationTx: string
-  lastRunAt:      number | null
-  status:         'idle' | 'running' | 'paused' | 'error' | 'disqualified'
+  peakValueUSDT:    number
+  drawdownPct:      number
+  totalTrades:      number
+  todayTrades:      number
+  isRegistered:     boolean
+  registrationTx:   string
+  lastRunAt:        number | null
+  status:           'idle' | 'running' | 'paused' | 'error' | 'disqualified'
+}
+
+export interface StrategyRule {
+  id:           string
+  symbol:       string
+  condition:    any
+  action:       'BUY' | 'SELL' | 'HOLD'
+  sizePct:      number
+  priority:     number
+  cooldownMs:   number
+  lastFiredAt?: number
+  reasoning?:   string
 }
 
 interface AgentStore {
+  // ── Network ───────────────────────────────────────────────────────────────
+  network:    AgentNetwork
+  setNetwork: (n: AgentNetwork) => void
+
   // ── Wallet (session-only — never persisted) ───────────────────────────────
   agentAddress:    string
-  privateKey:      string   // in-memory only
-  encryptedKey:    string   // persisted (password-protected JSON)
+  privateKey:      string
+  encryptedKey:    string
   isWalletLoaded:  boolean
   bnbBalance:      number
   usdtBalance:     number
 
-  setWallet: (address: string, privateKey: string) => void
+  setWallet:       (address: string, privateKey: string) => void
   setEncryptedKey: (enc: string) => void
-  clearWallet: () => void
-  setBNBBalance: (bal: number) => void
-  setUSDTBalance: (bal: number) => void
+  clearWallet:     () => void
+  setBNBBalance:   (bal: number) => void
+  setUSDTBalance:  (bal: number) => void
 
   // ── Agent config ──────────────────────────────────────────────────────────
-  agentConfig: AgentConfig
+  agentConfig:    AgentConfig
   setAgentConfig: (cfg: Partial<AgentConfig>) => void
 
   // ── Session ───────────────────────────────────────────────────────────────
-  session: AgentSession | null
-  initSession: (startUSDT: number) => void
+  session:       AgentSession | null
+  initSession:   (startUSDT: number) => void
   updateSession: (updates: Partial<AgentSession>) => void
-  resetSession: () => void
+  resetSession:  () => void
 
   // ── Trade log ─────────────────────────────────────────────────────────────
-  trades: TradeRecord[]
-  addTrade: (trade: TradeRecord) => void
+  trades:      TradeRecord[]
+  addTrade:    (trade: TradeRecord) => void
   updateTrade: (id: string, updates: Partial<TradeRecord>) => void
   clearTrades: () => void
 
@@ -79,16 +101,7 @@ interface AgentStore {
   // ── Strategy ──────────────────────────────────────────────────────────────
   strategyText:   string
   strategyParsed: StrategyRule[]
-  setStrategy: (text: string, rules: StrategyRule[]) => void
-}
-
-export interface StrategyRule {
-  id:        string
-  condition: string          // e.g. "fear_and_greed < 30"
-  action:    'BUY' | 'SELL' | 'HOLD'
-  symbol:    string
-  sizePct:   number          // % of portfolio
-  priority:  number
+  setStrategy:    (text: string, rules: StrategyRule[]) => void
 }
 
 const DEFAULT_SESSION: AgentSession = {
@@ -108,31 +121,32 @@ const DEFAULT_SESSION: AgentSession = {
 export const useAgentStore = create<AgentStore>()(
   persist(
     (set, get) => ({
-      // ── Wallet ──────────────────────────────────────────────────────────
+      // ── Network ────────────────────────────────────────────────────────
+      network:    'testnet',
+      setNetwork: (n) => set({ network: n }),
+
+      // ── Wallet ─────────────────────────────────────────────────────────
       agentAddress:   '',
-      privateKey:     '',       // NEVER persisted
+      privateKey:     '',
       encryptedKey:   '',
       isWalletLoaded: false,
       bnbBalance:     0,
       usdtBalance:    0,
 
-      setWallet: (address, privateKey) =>
+      setWallet:       (address, privateKey) =>
         set({ agentAddress: address, privateKey, isWalletLoaded: true }),
-
       setEncryptedKey: (enc) => set({ encryptedKey: enc }),
-
-      clearWallet: () =>
+      clearWallet:     () =>
         set({ agentAddress: '', privateKey: '', isWalletLoaded: false, bnbBalance: 0, usdtBalance: 0 }),
+      setBNBBalance:   (bal) => set({ bnbBalance: bal }),
+      setUSDTBalance:  (bal) => set({ usdtBalance: bal }),
 
-      setBNBBalance:  (bal) => set({ bnbBalance: bal }),
-      setUSDTBalance: (bal) => set({ usdtBalance: bal }),
-
-      // ── Agent config ─────────────────────────────────────────────────────
+      // ── Agent config ────────────────────────────────────────────────────
       agentConfig: DEFAULT_AGENT_CONFIG,
       setAgentConfig: (cfg) =>
         set(s => ({ agentConfig: { ...s.agentConfig, ...cfg } })),
 
-      // ── Session ──────────────────────────────────────────────────────────
+      // ── Session ─────────────────────────────────────────────────────────
       session: null,
 
       initSession: (startUSDT) =>
@@ -179,13 +193,24 @@ export const useAgentStore = create<AgentStore>()(
       // ── Strategy ─────────────────────────────────────────────────────────
       strategyText:   '',
       strategyParsed: [],
-      setStrategy: (text, rules) => set({ strategyText: text, strategyParsed: rules }),
+      setStrategy:    (text, rules) => set({ strategyText: text, strategyParsed: rules }),
     }),
     {
-      name: 'binalyst-agent',
-      storage: createJSONStorage(() => localStorage),
+      name:    'binalyst-agent',
+      storage: createJSONStorage(() => {
+        // SSR guard — localStorage not available on server
+        if (typeof window === 'undefined') {
+          return {
+            getItem:    () => null,
+            setItem:    () => {},
+            removeItem: () => {},
+          }
+        }
+        return localStorage
+      }),
       // CRITICAL: never persist privateKey
       partialize: (s) => ({
+        network:        s.network,
         agentAddress:   s.agentAddress,
         encryptedKey:   s.encryptedKey,
         agentConfig:    s.agentConfig,

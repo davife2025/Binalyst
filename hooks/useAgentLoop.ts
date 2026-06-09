@@ -1,10 +1,12 @@
 'use client'
 
 /**
- * hooks/useAgentLoop.ts
- * React hook that drives the autonomous agent loop from the browser.
- * Polls /api/agent/loop every 2 minutes when autonomousMode is on.
- * Syncs all results back into agentStore.
+ * hooks/useAgentLoop.ts — Session H (REPLACES Session D)
+ * Fixes:
+ * - Passes `network` from agentStore into every /api/agent/loop call
+ * - SSR-safe localStorage access
+ * - Correct dependency array to avoid stale closure on network switch
+ * - todayTrades computed correctly from trade timestamps
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react'
@@ -23,27 +25,29 @@ export function useAgentLoop() {
     privateKey, agentAddress, isWalletLoaded,
     agentConfig, strategyParsed,
     session, initSession, updateSession,
-    trades, addTrade, updateTrade,
-    lastSignals,
+    trades, addTrade,
   } = useAgentStore()
 
-  const [loopStatus,   setLoopStatus]   = useState<LoopStatus>('idle')
-  const [lastCycle,    setLastCycle]    = useState<LoopCycleResult | null>(null)
-  const [nextRunIn,    setNextRunIn]    = useState<number>(0)
-  const [isRunning,    setIsRunning]    = useState(false)
-  const [cycleError,   setCycleError]   = useState<string>('')
+  // Network — cast because it was added in Session F patch
+  const network = (useAgentStore() as any).network ?? 'testnet'
+
+  const [loopStatus,  setLoopStatus]  = useState<LoopStatus>('idle')
+  const [lastCycle,   setLastCycle]   = useState<LoopCycleResult | null>(null)
+  const [nextRunIn,   setNextRunIn]   = useState<number>(0)
+  const [isRunning,   setIsRunning]   = useState(false)
+  const [cycleError,  setCycleError]  = useState<string>('')
 
   const timerRef     = useRef<ReturnType<typeof setInterval> | null>(null)
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const lastRunRef   = useRef<number>(0)
 
   // ── Helpers ──────────────────────────────────────────────────────────────
-  const getDaysElapsed = useCallback(() => {
+  const getDaysElapsed = useCallback((): number => {
     if (!session?.startedAt) return 0
     return Math.floor((Date.now() - session.startedAt) / 86400000)
-  }, [session])
+  }, [session?.startedAt])
 
-  const getTodayTrades = useCallback(() => {
+  const getTodayTrades = useCallback((): number => {
     const todayStart = new Date()
     todayStart.setHours(0, 0, 0, 0)
     return trades.filter(t => t.timestamp >= todayStart.getTime()).length
@@ -62,13 +66,14 @@ export function useAgentLoop() {
     try {
       const symbols = agentConfig.allowedTokens.length
         ? agentConfig.allowedTokens
-        : ['ETH', 'BNB', 'ADA', 'AVAX', 'LINK', 'CAKE', 'DOGE', 'DOT']
+        : ['ETH', 'ADA', 'AVAX', 'LINK', 'CAKE', 'DOGE', 'DOT', 'BNB']
 
       const res = await fetch('/api/agent/loop', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           privateKey,
+          network,                                // ← Session F: pass network
           rules:       strategyParsed,
           symbols,
           startUSD:    session?.startValueUSDT  ?? 0,
@@ -83,10 +88,8 @@ export function useAgentLoop() {
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
-
       if (!data.success) throw new Error(data.error ?? 'Cycle failed')
 
-      // ── Update session ───────────────────────────────────────────────────
       const portfolioUSD = data.portfolioUSD ?? 0
       const drawdownPct  = data.drawdownPct  ?? 0
       const newStatus    = data.status as LoopStatus
@@ -101,12 +104,11 @@ export function useAgentLoop() {
         status:           newStatus,
       })
 
-      // ── Log trades ───────────────────────────────────────────────────────
+      // Log trades
       for (const decision of data.decisions ?? []) {
         if (decision.guardrail === 'blocked') continue
-        const tradeId = crypto.randomUUID()
         addTrade({
-          id:          tradeId,
+          id:          crypto.randomUUID(),
           timestamp:   decision.timestamp ?? Date.now(),
           symbol:      decision.symbol,
           side:        decision.action,
@@ -114,13 +116,12 @@ export function useAgentLoop() {
           price:       data.snapshots?.find((s: any) => s.symbol === decision.symbol)?.price ?? 0,
           txHash:      decision.txHash ?? '',
           dryRun:      agentConfig.dryRun,
-          status:      decision.txHash ? 'confirmed' : (agentConfig.dryRun ? 'confirmed' : 'pending'),
-          signalScore: decision.signalScore,
-          reasoning:   decision.reasoning,
+          status:      decision.txHash ? 'confirmed' : agentConfig.dryRun ? 'confirmed' : 'pending',
+          signalScore: decision.signalScore ?? 50,
+          reasoning:   decision.reasoning  ?? '',
         })
       }
 
-      // ── Build cycle result ───────────────────────────────────────────────
       const cycleResult: LoopCycleResult = {
         cycleAt:      Date.now(),
         decisions:    data.decisions ?? [],
@@ -144,23 +145,20 @@ export function useAgentLoop() {
 
     setIsRunning(false)
   }, [
-    privateKey, isWalletLoaded, agentConfig, strategyParsed,
-    session, loopStatus, isRunning, getDaysElapsed, getTodayTrades,
+    privateKey, isWalletLoaded, network, agentConfig,
+    strategyParsed, session, loopStatus, isRunning,
+    getDaysElapsed, getTodayTrades,
   ])
 
   // ── Start / Stop ──────────────────────────────────────────────────────────
   const startLoop = useCallback(async (startingUSDT?: number) => {
     if (!privateKey || !isWalletLoaded) return
-    if (!session) {
-      initSession(startingUSDT ?? 100)
-    }
+    if (!session) initSession(startingUSDT ?? 100)
     setLoopStatus('running')
     await runCycle()
-    if (timerRef.current) clearInterval(timerRef.current)
-    timerRef.current = setInterval(runCycle, LOOP_INTERVAL_MS)
-
-    // Countdown ticker
+    if (timerRef.current)     clearInterval(timerRef.current)
     if (countdownRef.current) clearInterval(countdownRef.current)
+    timerRef.current = setInterval(runCycle, LOOP_INTERVAL_MS)
     countdownRef.current = setInterval(() => {
       const elapsed = (Date.now() - lastRunRef.current) / 1000
       setNextRunIn(Math.max(0, Math.floor(LOOP_INTERVAL_MS / 1000 - elapsed)))
@@ -174,47 +172,31 @@ export function useAgentLoop() {
     setNextRunIn(0)
   }, [])
 
-  const pauseLoop = useCallback(() => {
-    setLoopStatus('paused')
-  }, [])
+  const pauseLoop  = useCallback(() => setLoopStatus('paused'),  [])
+  const resumeLoop = useCallback(() => setLoopStatus('running'), [])
 
-  const resumeLoop = useCallback(() => {
-    setLoopStatus('running')
-  }, [])
-
-  // Cleanup on unmount
   useEffect(() => () => {
     if (timerRef.current)     clearInterval(timerRef.current)
     if (countdownRef.current) clearInterval(countdownRef.current)
   }, [])
 
-  // Derived stats
-  const pnlPct = session
-    ? computePnLPct(session.startValueUSDT, session.currentValueUSDT)
-    : 0
-
-  const tradeStatus = tradeCountStatus(
-    getTodayTrades(),
-    session?.totalTrades ?? 0,
-    getDaysElapsed(),
-  )
-
-  const isActive = timerRef.current !== null
+  // Derived
+  const pnlPct      = session ? computePnLPct(session.startValueUSDT, session.currentValueUSDT) : 0
+  const tradeStatus = tradeCountStatus(getTodayTrades(), session?.totalTrades ?? 0, getDaysElapsed())
+  const isActive    = timerRef.current !== null
 
   return {
-    // State
     loopStatus, lastCycle, nextRunIn, isRunning, cycleError, isActive,
-    // Stats
     pnlPct, tradeStatus,
     todayTrades:  getTodayTrades(),
-    totalTrades:  session?.totalTrades   ?? 0,
-    drawdownPct:  session?.drawdownPct   ?? 0,
+    totalTrades:  session?.totalTrades    ?? 0,
+    drawdownPct:  session?.drawdownPct    ?? 0,
     portfolioUSD: session?.currentValueUSDT ?? 0,
     startUSD:     session?.startValueUSDT   ?? 0,
     peakUSD:      session?.peakValueUSDT    ?? 0,
     daysElapsed:  getDaysElapsed(),
     isRegistered: session?.isRegistered ?? false,
-    // Controls
+    network,
     startLoop, stopLoop, pauseLoop, resumeLoop, runCycle,
   }
 }

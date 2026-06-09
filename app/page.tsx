@@ -1,12 +1,21 @@
 'use client'
 
+/**
+ * app/page.tsx — Session H FINAL (REPLACES Session E version)
+ * All 19 tabs wired. Adds AgentPerformanceTab from Session G.
+ */
+
 import { useState, useEffect } from 'react'
-import { useSession } from 'next-auth/react'
-import { useStore } from '@/lib/store'
+import { useSession }          from 'next-auth/react'
+import { useStore }            from '@/lib/store'
+
+// ── Layout ────────────────────────────────────────────────────────────────────
 import Sidebar      from '@/components/Sidebar'
 import Header       from '@/components/Header'
 import BottomNav    from '@/components/BottomNav'
 import MobileDrawer from '@/components/MobileDrawer'
+
+// ── Original Binalyst tabs ────────────────────────────────────────────────────
 import DashboardTab from '@/components/tabs/DashboardTab'
 import ChatTab      from '@/components/tabs/ChatTab'
 import MarketsTab   from '@/components/tabs/MarketsTab'
@@ -21,51 +30,73 @@ import SquareTab    from '@/components/tabs/SquareTab'
 import MessagingTab from '@/components/tabs/MessagingTab'
 import SettingsTab  from '@/components/tabs/SettingsTab'
 
+// ── Autonomous Agent tabs (Sessions A-G) ──────────────────────────────────────
+import AgentWalletTab      from '@/components/tabs/AgentWalletTab'
+import SignalDashboard     from '@/components/tabs/SignalDashboard'
+import StrategyBuilder     from '@/components/tabs/StrategyBuilder'
+import CompetitionTab      from '@/components/tabs/CompetitionTab'
+import DorahacksTab        from '@/components/tabs/DorahacksTab'
+import AgentPerformanceTab from '@/components/tabs/AgentPerformanceTab'
+
 const TABS: Record<string, React.ReactNode> = {
-  home:      <DashboardTab />,
-  chat:      <ChatTab />,
-  markets:   <MarketsTab />,
-  events:    <EventsTab />,
-  learn:     <LearnTab />,
-  portfolio: <PortfolioTab />,
-  trading:   <TradingTab />,
-  alerts:    <AlertsTab />,
-  agent:     <AgentTab />,
-  web3:      <Web3Tab />,
-  square:    <SquareTab />,
-  messaging: <MessagingTab />,
-  settings:  <SettingsTab />,
+  // Core Binalyst
+  home:         <DashboardTab />,
+  chat:         <ChatTab />,
+  markets:      <MarketsTab />,
+  events:       <EventsTab />,
+  learn:        <LearnTab />,
+  portfolio:    <PortfolioTab />,
+  trading:      <TradingTab />,
+  alerts:       <AlertsTab />,
+  agent:        <AgentTab />,
+  web3:         <Web3Tab />,
+  square:       <SquareTab />,
+  messaging:    <MessagingTab />,
+  settings:     <SettingsTab />,
+
+  // Autonomous Agent (Sessions A-G)
+  'agent-wallet':  <AgentWalletTab />,
+  signals:         <SignalDashboard />,
+  strategy:        <StrategyBuilder />,
+  competition:     <CompetitionTab />,
+  submission:      <DorahacksTab />,
+  performance:     <AgentPerformanceTab />,
 }
 
 export default function App() {
-  const { data: session } = useSession()
+  const { data: session }           = useSession()
   const { activeTab, setActiveTab } = useStore()
-  const [drawer, setDrawer] = useState(false)
-  const isHome = activeTab === 'home'
+  const [drawer, setDrawer]         = useState(false)
+  const isHome                      = activeTab === 'home'
 
-  // Always land on dashboard after login
   useEffect(() => {
     if (session) setActiveTab('home')
   }, [session?.user?.email])
 
   return (
     <>
-      {/* ── Desktop ── */}
+      {/* ── Desktop ─────────────────────────────────────────────────────── */}
       <div className="hidden md:flex h-screen overflow-hidden" style={{ background: 'var(--bg)' }}>
         <Sidebar />
         <div className="flex flex-col flex-1 min-w-0">
           {!isHome && <Header />}
           <main className="flex-1 overflow-y-auto">
-            {TABS[activeTab]}
+            {TABS[activeTab] ?? TABS.home}
           </main>
         </div>
       </div>
 
-      {/* ── Mobile ── */}
+      {/* ── Mobile ──────────────────────────────────────────────────────── */}
       <div className="flex md:hidden flex-col" style={{ background: 'var(--bg)', minHeight: '100dvh' }}>
         {!isHome && (
           <div className="flex items-center justify-between px-4 h-14 shrink-0 border-b"
-            style={{ background: 'rgba(11,14,17,0.95)', backdropFilter: 'blur(12px)', borderColor: 'var(--border)', position: 'sticky', top: 0, zIndex: 30 }}>
+            style={{
+              background:     'rgba(11,14,17,0.95)',
+              backdropFilter: 'blur(12px)',
+              borderColor:    'var(--border)',
+              position:       'sticky',
+              top: 0, zIndex: 30,
+            }}>
             <div className="flex items-center gap-2">
               <div className="w-7 h-7 rounded-lg flex items-center justify-center font-extrabold text-sm"
                 style={{ background: 'var(--yellow)', color: '#000' }}>B</div>
@@ -81,7 +112,7 @@ export default function App() {
           </div>
         )}
         <main className="flex-1 overflow-y-auto" style={{ paddingBottom: 68 }}>
-          {TABS[activeTab]}
+          {TABS[activeTab] ?? TABS.home}
         </main>
         <BottomNav />
         <MobileDrawer open={drawer} onClose={() => setDrawer(false)} />
