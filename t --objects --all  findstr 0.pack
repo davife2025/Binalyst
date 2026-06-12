@@ -1,0 +1,10 @@
+[33mb4c2b3d[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m Remove .next build cache from repository
+[33m03cf642[m b1
+[33m0d25205[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m update and fixes
+[33m0a1d5de[m ui updates
+[33m7e7a2fa[m bug fixes
+[33mea6459d[m vercel json update and deploymen
+[33ma9389b7[m built signal → rule eval → TWAK execute → PnL tracking → CompetitionTab
+[33mbba1651[m built Strategy Builder — natural language strategy → structured rules → AI parsing
+[33meccb697[m built CMC Signal Engine + live F&G dashboard
+[33mb19a602[m built TWAK connection, CMC client, competition registration

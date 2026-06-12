@@ -3,6 +3,8 @@
 .env.example
 .env
 
+.next
+.next/
 node_modules
 
 INTEGRATION_GUIDE.md
