@@ -1,5 +1,6 @@
 {
-  "/api/binance/market/route": "app/api/binance/market/route.js",
   "/api/cmc/route": "app/api/cmc/route.js",
+  "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js",
+  "/api/binance/market/route": "app/api/binance/market/route.js",
   "/page": "app/page.js"
 }

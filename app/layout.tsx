@@ -3,14 +3,19 @@ import Providers from '@/components/Providers'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Binalyst — Binance AI Assistant',
-  description: 'AI-powered Binance co-pilot. Live markets, trading assistant, events radar, portfolio tracker.',
+  title: 'Binalyst — BNB Chain AI Trading Platform',
+  description: 'Autonomous trading agent powered by CMC signals, AI strategy, and TWAK self-custody signing on BSC. Live competition trading with Fear & Greed intelligence.',
   icons: { icon: '/favicon.ico' },
   openGraph: {
-    title: 'Binalyst',
-    description: 'AI-powered Binance assistant',
+    title: 'Binalyst — BNB Chain AI Trading Platform',
+    description: 'Autonomous BSC trading agent · CMC intelligence · Self-custodial TWAK signing · Live competition',
     type: 'website',
   },
+  keywords: [
+    'BNB Chain', 'AI Trading', 'Autonomous Agent', 'BSC', 'CMC',
+    'CoinMarketCap', 'Trust Wallet', 'TWAK', 'DeFi', 'PancakeSwap',
+    'Fear and Greed', 'Trading Bot', 'Binance', 'Web3',
+  ],
 }
 
 export const viewport: Viewport = {
