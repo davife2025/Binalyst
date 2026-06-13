@@ -59,6 +59,11 @@ interface CeloAgentStore {
   celoBalance:    number
   cusdBalance:    number
 
+  // ── ERC-8004 identity (Session M — Track 3) ───────────────────────────────
+  agentId:            string | null   // ERC-8004 agentId (ERC-721 tokenId) on Celo Mainnet
+  registrationTxHash: string | null
+  setAgentIdentity:   (agentId: string, txHash: string) => void
+
   setWallet:       (address: string, privateKey: string) => void
   setEncryptedKey: (enc: string) => void
   clearWallet:     () => void
@@ -110,6 +115,12 @@ export const useCeloAgentStore = create<CeloAgentStore>()(
         set({ agentAddress: '', privateKey: '', isWalletLoaded: false, celoBalance: 0, cusdBalance: 0 }),
       setCeloBalance:  (bal) => set({ celoBalance: bal }),
       setCusdBalance:  (bal) => set({ cusdBalance: bal }),
+
+      // ── ERC-8004 identity ────────────────────────────────────────────────
+      agentId:            null,
+      registrationTxHash: null,
+      setAgentIdentity: (agentId, txHash) =>
+        set({ agentId, registrationTxHash: txHash }),
 
       // ── Agent config ────────────────────────────────────────────────────
       agentConfig: DEFAULT_CELO_AGENT_CONFIG,
@@ -175,6 +186,8 @@ export const useCeloAgentStore = create<CeloAgentStore>()(
         session:        s.session,
         paymentRules:   s.paymentRules,
         payments:       s.payments.slice(0, 100),
+        agentId:            s.agentId,
+        registrationTxHash: s.registrationTxHash,
       }),
     }
   )

@@ -331,6 +331,11 @@ export class CeloClient {
   getChainId(): number {
     return CELO_CHAIN_ID[this.network]
   }
+
+  /** Expose the underlying signer (e.g. for ad-hoc Contract instances — used by lib/celo/erc8004.ts). */
+  getWallet(): ethers.Wallet {
+    return this.wallet
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -18,6 +18,7 @@ import {
   encryptCeloPrivateKey, decryptCeloPrivateKey,
 } from '@/lib/celo/client'
 import type { CeloNetwork } from '@/lib/celo/config'
+import { get8004ScanUrl } from '@/lib/celo/erc8004'
 import {
   PAYMENT_FREQUENCIES, formatFrequency, shortAddr,
   type PaymentRule,
@@ -50,6 +51,7 @@ export default function CeloAgentTab() {
     paymentRules, addPaymentRule, updatePaymentRule, removePaymentRule,
     payments,
     session,
+    agentId, registrationTxHash, setAgentIdentity,
   } = useCeloAgentStore()
 
   const {
@@ -70,6 +72,7 @@ export default function CeloAgentTab() {
   const [error,       setError]       = useState('')
   const [copied,      setCopied]      = useState('')
   const [showKey,     setShowKey]     = useState(false)
+  const [registering, setRegistering] = useState(false)
 
   // ── New payment rule form ─────────────────────────────────────────────
   const [ruleLabel,     setRuleLabel]     = useState('')
@@ -169,6 +172,33 @@ export default function CeloAgentTab() {
   }
 
   const totalUSD = cusdBalance + celoBalance * (lastCycle?.celoPriceUSD ?? 0)
+
+  // ── ERC-8004 registration (Track 3) ───────────────────────────────────
+  async function handleRegister() {
+    if (!privateKey) return
+    setRegistering(true)
+    setError('')
+    try {
+      const res = await fetch('/api/celo-agent/register', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          privateKey,
+          network,
+          name:        'Binalyst Celo Payments Agent',
+          description: 'Autonomous agent for recurring CELO/cUSD payments — Onchain Agents Hackathon (Real World Payments & Everyday Applications).',
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.success) throw new Error(data.error ?? 'Registration failed')
+      if (data.agentId) setAgentIdentity(data.agentId, data.txHash)
+      else setError('Registered, but could not determine agentId from the transaction receipt.')
+    } catch (e: any) {
+      setError(e.message)
+    }
+    setRegistering(false)
+  }
+
 
   // ════════════════════════════════════════════════════════════════════════
   // Render
@@ -414,6 +444,48 @@ export default function CeloAgentTab() {
               blocked. Enable autonomous mode to send real on-chain payments.
             </div>
           )}
+
+          {/* ERC-8004 Agent Identity (Track 3 — 8004scan) */}
+          <div className="rounded-xl p-4 flex flex-col gap-3" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
+            <div className="mono text-[10px] uppercase tracking-widest" style={{ color: 'var(--text3)' }}>
+              Agent Identity · ERC-8004
+            </div>
+            {agentId ? (
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div>
+                  <div className="mono text-sm font-bold" style={{ color: 'var(--green)' }}>
+                    Registered — Agent #{agentId}
+                  </div>
+                  {registrationTxHash && (
+                    <div className="mono text-[10px]" style={{ color: 'var(--text3)' }}>
+                      tx: {shortAddr(registrationTxHash)}
+                    </div>
+                  )}
+                </div>
+                <a href={get8004ScanUrl(agentId)} target="_blank" rel="noopener noreferrer"
+                  className="mono text-[10px] font-bold px-3 py-1.5 rounded-lg" style={{ background: 'var(--yellow)', color: '#000' }}>
+                  View on 8004scan ↗
+                </a>
+              </div>
+            ) : (
+              <>
+                <p className="mono text-[10px]" style={{ color: 'var(--text2)' }}>
+                  Register this agent's wallet as an ERC-8004 identity (an on-chain NFT) so it's
+                  discoverable on 8004scan. One-time, on Celo Mainnet only.
+                </p>
+                {network !== 'mainnet' ? (
+                  <div className="mono text-[10px]" style={{ color: 'var(--yellow)' }}>
+                    ERC-8004 is deployed on Celo Mainnet only. Switch network above to register.
+                  </div>
+                ) : (
+                  <button onClick={handleRegister} disabled={registering}
+                    className="mono text-xs font-bold px-4 py-2 rounded-lg self-start" style={{ background: 'var(--yellow)', color: '#000' }}>
+                    {registering ? 'Registering…' : 'Register Agent (ERC-8004)'}
+                  </button>
+                )}
+              </>
+            )}
+          </div>
 
           {/* Session stats */}
           <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
