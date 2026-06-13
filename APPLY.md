@@ -1,45 +1,82 @@
-# Session J — Sui Foundations
+# Session K — Move Policy Wallet + Sui Agent UI
 ## Apply Guide
 
 ### What this session adds
-Pure new files only. Zero changes to any existing Binalyst file.
+6 new files. Zero changes to any existing Binalyst file.
+
+### Prerequisite
+Session J files must already be in your project:
+  - lib/sui/client.ts
+  - lib/sui/types.ts
+  - lib/walrus/client.ts
+  - lib/walrus/memwal.ts
+  - lib/suiAgent/agentLoop.ts
+  - lib/suiAgent/types.ts
 
 ### Files to copy into your project
 
 ```
-lib/sui/client.ts          → copy as-is into your lib/sui/ folder (create it)
-lib/sui/types.ts           → copy as-is into lib/sui/
-lib/walrus/client.ts       → copy as-is into lib/walrus/ (create it)
-lib/walrus/memwal.ts       → copy as-is into lib/walrus/
-lib/suiAgent/agentLoop.ts  → copy as-is into lib/suiAgent/ (create it)
-lib/suiAgent/types.ts      → copy as-is into lib/suiAgent/
+lib/movePolicy/client.ts              → create lib/movePolicy/ folder, copy in
+lib/store.sui.ts                      → copy into lib/
+app/api/sui/wallet/route.ts           → create app/api/sui/wallet/ folder, copy in
+app/api/sui/policy/route.ts           → create app/api/sui/policy/ folder, copy in
+app/api/sui/agent/route.ts            → create app/api/sui/agent/ folder, copy in
+components/tabs/SuiAgentTab.tsx       → copy into components/tabs/
 ```
 
 ### Apply order
-1. Create folders: `lib/sui/`, `lib/walrus/`, `lib/suiAgent/`
-2. Copy all 6 files in
-3. No package.json changes needed — all Sui RPC calls use the native `fetch` API
-4. No existing file is modified
+1. Create folders:
+   - lib/movePolicy/
+   - app/api/sui/wallet/
+   - app/api/sui/policy/
+   - app/api/sui/agent/
+2. Copy all 6 files
+3. No existing file is modified
 
-### Environment variables to add (optional for Session J, required for Session L+)
-Add to your `.env.local`:
+### Wire the tab into the sidebar (OPTIONAL — only if you want it visible now)
+These are the ONLY two lines that touch existing files.
+If you prefer to wait until Session M to wire everything in, skip this step.
+
+In app/page.tsx — add to tab imports:
+```tsx
+// ADD this import alongside other tab imports
+import SuiAgentTab from '@/components/tabs/SuiAgentTab'
 ```
-# Walrus memory (get key from https://docs.memwal.ai/)
-MEMWAL_API_KEY=
-MEMWAL_API_URL=https://api.memwal.ai
+
+In app/page.tsx — add to the tabs array/switch:
+```tsx
+// ADD alongside other tab cases
+case 'sui-agent': return <SuiAgentTab />
 ```
-Leave blank for now — the client gracefully skips writes when the key is absent.
+
+In components/Sidebar.tsx — add to nav items array:
+```tsx
+// ADD alongside other nav items
+{ id: 'sui-agent', label: 'Sui Agent', icon: '⛓️' }
+```
+
+If you skip the sidebar wiring, the tab exists but won't appear until you add it.
+The tab can always be accessed directly at any time.
+
+### Environment variables (add to .env.local)
+```
+# Set after deploying the Move policy package (Session M)
+NEXT_PUBLIC_POLICY_PACKAGE_ID=
+```
+Leave blank for now — the client defaults to dry-run simulation mode.
 
 ### Verification
-After copying files, run:
+After copying files:
 ```bash
 npx tsc --noEmit
 ```
-Should produce zero errors related to the new files.
+Zero errors expected.
 
-### What Session K adds (next)
-- `components/tabs/SuiAgentTab.tsx` — new sidebar tab with wallet connect + agent status
-- `app/api/sui/wallet/route.ts` — balance endpoint
-- `app/api/sui/agent/route.ts` — agent control endpoint
-- `lib/store.sui.ts` — isolated Zustand slice (no changes to store.ts)
-- Two additive lines in `app/page.tsx` and `components/Sidebar.tsx`
+### What Session L adds (next)
+- lib/deepbook/client.ts        — DeepBook order book client
+- lib/deepbook/types.ts         — Order, Pool, Fill types
+- app/api/deepbook/order/route.ts — Place/cancel orders
+- app/api/deepbook/pools/route.ts — Fetch available pools
+- components/tabs/DeepBookTab.tsx — Live order book UI
+- Walrus blob write per agent decision (on-chain activity log)
+  → wired into SuiAgentTab's executeTrade callback (new file, not editing existing)
