@@ -37,6 +37,7 @@ export default function DeepBookTab() {
   const [orderBook,  setOrderBook]  = useState<DeepBookOrderBook | null>(null)
   const [orders,     setOrders]     = useState<DeepBookOrder[]>([])
   const [loading,    setLoading]    = useState(false)
+  
 
   // Load pools on mount
   useEffect(() => {
@@ -402,24 +403,26 @@ function OrderHistoryView({ orders }: { orders: DeepBookOrder[] }) {
   )
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+//// ─────────────────────────────────────────────────────────────────────────────
 // Walrus log viewer
 // ─────────────────────────────────────────────────────────────────────────────
 
 function WalrusLogView({ orders }: { orders: DeepBookOrder[] }) {
   const [blobId,  setBlobId]  = useState('')
-  const [entry,   setEntry]   = useState<unknown>(null)
+  // FIX 1: Changed <unknown> to <any> to prevent the "unknown && JSX" ReactNode error
+  const [entry,   setEntry]   = useState<any>(null) 
   const [loading, setLoading] = useState(false)
   const [error,   setError]   = useState<string | null>(null)
 
-  const blobsWithLogs = orders.filter(o => o.walrusBlobId)
+  // Explicitly type the filtered array
+  const blobsWithLogs: DeepBookOrder[] = orders.filter(o => o.walrusBlobId)
 
   async function fetchEntry(id: string) {
     setLoading(true)
     setError(null)
     try {
       const res  = await fetch(`/api/walrus/log?blobId=${id}`)
-      const data = await res.json() as { entry?: unknown; error?: string }
+      const data = await res.json() as { entry?: any; error?: string }
       if (data.error) throw new Error(data.error)
       setEntry(data.entry)
     } catch (e: unknown) {
@@ -464,12 +467,13 @@ function WalrusLogView({ orders }: { orders: DeepBookOrder[] }) {
       </div>
 
       {/* Quick links from current session's orders */}
-      {blobsWithLogs.length > 0 && (
+      {/* FIX 2: Changed && to ? : null to strictly return a ReactNode */}
+      {blobsWithLogs.length > 0 ? (
         <div style={{ border: '1px solid var(--color-border-tertiary)', borderRadius: 10, padding: 16, background: 'var(--color-background-secondary)' }}>
           <p style={{ fontSize: 11, fontWeight: 500, textTransform: 'uppercase', color: 'var(--color-text-tertiary)', margin: '0 0 10px' }}>
             Logged this session
           </p>
-          {blobsWithLogs.map((o, i) => (
+          {blobsWithLogs.map((o: DeepBookOrder, i: number) => (
             <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderTop: i > 0 ? '1px solid var(--color-border-tertiary)' : 'none' }}>
               <span style={{ fontSize: 13, color: 'var(--color-text-primary)' }}>
                 {formatSide(o.side)} {o.pair}
@@ -492,10 +496,11 @@ function WalrusLogView({ orders }: { orders: DeepBookOrder[] }) {
             </div>
           ))}
         </div>
-      )}
+      ) : null}
 
       {/* Entry display */}
-      {entry && (
+      {/* FIX 3: Changed entry && to entry != null ? : null */}
+      {entry != null ? (
         <div style={{ border: '1px solid var(--color-border-tertiary)', borderRadius: 10, padding: 16, background: 'var(--color-background-secondary)' }}>
           <p style={{ fontSize: 11, fontWeight: 500, textTransform: 'uppercase', color: 'var(--color-text-tertiary)', margin: '0 0 10px' }}>
             Log entry — {blobId.slice(0, 20)}…
@@ -508,7 +513,7 @@ function WalrusLogView({ orders }: { orders: DeepBookOrder[] }) {
             {JSON.stringify(entry, null, 2)}
           </pre>
         </div>
-      )}
+      ) : null}
     </div>
   )
 }

@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success:        true,
-      ptb:            ptb.ptb,
+      ptb:            ptb,
       policyObjectId,
       network,
       description:    'Sign and submit this PTB with your OWNER wallet to revoke the agent policy on-chain. This is permanent.',

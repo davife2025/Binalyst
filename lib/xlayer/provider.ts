@@ -13,6 +13,12 @@ import { XLAYER_RPC_PRIMARY, XLAYER_RPC_BACKUP, XLAYER_CHAIN_ID } from './config
 // Provider factory — falls back to backup RPC on failure
 // ─────────────────────────────────────────────────────────────────────────────
 
+declare global {
+  interface Window {
+    ethereum?: any; // You can replace 'any' with 'EthereumProvider' if you have the types installed
+  }
+}
+
 export function getXLayerProvider(): ethers.JsonRpcProvider {
   return new ethers.JsonRpcProvider(XLAYER_RPC_PRIMARY, {
     chainId: XLAYER_CHAIN_ID,

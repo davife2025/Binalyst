@@ -6,20 +6,33 @@
  */
 
 import type { SignalSnapshot, SignalTag } from '@/lib/signalEngine'
-
 const TAG_CONFIG: Record<SignalTag, { label: string; color: string }> = {
-  extreme_fear:    { label: 'Extreme Fear',   color: '#F6465D' },
-  extreme_greed:   { label: 'Extreme Greed',  color: '#1abc9c' },
-  volume_spike:    { label: 'Vol Spike',       color: '#9b59b6' },
-  strong_momentum: { label: 'Momentum',        color: '#3498db' },
-  reversal_watch:  { label: 'Reversal?',       color: '#e67e22' },
-  dca_zone:        { label: 'DCA Zone',        color: '#0ECB81' },
-  overbought:      { label: 'Overbought',      color: '#F6465D' },
-  oversold:        { label: 'Oversold',        color: '#0ECB81' },
-  breakout:        { label: 'Breakout',        color: '#F0B90B' },
-  trending_cmc:    { label: 'CMC Trending',    color: '#F0B90B' },
-}
+  // Sentiment signals
+  extreme_fear:    { label: 'Extreme Fear',     color: '#F6465D' },
+  extreme_greed:   { label: 'Extreme Greed',    color: '#1abc9c' },
+  volume_spike:    { label: 'Vol Spike',        color: '#9b59b6' },
+  strong_momentum: { label: 'Strong Momentum',  color: '#3498db' },
+  reversal_watch:  { label: 'Reversal Watch',   color: '#f39c12' },
+  dca_zone:        { label: 'DCA Zone',         color: '#2ecc71' },
+  overbought:      { label: 'Overbought',       color: '#e74c3c' },
+  oversold:        { label: 'Oversold',         color: '#27ae60' },
+  breakout:        { label: 'Breakout',         color: '#e67e22' },
+  trending_cmc:    { label: 'Trending CMC',     color: '#16a085' },
 
+  // Technical indicators
+  rsi_oversold:    { label: 'RSI Oversold',     color: '#27ae60' },
+  rsi_overbought:  { label: 'RSI Overbought',   color: '#e74c3c' },
+  macd_bull_cross: { label: 'MACD Bull Cross',  color: '#2ecc71' },
+  macd_bear_cross: { label: 'MACD Bear Cross',  color: '#c0392b' },
+  bb_squeeze:      { label: 'BB Squeeze',       color: '#8e44ad' },
+  bb_breakout_up:  { label: 'BB Breakout Up',   color: '#27ae60' },
+  bb_breakout_down:{ label: 'BB Breakout Down', color: '#c0392b' },
+  trending_up:     { label: 'Trending Up',      color: '#1abc9c' },
+  trending_down:   { label: 'Trending Down',    color: '#e74c3c' },
+  ranging:         { label: 'Ranging',          color: '#95a5a6' },
+  near_support:    { label: 'Near Support',     color: '#3498db' },
+  near_resistance: { label: 'Near Resistance',  color: '#e67e22' },
+}
 const DIR_CONFIG = {
   BUY:  { color: 'var(--green)', bg: 'rgba(14,203,129,0.12)',  border: 'rgba(14,203,129,0.3)'  },
   SELL: { color: 'var(--red)',   bg: 'rgba(246,70,93,0.12)',   border: 'rgba(246,70,93,0.3)'   },

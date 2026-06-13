@@ -161,13 +161,13 @@ export async function decryptPrivateKey(keystoreJson: string, password: string):
 // ─────────────────────────────────────────────────────────────────────────────
 
 export class MantleClient {
-  private provider: ethers.providers.JsonRpcProvider
+  private provider: ethers.JsonRpcProvider
   private signer:   ethers.Wallet | null = null
   readonly network: MantleNetwork
 
   constructor(network: MantleNetwork = 'testnet', privateKey?: string) {
     this.network  = network
-    this.provider = new ethers.providers.JsonRpcProvider(MANTLE_RPC[network])
+    this.provider = new ethers.JsonRpcProvider(MANTLE_RPC[network])
 
     if (privateKey) {
       this.signer = new ethers.Wallet(privateKey, this.provider)
@@ -176,7 +176,7 @@ export class MantleClient {
 
   /** Switch to a backup RPC if primary fails. */
   useBackupRpc(): void {
-    this.provider = new ethers.providers.JsonRpcProvider(MANTLE_RPC_BACKUP[this.network])
+    this.provider = new ethers.JsonRpcProvider(MANTLE_RPC_BACKUP[this.network])
     if (this.signer) {
       this.signer = this.signer.connect(this.provider)
     }
@@ -204,11 +204,11 @@ export class MantleClient {
     if (!addr) throw new Error('No address provided and no wallet loaded.')
     try {
       const raw = await this.provider.getBalance(addr)
-      return parseFloat(ethers.utils.formatEther(raw))
+      return parseFloat(ethers.formatEther(raw))
     } catch {
       this.useBackupRpc()
       const raw = await this.provider.getBalance(addr)
-      return parseFloat(ethers.utils.formatEther(raw))
+      return parseFloat(ethers.formatEther(raw))
     }
   }
 
@@ -222,7 +222,7 @@ export class MantleClient {
     try {
       const contract = new ethers.Contract(token.address, ERC20_ABI, this.provider)
       const raw      = await contract.balanceOf(addr)
-      return parseFloat(ethers.utils.formatUnits(raw, token.decimals))
+      return parseFloat(ethers.formatUnits(raw, token.decimals))
     } catch {
       return 0
     }
@@ -273,7 +273,7 @@ export class MantleClient {
   /** Transfer native MNT. */
   async sendMNT(to: string, amount: number): Promise<string> {
     if (!this.signer) throw new Error('No wallet loaded.')
-    const value = ethers.utils.parseEther(amount.toString())
+    const value = ethers.parseEther(amount.toString())
     const tx    = await this.signer.sendTransaction({ to, value })
     await tx.wait(1)
     return tx.hash
@@ -286,7 +286,7 @@ export class MantleClient {
     if (!token) throw new Error(`Token ${tokenSymbol} not configured on Mantle ${this.network}.`)
 
     const contract  = new ethers.Contract(token.address, ERC20_ABI, this.signer)
-    const amountWei = ethers.utils.parseUnits(amount.toString(), token.decimals)
+    const amountWei = ethers.parseUnits(amount.toString(), token.decimals)
     const tx        = await contract.transfer(to, amountWei)
     await tx.wait(1)
     return tx.hash
@@ -296,14 +296,14 @@ export class MantleClient {
 
   /** Estimate current gas price in gwei. */
   async getGasPrice(): Promise<number> {
-    const gasPrice = await this.provider.getGasPrice()
-    return parseFloat(ethers.utils.formatUnits(gasPrice, 'gwei'))
+    const gasPrice = await this.getGasPrice()
+    return parseFloat(ethers.formatUnits(gasPrice, 'gwei'))
   }
 
   /** Get chain ID to verify we're on the right network. */
   async getChainId(): Promise<number> {
     const network = await this.provider.getNetwork()
-    return network.chainId
+  return Number(network.chainId) 
   }
 
   /** Verify the connected chain matches what we expect. */

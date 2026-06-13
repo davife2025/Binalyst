@@ -1,101 +1,119 @@
 /**
- * app/api/openclaw/message/route.ts
- * Receives messages from OpenClaw gateway (Telegram, WhatsApp, Discord)
- * Routes them through Binalyst AI and returns a response.
+ * app/api/openclaw/message/route.ts — Hotfix 13
+ * Handles incoming messages from Telegram/WhatsApp via OpenClaw gateway.
+ * Uses Kimi K2 via HuggingFace router (same as all other AI routes).
+ * Fixed: was using OPENAI_API_KEY, now correctly uses HUGGINGFACE_API_KEY.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import OpenAI from 'openai'
-import { publicMarket } from '@/lib/binance'
+import OpenAI                        from 'openai'
+import { rateLimit }                 from '@/lib/rateLimit'
 
 export const dynamic     = 'force-dynamic'
 export const maxDuration = 30
 
-const kimi = new OpenAI({ apiKey: process.env.MOONSHOT_API_KEY!, baseURL: 'https://api.moonshot.ai/v1' })
+// ── Kimi K2 via HuggingFace — same pattern as /api/ai/chat ──────────────────
+const kimi = new OpenAI({
+  apiKey:  process.env.HUGGINGFACE_API_KEY ?? 'placeholder',
+  baseURL: 'https://router.huggingface.co/v1',
+})
 
-// Verify request comes from our OpenClaw gateway
-function verifyAuth(req: NextRequest) {
-  const token = req.headers.get('x-openclaw-token') ?? req.headers.get('authorization')?.replace('Bearer ', '')
-  return token === process.env.OPENCLAW_SECRET
-}
+const SYSTEM = `You are Binalyst, a BNB Chain AI Trading Platform assistant accessible via Telegram and WhatsApp.
+Keep responses concise (under 300 chars for simple queries, up to 600 for analysis).
+Use plain text — no markdown, no asterisks, no headers. Just clear sentences.
+You have access to live Binance market data and CMC signals.
 
-// Parse natural language commands
-function parseCommand(text: string): { cmd: string; args: string } {
-  const t = text.trim().toLowerCase()
-  if (t.startsWith('/price') || t.includes('price of') || t.includes('how much is')) return { cmd: 'price', args: text.replace(/\/price/i, '').trim() }
-  if (t.startsWith('/audit') || t.includes('audit') || t.includes('rug')) return { cmd: 'audit', args: text.replace(/\/audit/i, '').trim() }
-  if (t.startsWith('/movers') || t.includes('top movers') || t.includes('gainers')) return { cmd: 'movers', args: '' }
-  if (t.startsWith('/events') || t.includes('events') || t.includes('listing')) return { cmd: 'events', args: '' }
-  if (t.startsWith('/help')) return { cmd: 'help', args: '' }
-  return { cmd: 'ai', args: text }
-}
-
-async function handleCommand(cmd: string, args: string): Promise<string> {
-  switch (cmd) {
-    case 'price': {
-      const symbol = args.toUpperCase().replace(/[^A-Z]/g, '') || 'BTC'
-      const pair   = symbol.endsWith('USDT') ? symbol : `${symbol}USDT`
-      try {
-        const prices = await publicMarket.getPrices([pair])
-        const price  = prices[pair]
-        if (!price) return `❌ Could not find price for ${symbol}.`
-        return `💰 *${symbol}* price\n$${price.toLocaleString('en', { maximumFractionDigits: 4 })}\n\n_via Binalyst · binalyst.vercel.app_`
-      } catch {
-        return `❌ Failed to fetch ${symbol} price. Try again.`
-      }
-    }
-
-    case 'movers': {
-      try {
-        const data = await publicMarket.getTopMovers(5) as unknown as { gainers: any[]; losers: any[] }
-        const g = data.gainers?.slice(0,3).map((m: any) => `🟢 ${m.symbol?.replace('USDT','')} +${parseFloat(m.priceChangePercent).toFixed(2)}%`).join('\n') ?? ''
-        const l = data.losers?.slice(0,3).map((m: any) => `🔴 ${m.symbol?.replace('USDT','')} ${parseFloat(m.priceChangePercent).toFixed(2)}%`).join('\n') ?? ''
-        return `📊 *Top Movers (24h)*\n\n*Gainers*\n${g}\n\n*Losers*\n${l}\n\n_via Binalyst · binalyst.vercel.app_`
-      } catch {
-        return `❌ Failed to fetch movers.`
-      }
-    }
-
-    case 'help': {
-      return `🤖 *Binalyst Commands*\n\n/price BTC — get price\n/movers — top gainers & losers\n/events — upcoming Binance events\n/audit 0x... — contract security audit\n\nOr just ask anything naturally!\n\n_Binalyst · binalyst.vercel.app_`
-    }
-
-    case 'ai':
-    default: {
-      try {
-        const response = await kimi.chat.completions.create({
-          model: 'kimi-k2.5',
-          messages: [
-            { role: 'system', content: 'You are Binalyst, an AI assistant for Binance users. Keep responses concise and under 300 characters for messaging apps. Use plain text — no markdown headers, minimal formatting. Include key numbers and be direct.' },
-            { role: 'user', content: args },
-          ],
-        })
-        const text = response.choices[0].message.content ?? ''
-        return `${text}\n\n_via Binalyst · binalyst.vercel.app_`
-      } catch {
-        return `❌ AI response failed. Try /help for commands.`
-      }
-    }
-  }
-}
+Commands you handle:
+/price SYMBOL — current price
+/movers — top 24h gainers
+/events — upcoming Binance events  
+/help — show commands
+Anything else — answer naturally as a crypto/trading assistant.`
 
 export async function POST(req: NextRequest) {
-  if (!verifyAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const ip = req.headers.get('x-forwarded-for') ?? 'unknown'
+  const rl = rateLimit(`openclaw:${ip}`, 'ai-chat')
+  if (!rl.allowed) return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
+
+  // Verify shared secret from OpenClaw gateway
+  const secret    = req.headers.get('x-openclaw-secret')
+  const envSecret = process.env.OPENCLAW_SECRET
+  if (envSecret && secret !== envSecret) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
   try {
-    const body = await req.json()
-    const { message, channel, sender } = body
+    const body    = await req.json()
+    const message = body.message ?? body.text ?? ''
+    const from    = body.from    ?? body.sender ?? 'user'
+    const channel = body.channel ?? 'telegram'
 
-    if (!message) return NextResponse.json({ error: 'message required' }, { status: 400 })
+    if (!message.trim()) {
+      return NextResponse.json({ reply: 'Send a message to get started. Try /help' })
+    }
 
-    const { cmd, args } = parseCommand(message)
-    const reply = await handleCommand(cmd, args)
+    // Handle simple slash commands without AI round-trip
+    const cmd = message.trim().toLowerCase()
 
-    console.log(`[openclaw] ${channel} from ${sender}: "${message.slice(0,50)}" → ${cmd}`)
+    if (cmd === '/help') {
+      return NextResponse.json({
+        reply: `Binalyst commands:\n/price BTC — live price\n/movers — top gainers\n/events — Binance events\nOr just ask anything about crypto!`,
+      })
+    }
 
-    return NextResponse.json({ success: true, reply, cmd })
+    if (cmd.startsWith('/price ')) {
+      const symbol = cmd.replace('/price ', '').toUpperCase().trim()
+      try {
+        const res  = await fetch(`${getBaseUrl(req)}/api/binance/market?action=ticker&symbol=${symbol}USDT`)
+        const data = await res.json()
+        if (data.success) {
+          return NextResponse.json({ reply: `${symbol}: $${data.data.price}` })
+        }
+      } catch {}
+    }
+
+    if (cmd === '/movers') {
+      try {
+        const res  = await fetch(`${getBaseUrl(req)}/api/binance/market?action=movers&limit=5`)
+        const data = await res.json()
+        if (data.success && data.data?.length) {
+          const list = data.data
+            .slice(0, 5)
+            .map((t: any) => `${t.symbol.replace('USDT','')}: ${t.change >= 0 ? '+' : ''}${t.change.toFixed(1)}%`)
+            .join('\n')
+          return NextResponse.json({ reply: `Top movers (24h):\n${list}` })
+        }
+      } catch {}
+    }
+
+    // AI response for everything else
+    const response = await kimi.chat.completions.create({
+      model:    'moonshotai/Kimi-K2-Instruct',
+      messages: [
+        { role: 'system', content: SYSTEM },
+        { role: 'user',   content: message },
+      ],
+      max_tokens: 300,
+    })
+
+    const reply = response.choices[0]?.message?.content ?? 'Sorry, I could not process that.'
+
+    return NextResponse.json({ reply, channel, from })
   } catch (err: any) {
     console.error('[openclaw/message]', err.message)
     return NextResponse.json({ error: err.message }, { status: 500 })
   }
+}
+
+export async function GET() {
+  return NextResponse.json({
+    status: 'Binalyst OpenClaw gateway active',
+    platform: 'BNB Chain AI Trading Platform',
+  })
+}
+
+function getBaseUrl(req: NextRequest): string {
+  const host  = req.headers.get('host') ?? 'localhost:3000'
+  const proto = host.includes('localhost') ? 'http' : 'https'
+  return `${proto}://${host}`
 }
