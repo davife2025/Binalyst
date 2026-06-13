@@ -15,7 +15,7 @@ type BottomNavItem = { id: ActiveTab; label: string; icon: string }
 const BOTTOM_NAV: BottomNavItem[] = [
   { id: 'home',        label: 'Home',       icon: '⊞' },
   { id: 'signals',     label: 'Signals',    icon: '📡' },
-  { id: 'competition', label: 'Agent',      icon: '🏆' },
+  { id: 'backtest',    label: 'Backtest',   icon: '📈' },
   { id: 'markets',     label: 'Markets',    icon: '◐'  },
   { id: 'chat',        label: 'AI',         icon: '◈'  },
 ]

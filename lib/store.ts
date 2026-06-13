@@ -54,6 +54,7 @@ export type ActiveTab =
   | 'competition'
   | 'submission'
   | 'performance'
+  | 'backtest'
 
 interface OpenClawStore {
   // ── Credentials ────────────────────────────────────────────────────────────

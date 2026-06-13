@@ -29,6 +29,7 @@ const NAV: NavItem[] = [
   // ── Trading Agent ─────────────────────────────────────────────────────────
   { id: 'agent-wallet', label: 'Agent Wallet',    icon: '🔐',             section: 'agent' },
   { id: 'strategy',     label: 'Strategy',        icon: '🧠',             section: 'agent' },
+  { id: 'backtest',     label: 'Backtest',        icon: '📈',  dot: true, section: 'agent' },
   { id: 'competition',  label: 'Competition',     icon: '🏆',  dot: true, section: 'agent' },
   { id: 'performance',  label: 'Performance',     icon: '📊',             section: 'agent' },
   { id: 'submission',   label: 'Submission',      icon: '📝',             section: 'agent' },
