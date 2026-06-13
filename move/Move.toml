@@ -1,0 +1,16 @@
+[package]
+name = "binalyst_policy"
+edition = "2024.beta"
+version = "1.0.0"
+description = "Binalyst Autonomous Agent Wallet — Move policy object for Sui Overflow 2026"
+
+[dependencies]
+Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/testnet" }
+
+[addresses]
+binalyst_policy = "0x0"
+
+[dev-dependencies]
+
+[dev-addresses]
+binalyst_policy = "0x0"

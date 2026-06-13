@@ -1,66 +1,102 @@
-# Session L — DeepBook Execution + Walrus Activity Log
-## Apply Guide
+# Session M — Move Contract + Revocation Demo + Submission
+## Apply Guide — FINAL SESSION
 
 ### What this session adds
-7 new files. Zero changes to any existing Binalyst file.
+5 new files. The sidebar wiring (2 additive lines in 2 existing files) is
+the only optional touch to existing code — described in SIDEBAR_WIRING.ts.
 
 ### Prerequisites
-Session J and Session K files must already be in your project.
+Sessions J, K, and L files must already be in your project.
 
 ### Files to copy into your project
 
 ```
-lib/deepbook/types.ts                 → create lib/deepbook/ folder, copy in
-lib/deepbook/client.ts                → copy into lib/deepbook/
-lib/walrus/activityLog.ts             → copy into lib/walrus/ (already exists from Session J)
-app/api/deepbook/order/route.ts       → create app/api/deepbook/order/ folder, copy in
-app/api/deepbook/pools/route.ts       → create app/api/deepbook/pools/ folder, copy in
-app/api/walrus/log/route.ts           → create app/api/walrus/log/ folder, copy in
-components/tabs/DeepBookTab.tsx       → copy into components/tabs/
+move/Move.toml                           → create move/ folder at project root, copy in
+move/sources/agent_policy.move           → create move/sources/ folder, copy in
+move/tests/agent_policy_tests.move       → create move/tests/ folder, copy in
+app/api/sui/revoke/route.ts              → create app/api/sui/revoke/ folder, copy in
+components/tabs/RevocationDemo.tsx       → copy into components/tabs/
+docs/SUBMISSION.md                       → create docs/ folder, copy in (hackathon submission)
 ```
 
 ### Apply order
-1. Create folders:
-   - lib/deepbook/
-   - app/api/deepbook/order/
-   - app/api/deepbook/pools/
-   - app/api/walrus/log/
-2. Copy all 7 files
-3. No existing file is modified
+1. Create folders: move/sources/, move/tests/, app/api/sui/revoke/, docs/
+2. Copy all 5 files
+3. Optionally apply sidebar wiring (see SIDEBAR_WIRING.ts)
 
-### Wire the DeepBook tab (OPTIONAL — same as SuiAgentTab wiring)
-In app/page.tsx:
-```tsx
-import DeepBookTab from '@/components/tabs/DeepBookTab'
-// ...
-case 'deepbook': return <DeepBookTab />
+### Deploy the Move package (required for live demo)
+```bash
+# Install Sui CLI: https://docs.sui.io/guides/developer/getting-started/sui-install
+cd move/
+sui client switch --env testnet
+sui client publish --gas-budget 100000000
+```
+From the output, copy the published package ID.
+Set it in .env.local:
+```
+NEXT_PUBLIC_POLICY_PACKAGE_ID=0x<your-package-id>
 ```
 
-In components/Sidebar.tsx:
-```tsx
-{ id: 'deepbook', label: 'DeepBook', icon: '📊' }
+### Run Move tests (no deploy needed)
+```bash
+cd move/
+sui move test
+# Expect: 9 tests passed
 ```
 
-### How the activity log works
-Every dry-run or live order placed through the agent or the DeepBook tab:
-1. Calls POST /api/deepbook/order
-2. The route calls simulatePlaceOrder() → logOrderPlaced()
-3. logOrderPlaced() calls walrusStoreJson() → Walrus testnet publisher
-4. Returns a blobId stored on the order record
-5. Anyone can verify the log entry at:
-   https://aggregator.walrus-testnet.walrus.space/v1/blobs/{blobId}
+### Full environment variables (.env.local)
+```
+# From Session J (optional — for MemWal memory layer)
+MEMWAL_API_KEY=
+MEMWAL_API_URL=https://api.memwal.ai
 
-This is the on-chain activity log the Sub-track 2 judges require.
+# From Session M (required for live on-chain policy)
+NEXT_PUBLIC_POLICY_PACKAGE_ID=0x<your-package-id>
+
+# Your existing Binalyst env vars are unchanged
+```
 
 ### Verification
 ```bash
-npx tsc --noEmit
+npx tsc --noEmit   # zero errors
+cd move && sui move test   # 9 tests pass
+npm run dev        # app starts, all tabs accessible
 ```
-Zero errors expected.
 
-### What Session M adds (final)
-- Move package source (agent_policy.move) for on-chain deployment
-- Owner revocation demo flow
-- Full hackathon submission README
-- Demo script (step-by-step for judges)
-- Optional: sidebar wiring for all Sui tabs in one patch
+### Complete file inventory across all sessions
+
+Session J (6 files):
+  lib/sui/client.ts
+  lib/sui/types.ts
+  lib/walrus/client.ts
+  lib/walrus/memwal.ts
+  lib/suiAgent/agentLoop.ts
+  lib/suiAgent/types.ts
+
+Session K (6 files):
+  lib/movePolicy/client.ts
+  lib/store.sui.ts
+  app/api/sui/wallet/route.ts
+  app/api/sui/policy/route.ts
+  app/api/sui/agent/route.ts
+  components/tabs/SuiAgentTab.tsx
+
+Session L (7 files):
+  lib/deepbook/types.ts
+  lib/deepbook/client.ts
+  lib/walrus/activityLog.ts
+  app/api/deepbook/order/route.ts
+  app/api/deepbook/pools/route.ts
+  app/api/walrus/log/route.ts
+  components/tabs/DeepBookTab.tsx
+
+Session M (5 files + optional wiring):
+  move/Move.toml
+  move/sources/agent_policy.move
+  move/tests/agent_policy_tests.move
+  app/api/sui/revoke/route.ts
+  components/tabs/RevocationDemo.tsx
+  docs/SUBMISSION.md
+
+Total: 24 new files. 0 existing files modified.
+Optional: 6 additive lines across 2 existing files (sidebar wiring).
