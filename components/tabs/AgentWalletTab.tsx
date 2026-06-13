@@ -4,6 +4,9 @@
  * components/tabs/AgentWalletTab.tsx
  * Session A: Wallet setup, competition registration, balance display.
  * Self-custodial — private key never leaves the browser unencrypted.
+ *
+ * Session 1 (X Layer): Added chain selector strip at the top of the
+ * ready step. All BSC/BNB logic below is unchanged.
  */
 
 import { useState, useEffect, useCallback } from 'react'
@@ -15,6 +18,12 @@ import {
   decryptPrivateKey,
   ELIGIBLE_TOKENS,
 } from '@/lib/twak/client'
+import {
+  switchToXLayer,
+  switchToBSC,
+  getConnectedChainId,
+} from '@/lib/xlayer/provider'
+import { XLAYER_CHAIN_ID, XLAYER_EXPLORER_ADDR } from '@/lib/xlayer/config'
 
 type SetupStep = 'choose' | 'generate' | 'import' | 'unlock' | 'ready'
 
@@ -64,6 +73,29 @@ export default function AgentWalletTab() {
   const [regResult,     setRegResult]     = useState<{ success: boolean; txHash?: string; message: string } | null>(null)
   const [copied,        setCopied]        = useState('')
   const [showKey,       setShowKey]       = useState(false)
+
+  // ── X Layer chain selector state (Session 1 addition) ───────────────────
+  const [activeChain,    setActiveChain]    = useState<'bsc' | 'xlayer'>('bsc')
+  const [chainSwitching, setChainSwitching] = useState(false)
+  const [chainError,     setChainError]     = useState('')
+
+  // Detect connected chain on load
+  useEffect(() => {
+    getConnectedChainId().then(id => {
+      if (id === XLAYER_CHAIN_ID) setActiveChain('xlayer')
+    })
+  }, [])
+
+  async function handleChainSwitch(target: 'bsc' | 'xlayer') {
+    setChainSwitching(true); setChainError('')
+    const result = target === 'xlayer' ? await switchToXLayer() : await switchToBSC()
+    if (result.success) {
+      setActiveChain(target)
+    } else {
+      setChainError(result.error ?? 'Chain switch failed')
+    }
+    setChainSwitching(false)
+  }
 
   // ── Balance refresh ──────────────────────────────────────────────────────
   const refreshBalances = useCallback(async () => {
@@ -413,7 +445,60 @@ export default function AgentWalletTab() {
       {/* ── STEP: READY ──────────────────────────────────────────────────── */}
       {step === 'ready' && isWalletLoaded && (
         <>
-          {/* Wallet stats */}
+          {/* ── Chain selector (Session 1: X Layer addition) ──────────────── */}
+          <div className="rounded-xl p-4" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
+            <div className="mono text-[10px] uppercase tracking-widest mb-3" style={{ color: 'var(--text3)' }}>
+              Active Chain
+            </div>
+            <div className="flex gap-2">
+              {([
+                { id: 'bsc',    label: 'BNB Smart Chain', sub: 'BSC · chainId 56',   color: '#F0B90B' },
+                { id: 'xlayer', label: 'X Layer',         sub: 'OKX · chainId 196',  color: '#3498db' },
+              ] as const).map(chain => (
+                <button
+                  key={chain.id}
+                  onClick={() => handleChainSwitch(chain.id)}
+                  disabled={chainSwitching || activeChain === chain.id}
+                  className="flex-1 rounded-xl p-3 text-left transition-all"
+                  style={{
+                    background: activeChain === chain.id ? `${chain.color}12` : 'var(--bg3)',
+                    border: `1px solid ${activeChain === chain.id ? chain.color + '50' : 'var(--border)'}`,
+                    cursor: activeChain === chain.id ? 'default' : 'pointer',
+                    opacity: chainSwitching && activeChain !== chain.id ? 0.5 : 1,
+                  }}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="w-2 h-2 rounded-full"
+                      style={{ background: activeChain === chain.id ? chain.color : 'var(--text3)' }} />
+                    <span className="text-xs font-bold"
+                      style={{ color: activeChain === chain.id ? chain.color : 'var(--text2)' }}>
+                      {chain.label}
+                    </span>
+                    {activeChain === chain.id && (
+                      <span className="mono text-[9px] ml-auto px-1.5 py-0.5 rounded"
+                        style={{ background: `${chain.color}20`, color: chain.color }}>
+                        ACTIVE
+                      </span>
+                    )}
+                  </div>
+                  <div className="mono text-[9px]" style={{ color: 'var(--text3)' }}>{chain.sub}</div>
+                </button>
+              ))}
+            </div>
+            {chainError && (
+              <div className="mono text-[10px] mt-2 p-2 rounded-lg"
+                style={{ background: 'rgba(246,70,93,0.08)', color: 'var(--red)' }}>
+                {chainError}
+              </div>
+            )}
+            {activeChain === 'xlayer' && (
+              <div className="mono text-[10px] mt-2 p-2 rounded-lg"
+                style={{ background: 'rgba(52,152,219,0.08)', border: '1px solid rgba(52,152,219,0.2)', color: '#3498db' }}>
+                X Layer active — World Cup Hook tab available in Intelligence section
+              </div>
+            )}
+          </div>
+
+            {/* Wallet stats */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <Pill label="BNB Balance"    value={bnbBalance.toFixed(4) + ' BNB'} color={bnbBalance > 0.005 ? 'var(--green)' : 'var(--red)'} />
             <Pill label="USDT Balance"   value={'$' + usdtBalance.toFixed(2)}   color="var(--text)" />
@@ -436,10 +521,14 @@ export default function AgentWalletTab() {
                 style={{ background: 'var(--bg3)', color: copied === 'addr' ? 'var(--green)' : 'var(--text3)', border: '1px solid var(--border)' }}>
                 {copied === 'addr' ? '✓ Copied' : 'Copy'}
               </button>
-              <a href={`https://bscscan.com/address/${agentAddress}`} target="_blank" rel="noreferrer"
+              <a
+                href={activeChain === 'xlayer'
+                  ? XLAYER_EXPLORER_ADDR(agentAddress)
+                  : `https://bscscan.com/address/${agentAddress}`}
+                target="_blank" rel="noreferrer"
                 className="mono text-[10px] px-3 py-2.5 rounded-lg shrink-0"
                 style={{ background: 'var(--bg3)', color: 'var(--text3)', border: '1px solid var(--border)' }}>
-                BSCScan ↗
+                {activeChain === 'xlayer' ? 'OKLink ↗' : 'BSCScan ↗'}
               </a>
             </div>
             <div className="mono text-[10px] mt-2" style={{ color: 'var(--text3)' }}>
