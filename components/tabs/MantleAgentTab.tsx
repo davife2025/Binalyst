@@ -34,8 +34,6 @@ import {
 import type { MantleNetwork }    from '@/lib/mantle/config'
 import {
   EIGHT004SCAN_MANTLE_URL,
-  MANTLE_BYBIT_PAIRS,
-  MANTLE_EXPLORER_TX,
 } from '@/lib/mantle/config'
 import {
   shortAddr,

@@ -45,6 +45,19 @@ import { rateLimit } from '@/lib/rateLimit'
 export const dynamic     = 'force-dynamic'
 export const maxDuration = 55
 
+/** Safe UUID — crypto.randomUUID is available in Node 18+ and Vercel runtime,
+ *  but we fall back to a manual implementation for edge compatibility. */
+function safeUUID(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return safeUUID()
+  }
+  // Manual RFC-4122 v4 fallback
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = (Math.random() * 16) | 0
+    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16)
+  })
+}
+
 export async function POST(req: NextRequest) {
   const ip = req.headers.get('x-forwarded-for') ?? 'unknown'
   const rl = rateLimit(`mantle-loop:${ip}`, 'ai-chat')
@@ -153,7 +166,7 @@ export async function POST(req: NextRequest) {
       })
 
       const baseRecord: Omit<MantleTradeRecord, 'txHash' | 'status' | 'benchmarkTx'> = {
-        id:           crypto.randomUUID(),
+        id:           safeUUID(),
         timestamp:    Date.now(),
         symbol:       ticker.symbol,
         tokenSymbol,
