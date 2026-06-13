@@ -55,6 +55,10 @@ export type ActiveTab =
   | 'submission'
   | 'performance'
   | 'backtest'
+  | 'celo-agent'
+  | 'sui-agent'
+  | 'deepbook'  
+  | 'revocation'
 
 interface OpenClawStore {
   // ── Credentials ────────────────────────────────────────────────────────────

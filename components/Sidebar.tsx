@@ -17,7 +17,7 @@ type NavItem = {
   icon:     string
   dot?:     boolean
   badge?:   string
-  section:  'intelligence' | 'agent' | 'binance' | 'tools'
+  section:  'intelligence' | 'agent' | 'binance' | 'tools'  | 'celo' | 'sui'
 }
 
 const NAV: NavItem[] = [
@@ -41,6 +41,15 @@ const NAV: NavItem[] = [
   { id: 'trading',      label: 'Trade',           icon: '⚡',              section: 'binance' },
   { id: 'alerts',       label: 'Price Alerts',    icon: '🔔',             section: 'binance' },
 
+     // ── Celo Payments Agent (Session L — Onchain Agents Hackathon) ───────────────
+  { id: 'celo-agent',   label: 'Celo Agent',      icon: '🟡',  dot: true, section: 'celo' },
+
+
+     // ── sui ───────────────
+  { id: 'sui-agent',  label: 'Sui Agent',  icon: '⛓️',    section: 'sui'},
+  { id: 'deepbook',   label: 'DeepBook',   icon: '📊',   section: 'sui'},
+  { id: 'revocation', label: 'Revocation', icon: '🛑',  section: 'sui' },
+
   // ── Tools ─────────────────────────────────────────────────────────────────
   { id: 'chat',         label: 'AI Assistant',    icon: '◈',              section: 'tools' },
   { id: 'learn',        label: 'Learn',           icon: '◉',              section: 'tools' },
@@ -51,6 +60,7 @@ const NAV: NavItem[] = [
 const SECTIONS: { id: NavItem['section']; label: string; color: string }[] = [
   { id: 'intelligence', label: 'Intelligence',   color: '#3498db'       },
   { id: 'agent',        label: 'Trading Agent',  color: 'var(--yellow)' },
+  { id: 'celo',         label: 'Celo Agent',     color: '#FCFF52'       },
   { id: 'binance',      label: 'Binance',        color: 'var(--green)'  },
   { id: 'tools',        label: 'Tools',          color: 'var(--text3)'  },
 ]

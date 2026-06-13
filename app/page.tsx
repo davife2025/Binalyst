@@ -37,6 +37,10 @@ import StrategyBuilder     from '@/components/tabs/StrategyBuilder'
 import CompetitionTab      from '@/components/tabs/CompetitionTab'
 import DorahacksTab        from '@/components/tabs/DorahacksTab'
 import AgentPerformanceTab from '@/components/tabs/AgentPerformanceTab'
+import CeloAgentTab        from '@/components/tabs/CeloAgentTab'
+ import SuiAgentTab    from '@/components/tabs/SuiAgentTab'
+  import DeepBookTab    from '@/components/tabs/DeepBookTab'
+  import RevocationDemo from '@/components/tabs/RevocationDemo'
 
 const TABS: Record<string, React.ReactNode> = {
   // Core Binalyst
@@ -56,11 +60,15 @@ const TABS: Record<string, React.ReactNode> = {
 
   // Autonomous Agent (Sessions A-G)
   'agent-wallet':  <AgentWalletTab />,
-  signals:         <SignalDashboard />,
-  strategy:        <StrategyBuilder />,
-  competition:     <CompetitionTab />,
-  submission:      <DorahacksTab />,
-  performance:     <AgentPerformanceTab />,
+  'signals':         <SignalDashboard />,
+  'strategy':        <StrategyBuilder />,
+  'competition':     <CompetitionTab />,
+  'submission':      <DorahacksTab />,
+  'performance':     <AgentPerformanceTab />,
+  'celo-agent':    <CeloAgentTab />,
+   'sui-agent':    <SuiAgentTab />,
+ 'deepbook':    <DeepBookTab />,
+ 'revocation':   <RevocationDemo />
 }
 
 export default function App() {
