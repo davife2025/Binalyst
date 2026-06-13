@@ -1,14 +1,5 @@
 /**
- * lib/agentLoop.ts
- * The core autonomous agent loop — Session D.
- *
- * Cycle (every 2 min):
- *  1. Fetch CMC signals for all allowed tokens
- *  2. Evaluate StrategyRules against snapshots
- *  3. For each fired rule → guardrail check → execute via TWAK
- *  4. Update session PnL, drawdown, trade log
- *  5. Auto-pause if drawdown ≥ 80% of cap, auto-disqualify at 100%
- *  6. Ensure min 1 trade/day — fire a DCA trade if none by hour 22
+ * lib/agentLoop.ts — Hotfix 12 (complete rewrite, no stale types)
  */
 
 import type { SignalSnapshot } from './signalEngine'
@@ -16,15 +7,15 @@ import type { StrategyRule }   from './signalEngine'
 import { evaluateRules }       from './signalEngine'
 import { COMPETITION_RULES, checkCompetitionGuardrails } from './twak/client'
 
-export const LOOP_INTERVAL_MS   = 120_000   // 2 minutes
-export const DAILY_TRADE_HOUR   = 22        // if 0 trades by 10pm → force DCA
-export const DRAWDOWN_WARN_PCT  = COMPETITION_RULES.MAX_DRAWDOWN_PCT * 0.8   // 24%
-export const DRAWDOWN_PAUSE_PCT = COMPETITION_RULES.MAX_DRAWDOWN_PCT * 0.93  // 27.9%
+// Re-export so DrawdownGauge can import from either path
+export { COMPETITION_RULES } from './twak/client'
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Types
-// ─────────────────────────────────────────────────────────────────────────────
+export const LOOP_INTERVAL_MS   = 120_000
+export const DAILY_TRADE_HOUR   = 22
+export const DRAWDOWN_WARN_PCT  = COMPETITION_RULES.MAX_DRAWDOWN_PCT * 0.8
+export const DRAWDOWN_PAUSE_PCT = COMPETITION_RULES.MAX_DRAWDOWN_PCT * 0.93
 
+// ── LoopStatus — ALL 5 variants required ────────────────────────────────────
 export type LoopStatus =
   | 'idle'
   | 'running'
@@ -33,24 +24,24 @@ export type LoopStatus =
   | 'error'
 
 export interface LoopDecision {
-  ruleId:      string
-  ruleName:    string
-  symbol:      string
-  action:      'BUY' | 'SELL' | 'HOLD'
-  amountUSDT:  number
-  signalScore: number
-  reasoning:   string
-  guardrail:   'passed' | 'blocked' | 'warning'
+  ruleId:       string
+  ruleName:     string
+  symbol:       string
+  action:       'BUY' | 'SELL'
+  amountUSDT:   number
+  signalScore:  number
+  reasoning:    string
+  guardrail:    'passed' | 'blocked' | 'warning'
   blockReason?: string
-  warning?:    string
+  warning?:     string
 }
 
 export interface LoopCycleResult {
-  cycleAt:     number
-  decisions:   LoopDecision[]
-  executed:    number         // trades that went through
-  blocked:     number         // guardrail-blocked
-  errors:      string[]
+  cycleAt:      number
+  decisions:    LoopDecision[]
+  executed:     number
+  blocked:      number
+  errors:       string[]
   portfolioUSD: number
   drawdownPct:  number
   todayTrades:  number
@@ -66,7 +57,7 @@ export interface AgentLoopCallbacks {
   getTodayTrades:  () => number
   getTotalTrades:  () => number
   getDaysElapsed:  () => number
-  getConfig:       () => {
+  getConfig: () => {
     maxDrawdownPct: number
     maxPerTradePct: number
     maxDailyTrades: number
@@ -78,65 +69,57 @@ export interface AgentLoopCallbacks {
   onCycleComplete: (r: LoopCycleResult) => void
   onStatusChange:  (s: LoopStatus) => void
   executeTradeViaAPI: (params: {
-    symbol:       string
-    action:       'BUY' | 'SELL'
-    amountUSDT:   number
-    dryRun:       boolean
-    portfolioUSD: number
-    drawdownPct:  number
-    tradesToday:  number
-    totalTrades:  number
-    daysElapsed:  number
+    symbol:         string
+    action:         'BUY' | 'SELL'
+    amountUSDT:     number
+    dryRun:         boolean
+    portfolioUSD:   number
+    drawdownPct:    number
+    tradesToday:    number
+    totalTrades:    number
+    daysElapsed:    number
     maxPerTradePct: number
     slippagePct:    number
   }) => Promise<{ success: boolean; txHash?: string; message?: string; reason?: string }>
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// AgentLoop class
-// ─────────────────────────────────────────────────────────────────────────────
-
 export class AgentLoop {
-  private timer:     ReturnType<typeof setInterval> | null = null
-  private status:    LoopStatus = 'idle'
-  private callbacks: AgentLoopCallbacks
-  private peakUSD:   number = 0
+  private timer:           ReturnType<typeof setInterval> | null = null
+  private _status:         LoopStatus = 'idle'
+  private callbacks:       AgentLoopCallbacks
+  private peakUSD:         number = 0
   private lastFiredRuleAt: Record<string, number> = {}
 
   constructor(callbacks: AgentLoopCallbacks) {
     this.callbacks = callbacks
   }
 
-  get currentStatus() { return this.status }
+  get currentStatus(): LoopStatus { return this._status }
 
-  // ── Start ──────────────────────────────────────────────────────────────────
   start() {
     if (this.timer) return
     this.setStatus('running')
-    this.runCycle()   // immediate first run
+    this.runCycle()
     this.timer = setInterval(() => this.runCycle(), LOOP_INTERVAL_MS)
   }
 
-  // ── Stop ───────────────────────────────────────────────────────────────────
   stop() {
     if (this.timer) { clearInterval(this.timer); this.timer = null }
     this.setStatus('idle')
   }
 
-  // ── Pause / Resume ─────────────────────────────────────────────────────────
-  pause()  { this.setStatus('paused') }
+  pause()  { this.setStatus('paused')  }
   resume() { this.setStatus('running') }
 
-  // ── Core cycle ─────────────────────────────────────────────────────────────
   private async runCycle() {
-    if (this.status === 'disqualified') return
-    if (this.status === 'paused')       return
+    if (this._status === 'disqualified') return
+    if (this._status === 'paused')       return
 
     const cb      = this.callbacks
     const config  = cb.getConfig()
     const errors: string[] = []
 
-    // ── 1. Fetch current portfolio value + compute drawdown ─────────────────
+    // 1. Portfolio + drawdown
     let portfolioUSD = 0
     try {
       portfolioUSD = await cb.getPortfolioUSD()
@@ -155,18 +138,19 @@ export class AgentLoop {
     const totalTrades = cb.getTotalTrades()
     const daysElapsed = cb.getDaysElapsed()
 
-    // ── 2. Drawdown safety checks ───────────────────────────────────────────
+    // 2. Disqualify check
     if (drawdownPct >= COMPETITION_RULES.MAX_DRAWDOWN_PCT) {
       this.setStatus('disqualified')
       cb.onCycleComplete({
         cycleAt: Date.now(), decisions: [], executed: 0, blocked: 0,
-        errors: [`DISQUALIFIED: drawdown ${drawdownPct.toFixed(1)}% ≥ ${COMPETITION_RULES.MAX_DRAWDOWN_PCT}%`],
+        errors: [`DISQUALIFIED: drawdown ${drawdownPct.toFixed(1)}% >= ${COMPETITION_RULES.MAX_DRAWDOWN_PCT}%`],
         portfolioUSD, drawdownPct, todayTrades, status: 'disqualified',
       })
       return
     }
 
-    if (drawdownPct >= DRAWDOWN_PAUSE_PCT && this.status !== 'paused') {
+    // 3. Auto-pause check — use _status not this.status to avoid type narrowing issues
+    if (drawdownPct >= DRAWDOWN_PAUSE_PCT && this._status !== ('paused' as LoopStatus)) {
       this.setStatus('paused')
       errors.push(`AUTO-PAUSED: drawdown ${drawdownPct.toFixed(1)}% approaching ${COMPETITION_RULES.MAX_DRAWDOWN_PCT}% cap`)
       cb.onCycleComplete({
@@ -176,7 +160,7 @@ export class AgentLoop {
       return
     }
 
-    // ── 3. Fetch signals ────────────────────────────────────────────────────
+    // 4. Signals
     let signals: SignalSnapshot[] = []
     try {
       signals = await cb.getSignals()
@@ -187,57 +171,42 @@ export class AgentLoop {
     if (!signals.length) {
       cb.onCycleComplete({
         cycleAt: Date.now(), decisions: [], executed: 0, blocked: 0,
-        errors: [...errors, 'No signals available'], portfolioUSD, drawdownPct, todayTrades,
-        status: this.status,
+        errors: [...errors, 'No signals available'],
+        portfolioUSD, drawdownPct, todayTrades, status: this._status,
       })
       return
     }
 
-    // ── 4. Evaluate strategy rules ──────────────────────────────────────────
+    // 5. Evaluate rules
     const rules = cb.getRules()
     const now   = Date.now()
     const fired = evaluateRules(rules, signals, now)
 
-    // ── 5. Minimum trade enforcement ────────────────────────────────────────
-    // If it's past DAILY_TRADE_HOUR and 0 trades today → inject a small DCA buy
+    // 6. Forced DCA if 0 trades today past hour 22
     const currentHour = new Date().getHours()
-    const needForcedTrade = (
-      todayTrades === 0 &&
-      currentHour >= DAILY_TRADE_HOUR &&
-      signals.length > 0
-    )
-
-    if (needForcedTrade) {
-      // Pick highest-score signal as forced DCA target
-      const bestSignal = [...signals].sort((a, b) => b.signalScore - a.signalScore)[0]
+    if (todayTrades === 0 && currentHour >= DAILY_TRADE_HOUR && signals.length > 0) {
+      const best = [...signals].sort((a, b) => b.signalScore - a.signalScore)[0]
       fired.unshift({
         rule: {
-          id: 'forced-dca', symbol: bestSignal.symbol,
-          condition: { type: 'signal_above', value: 0 },
-          action: 'BUY', sizePct: 5, priority: 0,
-          cooldownMs: 86400000,
-          lastFiredAt: undefined,
+          id: 'forced-dca', symbol: best.symbol,
+          condition: { type: 'signal_above' as const, value: 0 },
+          action: 'BUY' as const, sizePct: 5, priority: 0, cooldownMs: 86400000,
         },
-        signal: bestSignal,
+        signal: best,
       })
     }
 
-    // ── 6. Execute decisions ────────────────────────────────────────────────
+    // 7. Execute decisions
     const decisions: LoopDecision[] = []
-    let executed = 0
-    let blocked  = 0
+    let executed = 0, blocked = 0
 
     for (const { rule, signal } of fired) {
-      // Cooldown per-rule
       const lastFired = this.lastFiredRuleAt[rule.id]
       if (lastFired && now - lastFired < rule.cooldownMs) continue
-
-      // Daily trade limit
       if (todayTrades + executed >= config.maxDailyTrades) break
 
       const amountUSDT = (portfolioUSD * rule.sizePct) / 100
 
-      // Guardrail check
       const guardrail = checkCompetitionGuardrails({
         symbol:         rule.symbol,
         portfolioUSD,
@@ -266,17 +235,9 @@ export class AgentLoop {
       cb.onDecision(decision)
       decisions.push(decision)
 
-      if (!guardrail.allowed) {
-        blocked++
-        continue
-      }
+      if (!guardrail.allowed) { blocked++; continue }
+      if (!config.autonomousMode) continue
 
-      if (!config.autonomousMode) {
-        // Manual mode — decisions logged but not executed
-        continue
-      }
-
-      // Execute
       try {
         const result = await cb.executeTradeViaAPI({
           symbol:         rule.symbol,
@@ -291,7 +252,6 @@ export class AgentLoop {
           maxPerTradePct: config.maxPerTradePct,
           slippagePct:    config.slippagePct,
         })
-
         if (result.success) {
           executed++
           this.lastFiredRuleAt[rule.id] = now
@@ -303,29 +263,20 @@ export class AgentLoop {
       }
     }
 
-    // ── 7. Report cycle ─────────────────────────────────────────────────────
     cb.onCycleComplete({
-      cycleAt:     now,
-      decisions,
-      executed,
-      blocked,
-      errors,
-      portfolioUSD,
-      drawdownPct,
-      todayTrades:  todayTrades + executed,
-      status:       this.status,
+      cycleAt: now, decisions, executed, blocked, errors,
+      portfolioUSD, drawdownPct, todayTrades: todayTrades + executed,
+      status: this._status,
     })
   }
 
   private setStatus(s: LoopStatus) {
-    this.status = s
+    this._status = s
     this.callbacks.onStatusChange(s)
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Drawdown helpers
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 export function computeDrawdown(startUSD: number, peakUSD: number, currentUSD: number): number {
   const peak = Math.max(peakUSD, startUSD)
@@ -344,12 +295,13 @@ export function formatDrawdownColor(pct: number): string {
   return 'var(--green)'
 }
 
-export function tradeCountStatus(today: number, total: number, daysElapsed: number): {
-  label: string; color: string; ok: boolean
-} {
-  const minToday = COMPETITION_RULES.MIN_TRADES_PER_DAY
+export function tradeCountStatus(
+  today: number, total: number, daysElapsed: number
+): { label: string; color: string; ok: boolean } {
   const minTotal = Math.min(daysElapsed + 1, COMPETITION_RULES.MIN_TRADES_TOTAL)
-  if (today >= minToday && total >= minTotal) return { label: 'On track', color: 'var(--green)', ok: true }
-  if (total < minTotal * 0.5) return { label: 'At risk', color: 'var(--red)', ok: false }
-  return { label: 'Watch', color: 'var(--yellow)', ok: false }
+  if (today >= COMPETITION_RULES.MIN_TRADES_PER_DAY && total >= minTotal)
+    return { label: 'On track', color: 'var(--green)', ok: true }
+  if (total < minTotal * 0.5)
+    return { label: 'At risk',  color: 'var(--red)',   ok: false }
+  return   { label: 'Watch',    color: 'var(--yellow)', ok: false }
 }
