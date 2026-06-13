@@ -1,82 +1,66 @@
-# Session K — Move Policy Wallet + Sui Agent UI
+# Session L — DeepBook Execution + Walrus Activity Log
 ## Apply Guide
 
 ### What this session adds
-6 new files. Zero changes to any existing Binalyst file.
+7 new files. Zero changes to any existing Binalyst file.
 
-### Prerequisite
-Session J files must already be in your project:
-  - lib/sui/client.ts
-  - lib/sui/types.ts
-  - lib/walrus/client.ts
-  - lib/walrus/memwal.ts
-  - lib/suiAgent/agentLoop.ts
-  - lib/suiAgent/types.ts
+### Prerequisites
+Session J and Session K files must already be in your project.
 
 ### Files to copy into your project
 
 ```
-lib/movePolicy/client.ts              → create lib/movePolicy/ folder, copy in
-lib/store.sui.ts                      → copy into lib/
-app/api/sui/wallet/route.ts           → create app/api/sui/wallet/ folder, copy in
-app/api/sui/policy/route.ts           → create app/api/sui/policy/ folder, copy in
-app/api/sui/agent/route.ts            → create app/api/sui/agent/ folder, copy in
-components/tabs/SuiAgentTab.tsx       → copy into components/tabs/
+lib/deepbook/types.ts                 → create lib/deepbook/ folder, copy in
+lib/deepbook/client.ts                → copy into lib/deepbook/
+lib/walrus/activityLog.ts             → copy into lib/walrus/ (already exists from Session J)
+app/api/deepbook/order/route.ts       → create app/api/deepbook/order/ folder, copy in
+app/api/deepbook/pools/route.ts       → create app/api/deepbook/pools/ folder, copy in
+app/api/walrus/log/route.ts           → create app/api/walrus/log/ folder, copy in
+components/tabs/DeepBookTab.tsx       → copy into components/tabs/
 ```
 
 ### Apply order
 1. Create folders:
-   - lib/movePolicy/
-   - app/api/sui/wallet/
-   - app/api/sui/policy/
-   - app/api/sui/agent/
-2. Copy all 6 files
+   - lib/deepbook/
+   - app/api/deepbook/order/
+   - app/api/deepbook/pools/
+   - app/api/walrus/log/
+2. Copy all 7 files
 3. No existing file is modified
 
-### Wire the tab into the sidebar (OPTIONAL — only if you want it visible now)
-These are the ONLY two lines that touch existing files.
-If you prefer to wait until Session M to wire everything in, skip this step.
-
-In app/page.tsx — add to tab imports:
+### Wire the DeepBook tab (OPTIONAL — same as SuiAgentTab wiring)
+In app/page.tsx:
 ```tsx
-// ADD this import alongside other tab imports
-import SuiAgentTab from '@/components/tabs/SuiAgentTab'
+import DeepBookTab from '@/components/tabs/DeepBookTab'
+// ...
+case 'deepbook': return <DeepBookTab />
 ```
 
-In app/page.tsx — add to the tabs array/switch:
+In components/Sidebar.tsx:
 ```tsx
-// ADD alongside other tab cases
-case 'sui-agent': return <SuiAgentTab />
+{ id: 'deepbook', label: 'DeepBook', icon: '📊' }
 ```
 
-In components/Sidebar.tsx — add to nav items array:
-```tsx
-// ADD alongside other nav items
-{ id: 'sui-agent', label: 'Sui Agent', icon: '⛓️' }
-```
+### How the activity log works
+Every dry-run or live order placed through the agent or the DeepBook tab:
+1. Calls POST /api/deepbook/order
+2. The route calls simulatePlaceOrder() → logOrderPlaced()
+3. logOrderPlaced() calls walrusStoreJson() → Walrus testnet publisher
+4. Returns a blobId stored on the order record
+5. Anyone can verify the log entry at:
+   https://aggregator.walrus-testnet.walrus.space/v1/blobs/{blobId}
 
-If you skip the sidebar wiring, the tab exists but won't appear until you add it.
-The tab can always be accessed directly at any time.
-
-### Environment variables (add to .env.local)
-```
-# Set after deploying the Move policy package (Session M)
-NEXT_PUBLIC_POLICY_PACKAGE_ID=
-```
-Leave blank for now — the client defaults to dry-run simulation mode.
+This is the on-chain activity log the Sub-track 2 judges require.
 
 ### Verification
-After copying files:
 ```bash
 npx tsc --noEmit
 ```
 Zero errors expected.
 
-### What Session L adds (next)
-- lib/deepbook/client.ts        — DeepBook order book client
-- lib/deepbook/types.ts         — Order, Pool, Fill types
-- app/api/deepbook/order/route.ts — Place/cancel orders
-- app/api/deepbook/pools/route.ts — Fetch available pools
-- components/tabs/DeepBookTab.tsx — Live order book UI
-- Walrus blob write per agent decision (on-chain activity log)
-  → wired into SuiAgentTab's executeTrade callback (new file, not editing existing)
+### What Session M adds (final)
+- Move package source (agent_policy.move) for on-chain deployment
+- Owner revocation demo flow
+- Full hackathon submission README
+- Demo script (step-by-step for judges)
+- Optional: sidebar wiring for all Sui tabs in one patch
