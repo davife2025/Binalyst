@@ -1,22 +1,29 @@
 /**
- * app/api/mantle-agent/submission/route.ts — Session N4 (new file)
+ * app/api/mantle-agent/submission/route.ts — Session N4 · POLISHED
  *
- * Generates the Turing Test Hackathon submission writeup using Claude AI.
- * Parallel to app/api/agent/dorahacks/route.ts — fully independent.
+ * CHANGE: Replaced @anthropic-ai/sdk with Kimi K2 via HuggingFace Inference
+ * router — consistent with app/api/agent/dorahacks/route.ts pattern.
  *
- * POST /api/mantle-agent/submission
- *   → Body: agent data, session stats, trade log, benchmark count, agentId
- *   → Returns: judge-ready markdown submission
+ * Uses:
+ *   import OpenAI from 'openai'
+ *   const kimi = new OpenAI({ apiKey: process.env.HUGGINGFACE_API_KEY, baseURL: 'https://router.huggingface.co/v1' })
+ *   model: 'moonshotai/Kimi-K2-Instruct'
+ *
+ * No new dependencies — openai SDK already installed for dorahacks route.
+ * HUGGINGFACE_API_KEY already in .env.local from existing sessions.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import Anthropic                     from '@anthropic-ai/sdk'
+import OpenAI                        from 'openai'
 import { rateLimit }                 from '@/lib/rateLimit'
 
 export const dynamic     = 'force-dynamic'
 export const maxDuration = 55
 
-const anthropic = new Anthropic()
+const kimi = new OpenAI({
+  apiKey:  process.env.HUGGINGFACE_API_KEY!,
+  baseURL: 'https://router.huggingface.co/v1',
+})
 
 const SUBMISSION_SYSTEM = `You are writing a competition submission for The Turing Test Hackathon Phase 2 (AI Awakening) on Mantle Network — a $100,000 prize pool hackathon judged by Allora Network, Nansen, Animoca Brands, Virtuals Protocol, and others.
 
@@ -107,11 +114,12 @@ TECH STACK:
 - Tokens: MNT (native), mETH (RWA staked ETH), USDY (Ondo RWA), USDC
 - DEX: Merchant Moe router, Agni Finance
 - Benchmarking: zero-value data transactions to sink address on Mantle
-- ERC-8004: Mantle Mainnet identity registry (same contract as Celo ERC-8004)
+- ERC-8004: Mantle Mainnet identity registry
 - Skills: Byreal Skills CLI (5 skills: get_price, signal_score, run_cycle, benchmark_info, agent_identity)
 - Frontend: Next.js 15, TypeScript, Tailwind, Zustand (isolated store: 'binalyst-mantle-agent')
 - Wallet: ethers.js, self-custodial (private key encrypted locally, never sent to server)
 - Guardrails: max 15% per trade, 10 trades/day, 0.05 MNT gas reserve, 20% drawdown circuit breaker
+- AI: Kimi K2 via HuggingFace Inference (submission generation)
 
 BYREAL SKILLS MANIFEST:
 - mantle_get_price: fetch Bybit spot price for any pair
@@ -128,17 +136,16 @@ Binalyst is a multi-chain AI trading + payments platform previously submitted to
 The Mantle module is a new, fully isolated addition — no existing code was modified.
 `
 
-    const message = await anthropic.messages.create({
-      model:      'claude-opus-4-6',
-      max_tokens: 2000,
-      system:     SUBMISSION_SYSTEM,
-      messages:   [{ role: 'user', content: context }],
+    const response = await kimi.chat.completions.create({
+      model: 'moonshotai/Kimi-K2-Instruct',
+      messages: [
+        { role: 'system', content: SUBMISSION_SYSTEM },
+        { role: 'user',   content: `Generate the Turing Test Hackathon submission for Binalyst.\n\n${context}` },
+      ],
+      temperature: 0.4,
     })
 
-    const submission = message.content
-      .filter(b => b.type === 'text')
-      .map(b => (b as { type: 'text'; text: string }).text)
-      .join('')
+    const submission = response.choices[0]?.message?.content ?? ''
 
     return NextResponse.json({ success: true, submission })
   } catch (err: any) {

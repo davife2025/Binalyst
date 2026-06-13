@@ -41,6 +41,13 @@ const SECTIONS: DrawerSection[] = [
     ],
   },
   {
+    label: 'Celo Agent',
+    color: '#FCFF52',
+    items: [
+      { id: 'celo-agent', label: 'Celo Agent', icon: '🟡', desc: 'Onchain payments agent' },
+    ],
+  },
+  {
     label: 'Binance',
     color: '#0ECB81',
     items: [
@@ -58,6 +65,14 @@ const SECTIONS: DrawerSection[] = [
       { id: 'learn',     label: 'Learn',        icon: '◉',  desc: 'Crypto academy & quizzes' },
       { id: 'square',    label: 'Square',       icon: '✦',  desc: 'Post to Binance Square' },
       { id: 'messaging', label: 'Messaging',    icon: '📱', desc: 'Telegram & WhatsApp bot' },
+    ],
+  },
+  // ── Mantle AI Trading Agent (Session N — The Turing Test Hackathon) ───────
+  {
+    label: 'Mantle Agent',
+    color: '#61DAFB',
+    items: [
+      { id: 'mantle-agent', label: 'Mantle Agent', icon: '⬡', desc: 'AI trading · on-chain benchmarking · ERC-8004' },
     ],
   },
 ]

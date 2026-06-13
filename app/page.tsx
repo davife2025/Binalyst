@@ -38,9 +38,11 @@ import CompetitionTab      from '@/components/tabs/CompetitionTab'
 import DorahacksTab        from '@/components/tabs/DorahacksTab'
 import AgentPerformanceTab from '@/components/tabs/AgentPerformanceTab'
 import CeloAgentTab        from '@/components/tabs/CeloAgentTab'
- import SuiAgentTab    from '@/components/tabs/SuiAgentTab'
-  import DeepBookTab    from '@/components/tabs/DeepBookTab'
-  import RevocationDemo from '@/components/tabs/RevocationDemo'
+import SuiAgentTab    from '@/components/tabs/SuiAgentTab'
+import DeepBookTab    from '@/components/tabs/DeepBookTab'
+import RevocationDemo from '@/components/tabs/RevocationDemo'
+import MantleAgentTab     from '@/components/tabs/MantleAgentTab'
+import MantleSubmissionTab  from '@/components/tabs/MantleSubmissionTab'
 
 const TABS: Record<string, React.ReactNode> = {
   // Core Binalyst
@@ -68,7 +70,9 @@ const TABS: Record<string, React.ReactNode> = {
   'celo-agent':    <CeloAgentTab />,
    'sui-agent':    <SuiAgentTab />,
  'deepbook':    <DeepBookTab />,
- 'revocation':   <RevocationDemo />
+ 'revocation':   <RevocationDemo />,
+  'mantle-agent':  <MantleAgentTab />,
+  'mantle-submission': <MantleSubmissionTab />
 }
 
 export default function App() {

@@ -47,7 +47,7 @@ export interface MantleTradeRecord {
   signalScore:  number          // 0–100
   reasoning:    string          // human-readable signal reasoning
   benchmarkTx?: string          // on-chain benchmark record tx hash (N2)
-  pnlUSD?:      number          // realised PnL when position is closed
+  pnlUSD?:      number          // realised PnL when position is closed      // agent session ID
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -56,6 +56,10 @@ export type ActiveTab =
   | 'performance'
   | 'backtest'
   | 'celo-agent'
+  // ── Mantle AI Trading Agent (Session N) ───────────────────────────────────
+  | 'mantle-agent'
+  | 'mantle-submission'
+  // ── suiTrading Agent (Session N) ───────────────────────────────────
   | 'sui-agent'
   | 'deepbook'  
   | 'revocation'

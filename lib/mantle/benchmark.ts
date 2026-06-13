@@ -1,5 +1,6 @@
 /**
- * lib/mantle/benchmark.ts — Session N2 (new file)
+ * lib/mantle/benchmark.ts — Session N2 · ETHERS-FIX
+ * Fixed: ethers v5 → v6 API (utils.* → top-level, constants.Zero → 0n)
  *
  * On-chain benchmarking for The Turing Test Hackathon.
  * Defining feature #1: "Every agent decision and outcome is recorded on
@@ -67,34 +68,38 @@ export async function writeBenchmarkRecord(
   if (!wallet) {
     return { success: true, skipped: true }
   }
-
   try {
     const encoded = encodeBenchmarkRecord(record)
-    const data    = ethers.utils.hexlify(ethers.utils.toUtf8Bytes(encoded))
+    const data    = ethers.hexlify(ethers.toUtf8Bytes(encoded))
 
     const tx = await wallet.sendTransaction({
       to:    BENCHMARK_SINK_ADDRESS,
-      value: ethers.constants.Zero,
+      value: 0n,
       data,
       // Explicit gas limit — data transactions cost ~21000 + 16 per byte
       gasLimit: 50_000,
     })
 
     const receipt = await tx.wait(1)
+    if (!receipt) {
+      return { success: false, error: 'Transaction receipt is null' }
+    }
 
     return {
       success:     true,
-      txHash:      receipt.transactionHash,
-      explorerUrl: MANTLE_EXPLORER_TX(receipt.transactionHash, client.network),
-      gasUsed:     receipt.gasUsed?.toNumber(),
+      txHash:      receipt.hash, // ← v6 syntax
+      explorerUrl: MANTLE_EXPLORER_TX(receipt.hash, client.network), // ← v6 syntax
+      gasUsed:     receipt.gasUsed ? Number(receipt.gasUsed) : undefined,
     }
-  } catch (err: any) {
-    // Non-fatal — benchmark failure should NOT block the trade
-    console.warn('[benchmark] write failed (non-fatal):', err.message)
-    return { success: false, error: err.message }
+  } catch (e: any) {
+    // ← THIS WAS MISSING!
+    return {
+      success: false,
+      error:   e.message || 'Failed to write benchmark record',
+    }
   }
-}
-
+} // ← THIS WAS MISSING! It closes the writeBenchmarkRecord function.
+  
 // ─────────────────────────────────────────────────────────────────────────────
 // Batch write (for end-of-session flush)
 // ─────────────────────────────────────────────────────────────────────────────

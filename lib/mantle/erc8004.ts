@@ -1,5 +1,6 @@
 /**
- * lib/mantle/erc8004.ts — Session N2 (new file)
+ * lib/mantle/erc8004.ts — Session N2 · ETHERS-FIX
+ * Fixed: ethers.utils.defaultAbiCoder → ethers.AbiCoder.defaultAbiCoder() (v6 API)
  *
  * ERC-8004 (Trustless Agents) Identity Registry integration for Mantle.
  * Part of: The Turing Test Hackathon — defining feature #2:
@@ -125,7 +126,7 @@ export async function registerMantleAgent(
     const metadata = [
       {
         key:   'agentWallet',
-        value: ethers.utils.defaultAbiCoder.encode(['address'], [address]),
+        value: ethers.AbiCoder.defaultAbiCoder().encode(['address'], [address]),
       },
     ]
 

@@ -63,6 +63,24 @@ export {
   COMPETITION_SYMBOLS,
 } from './cmc'
 
+// ── Byreal Skills — Mantle AI Trading Agent (Session N4) ─────────────────────
+// Agentic Wallets & Economy track — The Turing Test Hackathon
+export {
+  BYREAL_SKILLS,
+  ByrealSkillHub,
+  mantleGetPriceSkill,
+  mantleSignalScoreSkill,
+  mantleRunCycleSkill,
+  mantleBenchmarkInfoSkill,
+  mantleAgentIdentitySkill,
+} from './byreal'
+
+export type {
+  ByrealSkill,
+  ByrealSkillParam,
+  ByrealSkillResult,
+} from './byreal'
+
 export type {
   FearAndGreed,
   CMCToken,

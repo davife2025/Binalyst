@@ -283,6 +283,7 @@ export function useMantleAgentLoop() {
     benchmarks,
     prices,
     network,
+    session,
 
     // Actions
     startLoop,

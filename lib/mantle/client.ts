@@ -1,5 +1,6 @@
 /**
- * lib/mantle/client.ts — Session N1 (new file)
+ * lib/mantle/client.ts — Session N1 · ETHERS-FIX
+ * Fixed: ethers v5 → v6 API (utils.* → top-level, providers.* → top-level)
  *
  * MantleClient — execution layer for the Mantle AI Trading Agent.
  * Part of: The Turing Test Hackathon — AI Trading & Strategy track.
@@ -303,7 +304,7 @@ export class MantleClient {
   /** Get chain ID to verify we're on the right network. */
   async getChainId(): Promise<number> {
     const network = await this.provider.getNetwork()
-  return Number(network.chainId) 
+     return Number(network.chainId)
   }
 
   /** Verify the connected chain matches what we expect. */
