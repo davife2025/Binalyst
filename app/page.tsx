@@ -37,12 +37,7 @@ import StrategyBuilder     from '@/components/tabs/StrategyBuilder'
 import CompetitionTab      from '@/components/tabs/CompetitionTab'
 import DorahacksTab        from '@/components/tabs/DorahacksTab'
 import AgentPerformanceTab from '@/components/tabs/AgentPerformanceTab'
-import CeloAgentTab        from '@/components/tabs/CeloAgentTab'
-import SuiAgentTab    from '@/components/tabs/SuiAgentTab'
-import DeepBookTab    from '@/components/tabs/DeepBookTab'
-import RevocationDemo from '@/components/tabs/RevocationDemo'
-import MantleAgentTab     from '@/components/tabs/MantleAgentTab'
-import MantleSubmissionTab  from '@/components/tabs/MantleSubmissionTab'
+import WorldCupTab        from '@/components/tabs/WorldCupTab'   // Session 4
 
 const TABS: Record<string, React.ReactNode> = {
   // Core Binalyst
@@ -62,17 +57,14 @@ const TABS: Record<string, React.ReactNode> = {
 
   // Autonomous Agent (Sessions A-G)
   'agent-wallet':  <AgentWalletTab />,
-  'signals':         <SignalDashboard />,
-  'strategy':        <StrategyBuilder />,
-  'competition':     <CompetitionTab />,
-  'submission':      <DorahacksTab />,
-  'performance':     <AgentPerformanceTab />,
-  'celo-agent':    <CeloAgentTab />,
-   'sui-agent':    <SuiAgentTab />,
- 'deepbook':    <DeepBookTab />,
- 'revocation':   <RevocationDemo />,
-  'mantle-agent':  <MantleAgentTab />,
-  'mantle-submission': <MantleSubmissionTab />
+  signals:         <SignalDashboard />,
+  strategy:        <StrategyBuilder />,
+  competition:     <CompetitionTab />,
+  submission:      <DorahacksTab />,
+  performance:     <AgentPerformanceTab />,
+
+  // X Layer World Cup (Sessions 1-6)
+  worldcup:         <WorldCupTab />,
 }
 
 export default function App() {

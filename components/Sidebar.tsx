@@ -17,7 +17,7 @@ type NavItem = {
   icon:     string
   dot?:     boolean
   badge?:   string
-  section:  'intelligence' | 'agent' | 'binance' | 'tools'  | 'celo' | 'sui' |'mantle' 
+  section:  'intelligence' | 'agent' | 'binance' | 'tools'
 }
 
 const NAV: NavItem[] = [
@@ -25,11 +25,11 @@ const NAV: NavItem[] = [
   { id: 'signals',      label: 'CMC Signals',    icon: '📡',  dot: true,  section: 'intelligence' },
   { id: 'web3',         label: 'Web3 Intel',      icon: '⬡',              section: 'intelligence' },
   { id: 'events',       label: 'Events Radar',    icon: '◎',  dot: true,  section: 'intelligence' },
+  { id: 'worldcup',     label: 'World Cup Hook',  icon: '⚽', badge: 'NEW', section: 'intelligence' },
 
   // ── Trading Agent ─────────────────────────────────────────────────────────
   { id: 'agent-wallet', label: 'Agent Wallet',    icon: '🔐',             section: 'agent' },
   { id: 'strategy',     label: 'Strategy',        icon: '🧠',             section: 'agent' },
-  { id: 'backtest',     label: 'Backtest',        icon: '📈',  dot: true, section: 'agent' },
   { id: 'competition',  label: 'Competition',     icon: '🏆',  dot: true, section: 'agent' },
   { id: 'performance',  label: 'Performance',     icon: '📊',             section: 'agent' },
   { id: 'submission',   label: 'Submission',      icon: '📝',             section: 'agent' },
@@ -41,35 +41,18 @@ const NAV: NavItem[] = [
   { id: 'trading',      label: 'Trade',           icon: '⚡',              section: 'binance' },
   { id: 'alerts',       label: 'Price Alerts',    icon: '🔔',             section: 'binance' },
 
-     // ── Celo Payments Agent (Session L — Onchain Agents Hackathon) ───────────────
-  { id: 'celo-agent',   label: 'Celo Agent',      icon: '🟡',  dot: true, section: 'celo' },
-
-
-     // ── sui ───────────────
-  { id: 'sui-agent',  label: 'Sui Agent',  icon: '⛓️',    section: 'sui'},
-  { id: 'deepbook',   label: 'DeepBook',   icon: '📊',   section: 'sui'},
-  { id: 'revocation', label: 'Revocation', icon: '🛑',  section: 'sui' },
-
   // ── Tools ─────────────────────────────────────────────────────────────────
   { id: 'chat',         label: 'AI Assistant',    icon: '◈',              section: 'tools' },
   { id: 'learn',        label: 'Learn',           icon: '◉',              section: 'tools' },
   { id: 'square',       label: 'Square',          icon: '✦',              section: 'tools' },
-  { id: 'messaging',    label: 'Messaging',    icon: '📱',  badge: 'NEW', section: 'tools' },
-
-  // ── Mantle AI Trading Agent (Session N — The Turing Test Hackathon) ───────
-  { id: 'mantle-agent', label: 'Mantle Agent',  icon: '⬡',  badge: 'NEW', section: 'mantle' },
-   { id: 'mantle-submission', label: 'Submit Hackathon',   icon: '🏆', section: 'mantle' },
+  { id: 'messaging',    label: 'Messaging',       icon: '📱',  badge: 'NEW', section: 'tools' },
 ]
 
 const SECTIONS: { id: NavItem['section']; label: string; color: string }[] = [
   { id: 'intelligence', label: 'Intelligence',   color: '#3498db'       },
   { id: 'agent',        label: 'Trading Agent',  color: 'var(--yellow)' },
-  { id: 'celo',         label: 'Celo Agent',     color: '#FCFF52'       },
-  { id: 'sui',          label: 'Sui Agent',      color: '#61DAFB'       },
-  { id: 'mantle',       label: 'Mantle Agent',   color: '#61DAFB'       },
   { id: 'binance',      label: 'Binance',        color: 'var(--green)'  },
   { id: 'tools',        label: 'Tools',          color: 'var(--text3)'  },
-  
 ]
 
 export default function Sidebar() {
