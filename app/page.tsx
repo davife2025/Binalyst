@@ -39,6 +39,16 @@ import DorahacksTab        from '@/components/tabs/DorahacksTab'
 import AgentPerformanceTab from '@/components/tabs/AgentPerformanceTab'
 import WorldCupTab        from '@/components/tabs/WorldCupTab'   // Session 4
 
+
+// ── Chain Specific Agents (Celo, Sui, Mantle) ─────────────────────────────────
+import BacktestTab         from '@/components/tabs/BacktestTab'
+import CeloAgentTab        from '@/components/tabs/CeloAgentTab'
+import SuiAgentTab         from '@/components/tabs/SuiAgentTab'
+import DeepBookTab         from '@/components/tabs/DeepBookTab'
+import RevocationTab       from '@/components/tabs/RevocationDemo'
+import MantleAgentTab      from '@/components/tabs/MantleAgentTab'
+import MantleSubmissionTab from '@/components/tabs/MantleSubmissionTab'
+
 const TABS: Record<string, React.ReactNode> = {
   // Core Binalyst
   home:         <DashboardTab />,
@@ -56,15 +66,28 @@ const TABS: Record<string, React.ReactNode> = {
   settings:     <SettingsTab />,
 
   // Autonomous Agent (Sessions A-G)
-  'agent-wallet':  <AgentWalletTab />,
-  signals:         <SignalDashboard />,
-  strategy:        <StrategyBuilder />,
-  competition:     <CompetitionTab />,
-  submission:      <DorahacksTab />,
-  performance:     <AgentPerformanceTab />,
+  'agent-wallet':    <AgentWalletTab />,
+  'signals':         <SignalDashboard />,
+  'strategy':        <StrategyBuilder />,
+  'competition':     <CompetitionTab />,
+  'submission':      <DorahacksTab />,
+  'performance':     <AgentPerformanceTab />,
+  'backtest':        <BacktestTab />, // ← ADDED
 
   // X Layer World Cup (Sessions 1-6)
-  worldcup:         <WorldCupTab />,
+  'world-cup':       <WorldCupTab />, // ← FIXED TYPO (was 'worldcup')
+
+  // Celo Agent
+  'celo-agent':      <CeloAgentTab />, // ← ADDED
+
+  // Sui Agent
+  'sui-agent':       <SuiAgentTab />, // ← ADDED
+  'deepbook':        <DeepBookTab />, // ← ADDED
+  'revocation':      <RevocationTab />, // ← ADDED
+
+  // Mantle Agent
+  'mantle-agent':      <MantleAgentTab />, // ← ADDED
+  'mantle-submission': <MantleSubmissionTab />, // ← ADDED
 }
 
 export default function App() {
