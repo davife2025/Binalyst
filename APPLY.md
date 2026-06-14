@@ -1,102 +1,51 @@
-# Session M — Move Contract + Revocation Demo + Submission
-## Apply Guide — FINAL SESSION
+# Session UI — Design system fix
+## Apply Guide
 
-### What this session adds
-5 new files. The sidebar wiring (2 additive lines in 2 existing files) is
-the only optional touch to existing code — described in SIDEBAR_WIRING.ts.
+### Root cause
+The original Sui tabs used CSS variables from the Claude/Anthropic design system
+(--color-text-primary, --color-background-secondary, --color-border-tertiary, etc.)
+These variables DO NOT EXIST in Binalyst. The app uses its own dark theme:
+  --bg / --bg2 / --bg3 / --bg4       (backgrounds)
+  --text / --text2 / --text3          (text)
+  --border / --border2                (borders)
+  --yellow / --green / --red          (accents)
+  .mono class                         (Space Mono font)
+  Tailwind utility classes            (layout)
+  Syne font (default)                 (body font)
 
-### Prerequisites
-Sessions J, K, and L files must already be in your project.
-
-### Files to copy into your project
+### Files to replace (replace ALL 3 — they supersede Session K, L, M AND Session Fix versions)
 
 ```
-move/Move.toml                           → create move/ folder at project root, copy in
-move/sources/agent_policy.move           → create move/sources/ folder, copy in
-move/tests/agent_policy_tests.move       → create move/tests/ folder, copy in
-app/api/sui/revoke/route.ts              → create app/api/sui/revoke/ folder, copy in
-components/tabs/RevocationDemo.tsx       → copy into components/tabs/
-docs/SUBMISSION.md                       → create docs/ folder, copy in (hackathon submission)
+components/tabs/SuiAgentTab.tsx    → replaces Session K + Fix versions
+components/tabs/DeepBookTab.tsx    → replaces Session L + Fix versions
+components/tabs/RevocationDemo.tsx → replaces Session M version
 ```
 
-### Apply order
-1. Create folders: move/sources/, move/tests/, app/api/sui/revoke/, docs/
-2. Copy all 5 files
-3. Optionally apply sidebar wiring (see SIDEBAR_WIRING.ts)
+### What changed in each file
+SuiAgentTab.tsx:
+  - All var(--color-*) → var(--bg*) / var(--text*) / var(--yellow) / var(--green) / var(--red)
+  - Added Tailwind layout classes (flex, grid, gap, rounded-xl, px-*, py-*)
+  - Added .mono class for Space Mono font on all code/data text
+  - Buttons styled to match Binalyst yellow primary / ghost / danger pattern
+  - Cards use --bg2 background + --border border (matches existing tabs)
+  - Already includes the executeTrade DeepBook wiring and CMC fix from Session Fix
 
-### Deploy the Move package (required for live demo)
-```bash
-# Install Sui CLI: https://docs.sui.io/guides/developer/getting-started/sui-install
-cd move/
-sui client switch --env testnet
-sui client publish --gas-budget 100000000
-```
-From the output, copy the published package ID.
-Set it in .env.local:
-```
-NEXT_PUBLIC_POLICY_PACKAGE_ID=0x<your-package-id>
-```
+DeepBookTab.tsx:
+  - Same design system conversion
+  - Order book rows use subtle rgba(--green/--red, 0.07) bar fills
+  - Already includes dead policy prop removal from Session Fix
 
-### Run Move tests (no deploy needed)
-```bash
-cd move/
-sui move test
-# Expect: 9 tests passed
-```
+RevocationDemo.tsx:
+  - Same design system conversion
+  - Kill switch button matches Binalyst danger pattern
+  - Move event display uses --bg3 + mono font (matches existing code blocks)
 
-### Full environment variables (.env.local)
-```
-# From Session J (optional — for MemWal memory layer)
-MEMWAL_API_KEY=
-MEMWAL_API_URL=https://api.memwal.ai
-
-# From Session M (required for live on-chain policy)
-NEXT_PUBLIC_POLICY_PACKAGE_ID=0x<your-package-id>
-
-# Your existing Binalyst env vars are unchanged
-```
-
-### Verification
-```bash
-npx tsc --noEmit   # zero errors
-cd move && sui move test   # 9 tests pass
-npm run dev        # app starts, all tabs accessible
-```
-
-### Complete file inventory across all sessions
-
-Session J (6 files):
-  lib/sui/client.ts
-  lib/sui/types.ts
-  lib/walrus/client.ts
-  lib/walrus/memwal.ts
-  lib/suiAgent/agentLoop.ts
-  lib/suiAgent/types.ts
-
-Session K (6 files):
-  lib/movePolicy/client.ts
-  lib/store.sui.ts
-  app/api/sui/wallet/route.ts
-  app/api/sui/policy/route.ts
-  app/api/sui/agent/route.ts
-  components/tabs/SuiAgentTab.tsx
-
-Session L (7 files):
-  lib/deepbook/types.ts
-  lib/deepbook/client.ts
-  lib/walrus/activityLog.ts
-  app/api/deepbook/order/route.ts
-  app/api/deepbook/pools/route.ts
-  app/api/walrus/log/route.ts
-  components/tabs/DeepBookTab.tsx
-
-Session M (5 files + optional wiring):
-  move/Move.toml
-  move/sources/agent_policy.move
-  move/tests/agent_policy_tests.move
-  app/api/sui/revoke/route.ts
-  components/tabs/RevocationDemo.tsx
-  docs/SUBMISSION.md
-
-Total: 24 new files. 0 existing files modified.
-Optional: 6 additive lines across 2 existing files (sidebar wiring).
+### Final apply order (complete build)
+1. Session J
+2. Session K
+3. Session L
+4. Session M
+5. Session Wire (store.ts, page.tsx, Sidebar.tsx)
+6. Session UI ← THIS SESSION (replaces K+L+M tab files + Fix)
+7. Deploy Move package
+8. Set NEXT_PUBLIC_POLICY_PACKAGE_ID

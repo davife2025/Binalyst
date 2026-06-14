@@ -63,6 +63,7 @@ export type ActiveTab =
   | 'sui-agent'
   | 'deepbook'  
   | 'revocation'
+  |'world-cup'
 
 interface OpenClawStore {
   // ── Credentials ────────────────────────────────────────────────────────────
