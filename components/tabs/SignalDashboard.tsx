@@ -7,12 +7,15 @@
  * Auto-refreshes every 60s from the CMC Agent Hub.
  */
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSignals } from '@/hooks/useSignals'
 import FearGreedGauge, { FearGreedMini } from '@/components/agent/FearGreedGauge'
 import SignalCard from '@/components/agent/SignalCard'
+import TechnicalSignalCard from '@/components/agent/TechnicalSignalCard'
+import RegimeIndicator from '@/components/agent/RegimeIndicator'
 import { useAgentStore } from '@/lib/agentStore'
 import { COMPETITION_SYMBOLS } from '@/lib/skills/cmc'
+import type { TechnicalSnapshot } from '@/lib/skills/bitget-technicals'
 
 type FilterDir = 'ALL' | 'BUY' | 'SELL' | 'HOLD'
 type SortKey   = 'score' | 'change24h' | 'volume' | 'symbol'
@@ -32,6 +35,17 @@ export default function SignalDashboard() {
   const [selected,   setSelected]               = useState<string | null>(null)
   const [viewMode,   setViewMode]               = useState<'grid' | 'list'>('grid')
   const [showHistory, setShowHistory]           = useState(false)
+  const [techSnaps,  setTechSnaps]              = useState<Record<string, TechnicalSnapshot>>({})
+
+  // Fetch technicals for selected symbol whenever it changes
+  useEffect(() => {
+    if (!selected) return
+    if (techSnaps[selected]) return   // already cached
+    fetch(`/api/technicals?symbol=${selected}&interval=1h`)
+      .then(r => r.json())
+      .then(d => { if (d.snapshot) setTechSnaps(prev => ({ ...prev, [selected]: d.snapshot })) })
+      .catch(() => {})
+  }, [selected])
 
   const { snapshots, summary, fearGreed, fgHistory, status, lastFetch, refresh } =
     useSignals(SYMBOL_PRESETS[preset].symbols)
@@ -263,6 +277,21 @@ export default function SignalDashboard() {
                 </span>
               </div>
               <SignalCard signal={selectedSignal} />
+
+              {/* ── Session M: Technical panel ───────────────────────── */}
+              <div className="mt-4 flex flex-col gap-4">
+                <RegimeIndicator symbol={selectedSignal.symbol} interval="1h" />
+                {techSnaps[selectedSignal.symbol]
+                  ? <TechnicalSignalCard snapshot={techSnaps[selectedSignal.symbol]} />
+                  : (
+                    <div className="rounded-xl p-4 flex items-center gap-3 mono text-xs"
+                      style={{ background: 'var(--bg2)', border: '1px solid var(--border)', color: 'var(--text3)' }}>
+                      <span className="w-3 h-3 rounded-full border-2 border-yellow-400/30 border-t-yellow-400 animate-spin-slow" />
+                      Loading {selectedSignal.symbol} technical indicators…
+                    </div>
+                  )
+                }
+              </div>
             </div>
           ) : (
             <>
@@ -308,9 +337,38 @@ export default function SignalDashboard() {
               ) : (
                 <div className="flex flex-col gap-1.5">
                   {filtered.map(s => (
-                    <SignalCard key={s.symbol} signal={s} compact
-                      selected={selected === s.symbol}
-                      onClick={() => setSelected(s.symbol)} />
+                    <div key={s.symbol} className="flex flex-col gap-1.5">
+                      <SignalCard signal={s} compact
+                        selected={selected === s.symbol}
+                        onClick={() => setSelected(s.symbol)} />
+                      {/* Session M: technical mini row inline in list view */}
+                      {s.technicals && (
+                        <div className="ml-3 pl-3 border-l" style={{ borderColor: 'var(--border)' }}>
+                          <TechnicalSignalCard snapshot={{
+                            symbol: s.symbol, interval: '1h', price: s.price,
+                            regime: s.technicals.regime, regimeConf: s.technicals.regimeConf,
+                            adx: s.technicals.adx,
+                            trend: { ema20: 0, ema50: 0, ema200: 0, sma20: 0, vwap: 0,
+                              emaCross: s.technicals.emaCross },
+                            momentum: { rsi14: s.technicals.rsi14, macdLine: 0, macdSignal: 0,
+                              macdHist: s.technicals.macdHist, macdCross: s.technicals.macdCross,
+                              stochK: s.technicals.stochK, stochD: s.technicals.stochK, roc10: 0 },
+                            volatility: { bbUpper: 0, bbMid: 0, bbLower: 0,
+                              bbPct: s.technicals.bbPct, bbWidth: s.technicals.bbWidth,
+                              atr14: 0, atrPct: s.technicals.atrPct },
+                            volume: { obv: 0, obvTrend: s.technicals.obvTrend,
+                              vwma20: 0, cmf20: 0, mfi14: 50 },
+                            oscillators: { cci20: 0, williamsR: -50, ultimateOsc: 50 },
+                            structure: { support1: 0, support2: 0, resistance1: 0,
+                              resistance2: 0, pivotPoint: 0, nearSupport: false, nearResist: false },
+                            summary: { buySignals: 0, sellSignals: 0, neutrals: 0,
+                              overallScore: s.technicals.techScore,
+                              signals: s.technicals.techSignals },
+                            updatedAt: s.updatedAt,
+                          } as any} minimal />
+                        </div>
+                      )}
+                    </div>
                   ))}
                 </div>
               )}

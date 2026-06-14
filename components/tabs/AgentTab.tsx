@@ -1,6 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import RegimeIndicator     from '@/components/agent/RegimeIndicator'
+import TechnicalSignalCard from '@/components/agent/TechnicalSignalCard'
+import type { TechnicalSnapshot } from '@/lib/skills/bitget-technicals'
 
 type RuleTrigger = 'price_above' | 'price_below' | 'change_pct_up' | 'change_pct_down'
 type RuleAction  = 'alert' | 'analyze' | 'log'
@@ -38,7 +41,8 @@ function saveRules(r: Rule[])   { localStorage.setItem(SK_RULES, JSON.stringify(
 function saveLog(l: LogEntry[]) { localStorage.setItem(SK_LOG, JSON.stringify(l.slice(0, 100))) }
 
 export default function AgentTab() {
-  const [rules,   setRules]   = useState<Rule[]>([])
+  const [techSnap, setTechSnap] = useState<TechnicalSnapshot | null>(null)
+  const [rules,    setRules]   = useState<Rule[]>([])
   const [log,     setLog]     = useState<LogEntry[]>([])
   const [running, setRunning] = useState(false)
   const [lastRun, setLastRun] = useState<string | null>(null)
@@ -48,7 +52,14 @@ export default function AgentTab() {
   const [value,   setValue]   = useState('')
   const [action,  setAction]  = useState<RuleAction>('alert')
 
-  useEffect(() => { setRules(loadRules()); setLog(loadLog()) }, [])
+  useEffect(() => {
+    setRules(loadRules()); setLog(loadLog())
+    // Load BTC technicals for the live panel
+    fetch('/api/technicals?symbol=BTC&interval=1h')
+      .then(r => r.json())
+      .then(d => { if (d.snapshot) setTechSnap(d.snapshot) })
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (!rules.length) return
@@ -134,6 +145,20 @@ export default function AgentTab() {
           {running && <span className="w-4 h-4 rounded-full border-2 border-black/30 border-t-black animate-spin-slow" />}
           {running ? 'Running...' : '▶ Run Now'}
         </button>
+      </div>
+
+      {/* ── Session M: Live regime + technical panel ─────────────────────── */}
+      <div className="grid gap-4 mb-5" style={{ gridTemplateColumns: '1fr 1fr' }}>
+        <RegimeIndicator symbol="BTC" interval="1h" />
+        {techSnap
+          ? <TechnicalSignalCard snapshot={techSnap} />
+          : (
+            <div className="rounded-xl p-4 flex items-center justify-center mono text-xs"
+              style={{ background: 'var(--bg2)', border: '1px solid var(--border)', color: 'var(--text3)' }}>
+              Loading BTC technicals…
+            </div>
+          )
+        }
       </div>
 
       <div className="grid grid-cols-3 gap-3 mb-5">
