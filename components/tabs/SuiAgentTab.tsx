@@ -61,7 +61,6 @@ export default function SuiAgentTab() {
                 borderBottom: store.activeSubTab === t.id ? '2px solid var(--yellow)' : '2px solid transparent',
                 background:  'none',
                 border:      'none',
-                borderBottom: store.activeSubTab === t.id ? '2px solid var(--yellow)' : '2px solid transparent',
                 cursor:      'pointer',
               }}>
               {t.label}

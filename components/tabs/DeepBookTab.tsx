@@ -95,11 +95,10 @@ export default function DeepBookTab() {
             ].map(v => (
               <button key={v.id} onClick={() => setView(v.id)}
                 className="mono text-[11px] uppercase tracking-widest px-3 py-2.5 transition-all"
-                style={{
-                  color:        view === v.id ? 'var(--yellow)' : 'var(--text3)',
+                            style={{
+                  padding: '8px 16px', fontSize: 13,
                   borderBottom: view === v.id ? '2px solid var(--yellow)' : '2px solid transparent',
                   background:   'none', border: 'none',
-                  borderBottom: view === v.id ? '2px solid var(--yellow)' : '2px solid transparent',
                   cursor: 'pointer',
                 }}>
                 {v.label}
@@ -337,15 +336,15 @@ function LogView({ orders }: { orders: DeepBookOrder[] }) {
         </div>
       )}
 
-      {entry && (
-        <div className="p-4 rounded-xl" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
-          <div className="mono text-[10px] uppercase tracking-widest mb-3" style={{ color: 'var(--text3)' }}>Entry</div>
-          <pre className="mono text-[11px] p-3 rounded overflow-auto"
-            style={{ background: 'var(--bg3)', color: 'var(--text)', lineHeight: 1.6 }}>
-            {JSON.stringify(entry, null, 2)}
-          </pre>
-        </div>
-      )}
+   {entry != null ? (
+  <div className="p-4 rounded-xl" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
+    <div className="mono text-[10px] uppercase tracking-widest mb-3" style={{ color: 'var(--text3)' }}>Entry</div>
+    <pre className="mono text-[11px] p-3 rounded overflow-auto"
+      style={{ background: 'var(--bg3)', color: 'var(--text)', lineHeight: 1.6 }}>
+      {JSON.stringify(entry, null, 2)}
+    </pre>
+  </div>
+) : null}
     </div>
   )
 }

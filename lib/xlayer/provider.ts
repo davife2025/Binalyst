@@ -143,14 +143,14 @@ export async function estimateGas(tx: ethers.TransactionRequest): Promise<bigint
  * If chain not added yet, prompts user to add it.
  */
 export async function switchToXLayer(): Promise<{ success: boolean; error?: string }> {
-  if (typeof window === 'undefined' || !window.ethereum) {
+ if (typeof window === 'undefined' || !(window as any).ethereum) {
     return { success: false, error: 'No web3 wallet detected' }
   }
 
   const { XLAYER_NETWORK_PARAMS } = await import('./config')
 
   try {
-    await window.ethereum.request({
+    await (window as any).ethereum.request({
       method: 'wallet_switchEthereumChain',
       params: [{ chainId: XLAYER_NETWORK_PARAMS.chainId }],
     })
@@ -159,7 +159,7 @@ export async function switchToXLayer(): Promise<{ success: boolean; error?: stri
     // 4902 = chain not added yet
     if (switchError.code === 4902) {
       try {
-        await window.ethereum.request({
+        await (window as any).ethereum.request({
           method: 'wallet_addEthereumChain',
           params: [XLAYER_NETWORK_PARAMS],
         })
@@ -176,14 +176,14 @@ export async function switchToXLayer(): Promise<{ success: boolean; error?: stri
  * Switch back to BSC (BNB Smart Chain).
  */
 export async function switchToBSC(): Promise<{ success: boolean; error?: string }> {
-  if (typeof window === 'undefined' || !window.ethereum) {
+  if (typeof window === 'undefined' || !(window as any).ethereum) {
     return { success: false, error: 'No web3 wallet detected' }
   }
 
   const { BSC_NETWORK_PARAMS } = await import('./config')
 
   try {
-    await window.ethereum.request({
+    await (window as any).ethereum.request({
       method: 'wallet_switchEthereumChain',
       params: [{ chainId: BSC_NETWORK_PARAMS.chainId }],
     })
@@ -191,7 +191,7 @@ export async function switchToBSC(): Promise<{ success: boolean; error?: string 
   } catch (switchError: any) {
     if (switchError.code === 4902) {
       try {
-        await window.ethereum.request({
+        await (window as any).ethereum.request({
           method: 'wallet_addEthereumChain',
           params: [BSC_NETWORK_PARAMS],
         })
@@ -208,9 +208,9 @@ export async function switchToBSC(): Promise<{ success: boolean; error?: string 
  * Get current connected chain ID from browser wallet.
  */
 export async function getConnectedChainId(): Promise<number | null> {
-  if (typeof window === 'undefined' || !window.ethereum) return null
+  if (typeof window === 'undefined' || !(window as any).ethereum) return null
   try {
-    const chainIdHex = await window.ethereum.request({ method: 'eth_chainId' })
+    const chainIdHex = await (window as any).ethereum.request({ method: 'eth_chainId' })
     return parseInt(chainIdHex, 16)
   } catch { return null }
 }

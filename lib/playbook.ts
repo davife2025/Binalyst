@@ -163,10 +163,10 @@ function flattenCondition(
       out.push({ indicator: 'TECH_SCORE', operator: '<',  value: cond.value, logic })
       break
     case 'near_support':
-      out.push({ indicator: 'NEAR_SUPPORT', operator: '==', value: true, logic })
+      out.push({ indicator: 'NEAR_SUPPORT', operator: '==', value: 1, logic })
       break
     case 'near_resistance':
-      out.push({ indicator: 'NEAR_RESISTANCE', operator: '==', value: true, logic })
+      out.push({ indicator: 'NEAR_RESISTANCE', operator: '==', value: 1, logic })
       break
 
     // ── Sentiment conditions ─────────────────────────────────────────────
