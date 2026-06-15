@@ -1,51 +1,75 @@
-# Session UI — Design system fix
+# Session N — Bug fixes, hook, env, deploy script, Showcase
 ## Apply Guide
 
-### Root cause
-The original Sui tabs used CSS variables from the Claude/Anthropic design system
-(--color-text-primary, --color-background-secondary, --color-border-tertiary, etc.)
-These variables DO NOT EXIST in Binalyst. The app uses its own dark theme:
-  --bg / --bg2 / --bg3 / --bg4       (backgrounds)
-  --text / --text2 / --text3          (text)
-  --border / --border2                (borders)
-  --yellow / --green / --red          (accents)
-  .mono class                         (Space Mono font)
-  Tailwind utility classes            (layout)
-  Syne font (default)                 (body font)
+### What this session fixes / adds
+8 changes total. 3 replace existing files, 5 are new files.
 
-### Files to replace (replace ALL 3 — they supersede Session K, L, M AND Session Fix versions)
+### Files to REPLACE (patch existing files)
 
 ```
-components/tabs/SuiAgentTab.tsx    → replaces Session K + Fix versions
-components/tabs/DeepBookTab.tsx    → replaces Session L + Fix versions
-components/tabs/RevocationDemo.tsx → replaces Session M version
+lib/store.sui.ts
+  → replaces existing (removes unused INITIAL_AGENT_SESSION + DEFAULT_POLICY imports)
+
+components/tabs/SuiAgentTab.tsx
+  → replaces existing (removes unused useEffect + checkPolicyAllowsTrade imports)
+
+move/sources/agent_policy.move
+  → replaces existing (Move 2024.beta syntax — ctx.sender(), ctx.epoch(),
+    public struct instead of struct, vector methods as methods not functions)
 ```
 
-### What changed in each file
-SuiAgentTab.tsx:
-  - All var(--color-*) → var(--bg*) / var(--text*) / var(--yellow) / var(--green) / var(--red)
-  - Added Tailwind layout classes (flex, grid, gap, rounded-xl, px-*, py-*)
-  - Added .mono class for Space Mono font on all code/data text
-  - Buttons styled to match Binalyst yellow primary / ghost / danger pattern
-  - Cards use --bg2 background + --border border (matches existing tabs)
-  - Already includes the executeTrade DeepBook wiring and CMC fix from Session Fix
+### New files to ADD
 
-DeepBookTab.tsx:
-  - Same design system conversion
-  - Order book rows use subtle rgba(--green/--red, 0.07) bar fills
-  - Already includes dead policy prop removal from Session Fix
+```
+hooks/useSuiAgentLoop.ts
+  → create hooks/ if not exists, copy in
+  → mirrors useCeloAgentLoop.ts pattern exactly
+  → extracts the agent loop logic from SuiAgentTab into a reusable hook
 
-RevocationDemo.tsx:
-  - Same design system conversion
-  - Kill switch button matches Binalyst danger pattern
-  - Move event display uses --bg3 + mono font (matches existing code blocks)
+.env.sui.example
+  → copy to project root alongside .env.celo.example and .env.mantle.example
+  → documents NEXT_PUBLIC_POLICY_PACKAGE_ID, MEMWAL_API_KEY, network options
 
-### Final apply order (complete build)
-1. Session J
-2. Session K
-3. Session L
-4. Session M
-5. Session Wire (store.ts, page.tsx, Sidebar.tsx)
-6. Session UI ← THIS SESSION (replaces K+L+M tab files + Fix)
-7. Deploy Move package
-8. Set NEXT_PUBLIC_POLICY_PACKAGE_ID
+scripts/deploy-sui.sh
+  → copy to scripts/ folder (create if not exists)
+  → run: bash scripts/deploy-sui.sh
+  → deploys Move package, captures ID, writes to .env.local automatically
+
+Showcase.md
+  → replaces existing (Sui section appended at end)
+  → covers architecture, sub-track requirements, why Sui, onchain proof
+
+docs/SUBMISSION.md
+  → already in repo from Session M — no change needed
+```
+
+### Apply order
+1. Replace 3 existing files
+2. Add 4 new files
+3. Make deploy script executable: chmod +x scripts/deploy-sui.sh
+
+### Verification
+```bash
+npx tsc --noEmit       # zero TS warnings from unused imports
+cd move && sui move test   # 9 tests pass with new Move 2024 syntax
+bash scripts/deploy-sui.sh # deploys to testnet, writes package ID
+```
+
+### Move 2024.beta changes summary
+Old syntax (broken):          New syntax (fixed):
+  struct Foo has key {}    →    public struct Foo has key {}
+  tx_context::sender(ctx)  →    ctx.sender()
+  tx_context::epoch(ctx)   →    ctx.epoch()
+  vector::push_back(&mut v, x) → v.push_back(x)
+  vector::is_empty(&v)     →    v.is_empty()
+  vector::contains(&v, &x) →    v.contains(&x)
+
+### Complete final apply order (entire build)
+1. Session J    → 6 new lib files
+2. Session K    → 6 new files
+3. Session L    → 7 new files
+4. Session M    → Move contract + revoke API + docs
+5. Session Wire → replace store.ts, page.tsx, Sidebar.tsx
+6. Session UI   → replace 3 tab files
+7. Session N    → THIS SESSION (3 replacements + 4 new files)
+8. Deploy:      bash scripts/deploy-sui.sh

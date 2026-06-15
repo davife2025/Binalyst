@@ -25,8 +25,7 @@ import type {
   SuiCycleResult,
   SuiTradeRecord,
 } from './sui/types'
-import { DEFAULT_SUI_AGENT_CONFIG, INITIAL_AGENT_SESSION } from './sui/types'
-import { DEFAULT_POLICY }  from './movePolicy/client'
+import { DEFAULT_SUI_AGENT_CONFIG } from './sui/types'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Store shape

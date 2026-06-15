@@ -99,3 +99,97 @@ activity.
 4. Add payment rules (recipient, token, amount, frequency).
 5. Switch to Celo Mainnet, register the agent identity (ERC-8004 card).
 6. Toggle off dry-run + on autonomous mode, and start the agent.
+
+---
+
+# Binalyst — Autonomous Agent Wallet
+### Sui Overflow 2026: Agentic Web Track · Sub-track 2
+
+## One-line description
+
+An autonomous AI trading agent that executes strategies on Sui's DeepBook order book under a hard on-chain budget ceiling enforced by a Move policy object — without requiring a human signature for every trade.
+
+## Tracks targeted
+
+- **Agentic Web — Sub-track 2 (Autonomous Agent Wallet)**: the agent holds a capped budget enforced in Move (`check_and_spend` aborts with `EBudgetExceeded` if the ceiling is hit), executes real DeepBook orders autonomously, emits `TradeExecuted` events as a permanent on-chain activity log, and supports owner revocation via `revoke_policy` — all five sub-track requirements met.
+
+## What it does
+
+Binalyst is a BNB Chain AI trading platform. This module adds a fully independent **Sui Agent Wallet** alongside the existing BNB, Celo, and Mantle agents — same dashboard, new sidebar section ("Sui Agent", Sui blue).
+
+The agent:
+1. Reads live signal snapshots from the existing CMC signal engine
+2. Scores signals against a configurable threshold
+3. For each qualifying signal, calls `check_and_spend` on-chain to enforce the budget ceiling atomically
+4. Places a market order on DeepBook (SUI/USDC pool)
+5. Emits a `TradeExecuted` event — the permanent on-chain activity log
+6. Owner can revoke the policy at any time — `revoke_policy` blocks all future agent trades
+
+## Architecture
+
+```
+lib/sui/client.ts              Sui RPC helpers, balance, tx status
+lib/sui/types.ts               Shared types across the Sui module
+lib/suiAgent/agentLoop.ts      Parallel agent loop (isolated from BNB agent)
+lib/movePolicy/client.ts       Policy type, PTB builders, enforcement helpers
+lib/deepbook/client.ts         DeepBook order book, order placement
+lib/deepbook/types.ts          Pool, Order, Fill, OrderBook types
+lib/walrus/activityLog.ts      Walrus blob activity log (supplemental)
+lib/store.sui.ts               Isolated Zustand store (own persistence key)
+hooks/useSuiAgentLoop.ts       Client hook driving the loop
+move/sources/agent_policy.move Core Move contract — 5 constraints enforced
+move/tests/agent_policy_tests  9 test cases covering all constraints
+app/api/sui/wallet/route.ts    Balance endpoint
+app/api/sui/policy/route.ts    Create/fetch policy
+app/api/sui/agent/route.ts     Agent health + config
+app/api/sui/revoke/route.ts    Revocation PTB builder
+app/api/deepbook/order/route.ts Place/cancel orders + Walrus log
+app/api/deepbook/pools/route.ts Pool list + order book
+components/tabs/SuiAgentTab.tsx Main agent UI (wallet, policy, agent, activity)
+components/tabs/DeepBookTab.tsx Order book, order placement, Walrus log viewer
+components/tabs/RevocationDemo  Owner kill switch demo panel
+```
+
+## Why Sui specifically
+
+- **Move shared objects** — the policy is on-chain state both owner and agent access
+- **PTBs** — `check_and_spend` + DeepBook order placement are atomic in one transaction
+- **Move abort codes** — budget enforcement is a hard revert, not a soft check
+- **Sui events** — the activity log is permanently indexed, not a database
+- **DeepBook** — real on-chain order book, not a wrapped CEX
+
+Remove Sui and none of the enforcement properties hold.
+
+## Sub-track 2 requirements — met
+
+| Requirement | Implementation |
+|---|---|
+| Real DeepBook orders | `POST /api/deepbook/order` → DeepBook testnet pool |
+| Self-enforced budget ceiling | `check_and_spend` in Move — aborts with `EBudgetExceeded` |
+| On-chain activity log | `TradeExecuted` event emitted per trade — queryable via `suix_queryEvents` |
+| Owner revocation demo | `revoke_policy` entry fn — `EPolicyRevoked` blocks all future agent calls |
+
+## Safety model
+
+Agent defaults to **dry-run mode** — evaluates signals and simulates orders but sends nothing on-chain. `autonomousMode: true` + `dryRun: false` switches to live execution. The Move policy enforces the budget ceiling even in live mode.
+
+## Onchain proof
+
+- **Policy object ID**: `<fill in after deploy>`
+- **Package ID**: `<fill in after: bash scripts/deploy-sui.sh>`
+- **Sample TradeExecuted events**:
+  ```
+  sui client events \
+    --query '{"MoveEventType": "<PACKAGE_ID>::agent_policy::TradeExecuted"}' \
+    --limit 10
+  ```
+
+## How to run it
+
+1. Deploy the Move package: `bash scripts/deploy-sui.sh`
+2. Set `NEXT_PUBLIC_POLICY_PACKAGE_ID` in `.env.local` (script does this automatically)
+3. Open the **Sui Agent** tab in the sidebar
+4. Connect a Sui wallet address (testnet)
+5. Deploy a policy (budget cap + per-trade limit)
+6. Start the agent — it reads CMC signals and places DeepBook orders
+7. Open **Revocation** tab to demonstrate the owner kill switch

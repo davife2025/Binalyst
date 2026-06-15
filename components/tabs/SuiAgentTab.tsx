@@ -11,10 +11,10 @@
  *   font: Syne (default), Space Mono (.mono class)
  */
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef } from 'react'
 import { useSuiStore }                  from '@/lib/store.sui'
 import { isValidSuiAddress, shortenAddress, explorerAddressUrl } from '@/lib/sui/client'
-import { checkPolicyAllowsTrade, formatBudget, budgetUsedPct, policyStatusLabel, DEFAULT_POLICY } from '@/lib/movePolicy/client'
+import { formatBudget, budgetUsedPct, policyStatusLabel, DEFAULT_POLICY } from '@/lib/movePolicy/client'
 import { SuiAgentLoop, adaptSignalSnapshot } from '@/lib/suiAgent/agentLoop'
 import type { SuiAgentCallbacks }            from '@/lib/suiAgent/agentLoop'
 import type { SuiCycleResult, SuiAgentDecision } from '@/lib/sui/types'
