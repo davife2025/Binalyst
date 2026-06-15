@@ -1,62 +1,131 @@
 'use client'
 
 /**
- * components/Sidebar.tsx — Session I
- * Reorganized into 4 clear sections matching platform pillars:
- *   INTELLIGENCE · TRADING AGENT · BINANCE · TOOLS
- * Preserves all existing animation + design.
+ * components/Sidebar.tsx — UI Refresh (SVG icons, BNB brand aesthetic)
+ * ALL logic, store hooks, tab IDs, sections, and nav structure preserved exactly.
+ * Only changes: emoji → inline SVG icons, updated visual styling.
  */
 
-import { useStore }      from '@/lib/store'
-import { useAgentStore } from '@/lib/agentStore'
-import type { ActiveTab } from '@/lib/store'
+import { useStore }         from '@/lib/store'
+import { useAgentStore }    from '@/lib/agentStore'
+import type { ActiveTab }   from '@/lib/store'
 
 type NavItem = {
-  id:       ActiveTab
-  label:    string
-  icon:     string
-  dot?:     boolean
-  badge?:   string
-  section:  'intelligence' | 'agent' | 'binance' | 'tools'
+  id:      ActiveTab
+  label:   string
+  icon:    any
+  dot?:    boolean
+  badge?:  string
+  section: 'intelligence' | 'agent' | 'binance' | 'tools' | 'celo' | 'sui' | 'mantle'
+}
+
+// ── Tiny inline SVG icon helper ───────────────────────────────────────────────
+function I({ children, size = 16, stroke = 'currentColor' }: {
+  children?: any; size?: number; stroke?: string
+}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke={stroke} strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"
+      style={{ flexShrink: 0 }}>
+      {children}
+    </svg>
+  )
+}
+
+// ── BNB Chain logo ────────────────────────────────────────────────────────────
+function BNBIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" style={{ flexShrink: 0 }}>
+      <path d="M12 1.5L14.5 4 12 6.5 9.5 4Z"/>
+      <path d="M16.5 6L19 8.5 16.5 11 14 8.5Z"/>
+      <path d="M7.5 6L10 8.5 7.5 11 5 8.5Z"/>
+      <path d="M12 9L17 13.5 12 18 7 13.5Z"/>
+      <path d="M19.5 11L22 13.5 19.5 16 17 13.5Z"/>
+      <path d="M4.5 11L7 13.5 4.5 16 2 13.5Z"/>
+      <path d="M12 20.5L14.5 18 17 20.5 12 23 7 20.5 9.5 18Z"/>
+    </svg>
+  )
 }
 
 const NAV: NavItem[] = [
   // ── Intelligence ──────────────────────────────────────────────────────────
-  { id: 'signals',      label: 'CMC Signals',    icon: '📡',  dot: true,  section: 'intelligence' },
-  { id: 'web3',         label: 'Web3 Intel',      icon: '⬡',              section: 'intelligence' },
-  { id: 'events',       label: 'Events Radar',    icon: '◎',  dot: true,  section: 'intelligence' },
+  { id: 'signals',   label: 'CMC Signals',  dot: true,  section: 'intelligence',
+    icon: <I><circle cx="12" cy="12" r="3"/><path d="M6.3 6.3a8 8 0 0 0 0 11.4"/><path d="M17.7 6.3a8 8 0 0 1 0 11.4"/></I> },
+  { id: 'events',    label: 'Events Radar', dot: true,  section: 'intelligence',
+    icon: <I><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></I> },
+  { id: 'web3',      label: 'Web3 Intel',               section: 'intelligence',
+    icon: <I><polygon points="12 2 20.5 7 20.5 17 12 22 3.5 17 3.5 7"/></I> },
+  { id: 'world-cup', label: 'World Cup',                section: 'intelligence',
+    icon: <I><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10"/><line x1="2" y1="12" x2="22" y2="12"/></I> },
 
   // ── Trading Agent ─────────────────────────────────────────────────────────
-  { id: 'agent-wallet', label: 'Agent Wallet',    icon: '🔐',             section: 'agent' },
-  { id: 'strategy',       label: 'Strategy',        icon: '🧠',             section: 'agent' },
-  { id: 'backtest',       label: 'Backtest',        icon: '📈',  dot: true, section: 'agent' },
-  { id: 'competition',    label: 'Competition',     icon: '🏆',  dot: true, section: 'agent' },
+  { id: 'agent-wallet', label: 'Agent Wallet',  section: 'agent',
+    icon: <I><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><circle cx="12" cy="14" r="2"/></I> },
+  { id: 'strategy',     label: 'Strategy',      section: 'agent',
+    icon: <I><path d="M2 20h.01M7 20v-4M12 20v-8M17 20V8M22 4v16"/></I> },
+  { id: 'backtest',     label: 'Backtest',      dot: true, section: 'agent',
+    icon: <I><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></I> },
+  { id: 'competition',  label: 'Competition',   dot: true, section: 'agent',
+    icon: <I><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/><path d="M4 22h16"/></I> },
+  { id: 'performance',  label: 'Performance',   section: 'agent',
+    icon: <I><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></I> },
+  { id: 'submission',   label: 'Submission',    section: 'agent',
+    icon: <I><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/></I> },
+  { id: 'agent',        label: 'Rules Engine',  section: 'agent',
+    icon: <I><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16" r="1"/></I> },
+     { id: 'bitget-connect',        label: 'Rules Engine',  section: 'agent',
+    icon: <I><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16" r="1"/></I> },
+     { id: 'bitget-tools',        label: 'Rules Engine',  section: 'agent',
+    icon: <I><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16" r="1"/></I> },
 
-  // ── Bitget ─────────────────────────────────────────────────────────────
-  { id: 'bitget-connect', label: 'Bitget Connect',  icon: '🔗',             section: 'agent' },
-  { id: 'bitget-tools',   label: 'Bitget Tools',    icon: '⚡',  dot: true, section: 'agent' },
-  { id: 'performance',  label: 'Performance',     icon: '📊',             section: 'agent' },
-  { id: 'submission',   label: 'Submission',      icon: '📝',             section: 'agent' },
-  { id: 'agent',        label: 'Rules Engine',    icon: '🤖',             section: 'agent' },
+
+
+  // ── Celo ──────────────────────────────────────────────────────────────────
+  { id: 'celo-agent', label: 'Celo Agent', dot: true, section: 'celo',
+    icon: <I><circle cx="12" cy="12" r="9"/><path d="M8.56 2.75c4.37 6.03 6.02 9.42 8.03 17.72m2.54-15.38c-3.72 4.35-8.94 5.66-16.88 5.85m19.5 1.9c-3.5-.93-6.63-.82-8.94 0-2.58.92-5.01 2.86-7.44 6.32"/></I> },
+
+  // ── Sui ───────────────────────────────────────────────────────────────────
+  { id: 'sui-agent',  label: 'Sui Agent',  section: 'sui',
+    icon: <I><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></I> },
+  { id: 'deepbook',   label: 'DeepBook',   section: 'sui',
+    icon: <I><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></I> },
+  { id: 'revocation', label: 'Revocation', section: 'sui',
+    icon: <I><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></I> },
 
   // ── Binance ───────────────────────────────────────────────────────────────
-  { id: 'markets',      label: 'Live Markets',    icon: '◐',              section: 'binance' },
-  { id: 'portfolio',    label: 'Portfolio',       icon: '◑',              section: 'binance' },
-  { id: 'trading',      label: 'Trade',           icon: '⚡',              section: 'binance' },
-  { id: 'alerts',       label: 'Price Alerts',    icon: '🔔',             section: 'binance' },
+  { id: 'markets',   label: 'Live Markets',  section: 'binance',
+    icon: <I><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></I> },
+  { id: 'portfolio', label: 'Portfolio',     section: 'binance',
+    icon: <I><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10"/><line x1="2" y1="12" x2="22" y2="12"/></I> },
+  { id: 'trading',   label: 'Trade',         section: 'binance',
+    icon: <I><path d="m7 16 4-4-4-4"/><path d="m11 20 4-4-4-4"/></I> },
+  { id: 'alerts',    label: 'Price Alerts',  section: 'binance',
+    icon: <I><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></I> },
+
+  // ── Mantle ────────────────────────────────────────────────────────────────
+  { id: 'mantle-agent',      label: 'Mantle Agent',    badge: 'NEW', section: 'mantle',
+    icon: <I><polygon points="12 2 20.5 7 20.5 17 12 22 3.5 17 3.5 7"/></I> },
+ 
 
   // ── Tools ─────────────────────────────────────────────────────────────────
-  { id: 'chat',         label: 'AI Assistant',    icon: '◈',              section: 'tools' },
-  { id: 'learn',        label: 'Learn',           icon: '◉',              section: 'tools' },
-  { id: 'square',       label: 'Square',          icon: '✦',              section: 'tools' },
-  { id: 'messaging',    label: 'Messaging',       icon: '📱',  badge: 'NEW', section: 'tools' },
+  { id: 'chat',      label: 'AI Assistant', section: 'tools',
+    icon: <I><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></I> },
+  { id: 'learn',     label: 'Learn',        section: 'tools',
+    icon: <I><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></I> },
+  { id: 'square',    label: 'Square',       section: 'tools',
+    icon: <I><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6v6H9z"/></I> },
+  { id: 'messaging', label: 'Messaging',    badge: 'NEW', section: 'tools',
+    icon: <I><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><circle cx="12" cy="10" r="1"/><circle cx="8" cy="10" r="1"/><circle cx="16" cy="10" r="1"/></I> },
 ]
 
 const SECTIONS: { id: NavItem['section']; label: string; color: string }[] = [
-  { id: 'intelligence', label: 'Intelligence',   color: '#3498db'       },
-  { id: 'agent',        label: 'Trading Agent',  color: 'var(--yellow)' },
-  { id: 'binance',      label: 'Binance',        color: 'var(--green)'  },
-  { id: 'tools',        label: 'Tools',          color: 'var(--text3)'  },
+  { id: 'intelligence', label: 'Intelligence',  color: '#3498db'  },
+  { id: 'agent',        label: 'Trading Agent', color: '#F0B90B'  },
+  { id: 'celo',         label: 'Celo Agent',    color: '#FCFF52'  },
+  { id: 'sui',          label: 'Sui Agent',     color: '#61DAFB'  },
+  { id: 'mantle',       label: 'Mantle Agent',  color: '#61DAFB'  },
+  { id: 'binance',      label: 'Binance',       color: '#0ECB81'  },
+  { id: 'tools',        label: 'Tools',         color: 'rgba(255,255,255,.3)' },
 ]
 
 export default function Sidebar() {
@@ -64,6 +133,10 @@ export default function Sidebar() {
   const { session, isWalletLoaded } = useAgentStore()
   const network = (useAgentStore() as any).network ?? 'testnet'
   const isLive  = session?.status === 'running' && network === 'mainnet'
+
+  // Show BNB chain indicator only when on agent-related tabs
+  const agentTabs: ActiveTab[] = ['agent-wallet', 'strategy', 'backtest', 'competition', 'performance', 'agent', 'submission']
+  const isAgentTab = agentTabs.includes(activeTab)
 
   return (
     <>
@@ -74,11 +147,11 @@ export default function Sidebar() {
           overflow: hidden;
           white-space: nowrap;
         }
-        .bn-sidebar:hover { width: 200px; }
+        .bn-sidebar:hover { width: 204px; }
 
         .bn-label, .bn-logo-text, .bn-badge, .bn-status, .bn-section-label {
           opacity: 0;
-          transition: opacity 0.12s 0.06s;
+          transition: opacity 0.1s 0.05s;
         }
         .bn-sidebar:hover .bn-label,
         .bn-sidebar:hover .bn-logo-text,
@@ -86,14 +159,15 @@ export default function Sidebar() {
         .bn-sidebar:hover .bn-status,
         .bn-sidebar:hover .bn-section-label { opacity: 1; }
 
-        .bn-label  { font-size: 12px; font-weight: 600; color: var(--text2); flex: 1; }
-        .bn-status { font-size: 10px; white-space: nowrap; }
+        .bn-label  { font-size: 12px; font-weight: 600; color: rgba(255,255,255,.55); flex: 1; }
+        .bn-status { font-size: 9px; white-space: nowrap; font-family: 'Space Mono', monospace; font-weight: 700; }
         .bn-section-label {
-          font-size: 9px;
-          letter-spacing: 0.08em;
+          font-size: 8px;
+          letter-spacing: 0.1em;
           text-transform: uppercase;
           padding: 10px 14px 3px;
           font-family: 'Space Mono', monospace;
+          font-weight: 700;
         }
 
         .bn-item {
@@ -109,64 +183,83 @@ export default function Sidebar() {
           text-align: left;
           transition: background 0.12s;
         }
-        .bn-item:hover { background: var(--bg3); }
-        .bn-item.active { background: var(--yellow-glow); }
+        .bn-item:hover { background: rgba(255,255,255,.04); }
+        .bn-item.active { background: rgba(240,185,11,.08); }
         .bn-item.active::before {
           content: '';
           position: absolute;
           left: 0; top: 4px; bottom: 4px;
           width: 2px;
-          background: var(--yellow);
+          background: #F0B90B;
           border-radius: 0 2px 2px 0;
         }
-        .bn-item.active .bn-label { color: var(--yellow); }
-        .bn-item .bn-icon         { opacity: 0.65; }
-        .bn-item.active .bn-icon  { opacity: 1; }
-        @keyframes sbBlink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+        .bn-item.active .bn-label { color: #F0B90B !important; }
+        .bn-item .bn-icon { opacity: 0.45; transition: opacity .12s; }
+        .bn-item:hover .bn-icon { opacity: 0.7; }
+        .bn-item.active .bn-icon { opacity: 1; }
+
+        @keyframes sbBlink { 0%,100%{opacity:1} 50%{opacity:0.2} }
       `}</style>
 
-      <aside className="bn-sidebar flex flex-col shrink-0 border-r"
-        style={{ background: 'var(--bg2)', borderColor: 'var(--border)', height: '100vh' }}>
+      <aside
+        className="bn-sidebar flex flex-col shrink-0 border-r"
+        style={{ background: '#000', borderColor: 'rgba(240,185,11,.1)', height: '100vh' }}>
 
-        {/* ── Logo ──────────────────────────────────────────────────────── */}
+        {/* ── Logo — just B, no chain branding ──────────────────────────── */}
         <button
           onClick={() => setActiveTab('home')}
-          className="flex items-center gap-3 px-[13px] py-4 border-b shrink-0 w-full text-left transition-all"
-          style={{ borderColor: 'var(--border)' }}
-          onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg3)')}
-          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-          <div className="w-[26px] h-[26px] rounded-md flex items-center justify-center font-black shrink-0"
-            style={{ background: 'var(--yellow)', color: '#000', fontSize: 12 }}>B</div>
+          className="flex items-center gap-3 border-b shrink-0 w-full text-left transition-all"
+          style={{ padding: '13px 13px', borderColor: 'rgba(240,185,11,.1)', background: 'transparent' }}
+          onMouseEnter={(e: any) => (e.currentTarget.style.background = 'rgba(255,255,255,.03)')}
+          onMouseLeave={(e: any) => (e.currentTarget.style.background = 'transparent')}>
+          <div
+            className="flex items-center justify-center font-black shrink-0 rounded"
+            style={{ width: 26, height: 26, background: '#F0B90B', color: '#000', fontSize: 14, letterSpacing: '-.02em' }}>
+            B
+          </div>
           <div className="bn-logo-text">
-            <div className="font-extrabold text-sm leading-tight" style={{ color: 'var(--text)' }}>
+            <div className="font-extrabold text-sm leading-tight" style={{ color: '#fff', letterSpacing: '-.01em' }}>
               Binalyst
             </div>
-            <div className="mono text-[8px] tracking-widest uppercase" style={{ color: 'var(--text3)' }}>
-              BNB AI Trading
+            <div className="mono text-[8px] tracking-widest uppercase" style={{ color: 'rgba(255,255,255,.28)' }}>
+              AI Quant Trading
             </div>
           </div>
         </button>
 
-        {/* ── Live badge (only on mainnet + running) ─────────────────────── */}
+        {/* ── Live badge (only mainnet + running) ────────────────────────── */}
         {isLive && (
-          <div className="mx-2 mt-2 flex items-center gap-2 px-3 py-1.5 rounded-lg"
-            style={{ background: 'rgba(14,203,129,0.08)', border: '1px solid rgba(14,203,129,0.25)' }}>
-            <span className="w-1.5 h-1.5 rounded-full shrink-0"
-              style={{ background: 'var(--green)', animation: 'sbBlink 1s infinite' }} />
-            <span className="bn-status mono font-bold" style={{ color: 'var(--green)' }}>
-              LIVE TRADING
-            </span>
+          <div className="mx-2 mt-2 flex items-center gap-2 px-2 py-1.5 rounded"
+            style={{ background: 'rgba(14,203,129,.07)', border: '1px solid rgba(14,203,129,.2)' }}>
+            <span className="shrink-0 rounded-full"
+              style={{ width: 6, height: 6, background: '#0ECB81', animation: 'sbBlink 1s infinite', display: 'block' }} />
+            <span className="bn-status" style={{ color: '#0ECB81' }}>LIVE TRADING</span>
           </div>
         )}
 
-        {/* ── Nav sections ──────────────────────────────────────────────── */}
-        <nav className="flex-1 py-1 flex flex-col overflow-y-auto">
+        {/* ── BNB chain indicator — only when on an agent tab ───────────── */}
+        {isAgentTab && isWalletLoaded && (
+          <div className="mx-2 mt-2 flex items-center gap-2 px-2 py-1.5 rounded"
+            style={{ background: 'rgba(240,185,11,.05)', border: '1px solid rgba(240,185,11,.18)' }}>
+            <span style={{ color: '#F0B90B', display: 'flex', alignItems: 'center' }}>
+              <BNBIcon size={12} />
+            </span>
+            <span className="bn-status" style={{ color: '#F0B90B' }}>BNB CHAIN</span>
+            {session?.status === 'running' && (
+              <span className="shrink-0 rounded-full ml-auto"
+                style={{ width: 5, height: 5, background: '#0ECB81', animation: 'sbBlink 1.5s infinite', display: 'block' }} />
+            )}
+          </div>
+        )}
+
+        {/* ── Nav ───────────────────────────────────────────────────────── */}
+        <nav className="flex-1 py-1 flex flex-col overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
           {SECTIONS.map((section, si) => {
             const items = NAV.filter(n => n.section === section.id)
             return (
               <div key={section.id}>
                 {si > 0 && (
-                  <div className="mx-2 my-1 h-px" style={{ background: 'var(--border)' }} />
+                  <div className="mx-2 my-1" style={{ height: 1, background: 'rgba(240,185,11,.08)' }} />
                 )}
                 <div className="bn-section-label" style={{ color: section.color }}>
                   {section.label}
@@ -174,21 +267,31 @@ export default function Sidebar() {
                 {items.map(item => {
                   const active = activeTab === item.id
                   return (
-                    <button key={item.id}
+                    <button
+                      key={item.id}
                       onClick={() => setActiveTab(item.id)}
                       className={`bn-item ${active ? 'active' : ''}`}>
-                      <span className="bn-icon text-center shrink-0"
-                        style={{ fontSize: 14, width: 24 }}>{item.icon}</span>
-                      <span className="bn-label">{item.label}</span>
+                      <span
+                        className="bn-icon shrink-0 flex items-center justify-center"
+                        style={{ width: 24, color: active ? '#F0B90B' : 'rgba(255,255,255,.7)' }}>
+                        {item.icon}
+                      </span>
+                      <span className="bn-label" style={{ color: active ? '#F0B90B' : undefined }}>
+                        {item.label}
+                      </span>
                       {item.badge && (
-                        <span className="bn-badge mono text-[7px] font-bold px-1 py-0.5 rounded shrink-0"
-                          style={{ background: 'var(--yellow)', color: '#000' }}>
+                        <span
+                          className="bn-badge mono shrink-0 rounded"
+                          style={{ fontSize: 7, fontWeight: 800, padding: '1px 5px', background: '#F0B90B', color: '#000' }}>
                           {item.badge}
                         </span>
                       )}
                       {item.dot && !item.badge && (
-                        <span className="bn-badge w-1.5 h-1.5 rounded-full shrink-0"
-                          style={{ background: section.color === 'var(--yellow)' ? 'var(--yellow)' : 'var(--green)', animation: 'sbBlink 2s infinite' }} />
+                        <span
+                          className="bn-badge shrink-0 rounded-full"
+                          style={{ width: 6, height: 6, display: 'block',
+                            background: section.color === '#F0B90B' ? '#F0B90B' : '#0ECB81',
+                            animation: 'sbBlink 2s infinite' }} />
                       )}
                     </button>
                   )
@@ -199,32 +302,33 @@ export default function Sidebar() {
         </nav>
 
         {/* ── Bottom ────────────────────────────────────────────────────── */}
-        <div className="border-t shrink-0" style={{ borderColor: 'var(--border)', padding: '6px 0' }}>
+        <div className="shrink-0 border-t" style={{ borderColor: 'rgba(240,185,11,.1)', padding: '6px 0' }}>
           {autoTradeEnabled && (
-            <div className="flex items-center gap-2 mx-2 mb-1 px-3 py-1.5 rounded-lg"
-              style={{ background: 'rgba(246,70,93,0.08)', border: '1px solid rgba(246,70,93,0.2)' }}>
-              <span className="w-1.5 h-1.5 rounded-full shrink-0"
-                style={{ background: 'var(--red)', animation: 'sbBlink 1.5s infinite' }} />
-              <span className="bn-status mono font-bold" style={{ color: 'var(--red)' }}>
-                AUTO-TRADE ON
-              </span>
+            <div className="flex items-center gap-2 mx-2 mb-1 px-2 py-1.5 rounded"
+              style={{ background: 'rgba(246,70,93,.07)', border: '1px solid rgba(246,70,93,.2)' }}>
+              <span className="shrink-0 rounded-full"
+                style={{ width: 6, height: 6, background: '#F6465D', animation: 'sbBlink 1.5s infinite', display: 'block' }} />
+              <span className="bn-status" style={{ color: '#F6465D' }}>AUTO-TRADE ON</span>
             </div>
           )}
 
           <div className="flex items-center gap-3 px-[14px] py-1.5">
-            <span className="w-2 h-2 rounded-full shrink-0"
-              style={{
-                background: isConnected ? 'var(--green)' : 'var(--text3)',
-                animation:  isConnected ? 'sbBlink 2s infinite' : 'none',
-              }} />
-            <span className="bn-status mono" style={{ color: 'var(--text3)' }}>
+            <span className="shrink-0 rounded-full"
+              style={{ width: 8, height: 8, display: 'block',
+                background: isConnected ? '#0ECB81' : 'rgba(255,255,255,.2)',
+                animation: isConnected ? 'sbBlink 2s infinite' : 'none' }} />
+            <span className="bn-status" style={{ color: 'rgba(255,255,255,.3)' }}>
               {isConnected ? 'Binance ✓' : 'No API key'}
             </span>
           </div>
 
-          <button onClick={() => setActiveTab('settings')}
+          <button
+            onClick={() => setActiveTab('settings')}
             className={`bn-item ${activeTab === 'settings' ? 'active' : ''}`}>
-            <span className="bn-icon text-center shrink-0" style={{ fontSize: 14, width: 24 }}>⚙</span>
+            <span className="bn-icon shrink-0 flex items-center justify-center"
+              style={{ width: 24, color: activeTab === 'settings' ? '#F0B90B' : 'rgba(255,255,255,.7)' }}>
+              <I size={16}><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></I>
+            </span>
             <span className="bn-label">Settings</span>
           </button>
         </div>

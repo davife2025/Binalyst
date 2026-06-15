@@ -58,6 +58,12 @@ export type ActiveTab =
   // Session O — Bitget
   | 'bitget-connect'
   | 'bitget-tools'
+  |'celo-agent'
+  |'mantle-agent'
+  | 'sui-agent'
+  | 'deepbook'
+  | 'revocation'
+  |'world-cup'
 
 interface OpenClawStore {
   // ── Credentials ────────────────────────────────────────────────────────────
