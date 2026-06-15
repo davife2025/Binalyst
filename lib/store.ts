@@ -55,15 +55,9 @@ export type ActiveTab =
   | 'submission'
   | 'performance'
   | 'backtest'
-  | 'celo-agent'
-  // ── Mantle AI Trading Agent (Session N) ───────────────────────────────────
-  | 'mantle-agent'
-  | 'mantle-submission'
-  // ── suiTrading Agent (Session N) ───────────────────────────────────
-  | 'sui-agent'
-  | 'deepbook'  
-  | 'revocation'
-  |'world-cup'
+  // Session O — Bitget
+  | 'bitget-connect'
+  | 'bitget-tools'
 
 interface OpenClawStore {
   // ── Credentials ────────────────────────────────────────────────────────────

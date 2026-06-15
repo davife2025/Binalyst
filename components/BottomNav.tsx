@@ -13,11 +13,11 @@ import type { ActiveTab } from '@/lib/store'
 type BottomNavItem = { id: ActiveTab; label: string; icon: string }
 
 const BOTTOM_NAV: BottomNavItem[] = [
-  { id: 'home',        label: 'Home',       icon: '⊞' },
-  { id: 'signals',     label: 'Signals',    icon: '📡' },
-  { id: 'backtest',    label: 'Backtest',   icon: '📈' },
-  { id: 'markets',     label: 'Markets',    icon: '◐'  },
-  { id: 'chat',        label: 'AI',         icon: '◈'  },
+  { id: 'home',           label: 'Home',     icon: '⊞' },
+  { id: 'signals',        label: 'Signals',  icon: '📡' },
+  { id: 'backtest',       label: 'Backtest', icon: '📈' },
+  { id: 'bitget-connect', label: 'Bitget',   icon: '🔗' },
+  { id: 'chat',           label: 'AI',       icon: '◈'  },
 ]
 
 export default function BottomNav() {
