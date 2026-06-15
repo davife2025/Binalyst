@@ -14,7 +14,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useCeloAgentStore, CELO_NETWORK_LABELS } from '@/lib/celoAgentStore'
 import { useCeloAgentLoop } from '@/hooks/useCeloAgentLoop'
 import {
-  generateCeloWallet, celoWalletFromMnemonic,
+  generateCeloWallet, celoWalletFromMnemonic, celoWalletFromPrivateKey,
   encryptCeloPrivateKey, decryptCeloPrivateKey,
 } from '@/lib/celo/client'
 import type { CeloNetwork } from '@/lib/celo/config'
@@ -64,6 +64,8 @@ export default function CeloAgentTab() {
     encryptedKey ? 'unlock' : agentAddress ? 'ready' : 'choose'
   )
   const [mnemonic,    setMnemonic]    = useState('')
+  const [importMode,  setImportMode]  = useState<'mnemonic' | 'privateKey'>('mnemonic')
+  const [importKey,   setImportKey]   = useState('')
   const [password,    setPassword]    = useState('')
   const [confirmPass, setConfirmPass] = useState('')
   const [unlockPass,  setUnlockPass]  = useState('')
@@ -109,20 +111,25 @@ export default function CeloAgentTab() {
     setLoading(false)
   }
 
-  // ── Import from mnemonic ─────────────────────────────────────────────
+  // ── Import from mnemonic or private key ───────────────────────────────
   async function handleImport() {
-    if (!mnemonic.trim()) { setError('Enter your seed phrase.'); return }
+    if (importMode === 'mnemonic' && !mnemonic.trim())  { setError('Enter your seed phrase.'); return }
+    if (importMode === 'privateKey' && !importKey.trim()) { setError('Enter your private key.'); return }
     if (!password || password.length < 8) { setError('Password must be at least 8 characters.'); return }
     if (password !== confirmPass) { setError('Passwords do not match.'); return }
     setLoading(true)
     try {
-      const w   = celoWalletFromMnemonic(mnemonic.trim())
+      const w = importMode === 'mnemonic'
+        ? celoWalletFromMnemonic(mnemonic.trim())
+        : celoWalletFromPrivateKey(importKey.trim())
       const enc = await encryptCeloPrivateKey(w.privateKey, password)
       setEncryptedKey(enc)
       setWallet(w.address, w.privateKey)
       setStep('ready')
-      setMnemonic(''); setPassword(''); setConfirmPass('')
-    } catch (e: any) { setError('Invalid seed phrase: ' + e.message) }
+      setMnemonic(''); setImportKey(''); setPassword(''); setConfirmPass('')
+    } catch (e: any) {
+      setError(importMode === 'mnemonic' ? 'Invalid seed phrase: ' + e.message : 'Invalid private key: ' + e.message)
+    }
     setLoading(false)
   }
 
@@ -331,8 +338,30 @@ export default function CeloAgentTab() {
       {step === 'import' && (
         <div className="rounded-xl p-6 flex flex-col gap-4" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
           <div className="mono text-[10px] uppercase tracking-widest" style={{ color: 'var(--text3)' }}>Import wallet</div>
-          <textarea placeholder="Enter your 12/24-word seed phrase" value={mnemonic} onChange={e => setMnemonic(e.target.value)}
-            rows={3} className="mono text-xs px-3 py-2 rounded-lg" style={{ background: 'var(--bg3)', border: '1px solid var(--border)', color: 'var(--text)' }} />
+
+          {/* Mode toggle */}
+          <div className="flex gap-2">
+            {(['mnemonic', 'privateKey'] as const).map(m => (
+              <button key={m} onClick={() => setImportMode(m)}
+                className="mono text-[10px] px-3 py-1.5 rounded-full"
+                style={{
+                  background: importMode === m ? 'var(--yellow)' : 'var(--bg3)',
+                  color:      importMode === m ? '#000' : 'var(--text2)',
+                  border:     '1px solid var(--border)',
+                }}>
+                {m === 'mnemonic' ? 'Seed phrase' : 'Private key'}
+              </button>
+            ))}
+          </div>
+
+          {importMode === 'mnemonic' ? (
+            <textarea placeholder="Enter your 12/24-word seed phrase" value={mnemonic} onChange={e => setMnemonic(e.target.value)}
+              rows={3} className="mono text-xs px-3 py-2 rounded-lg" style={{ background: 'var(--bg3)', border: '1px solid var(--border)', color: 'var(--text)' }} />
+          ) : (
+            <input type="password" placeholder="0x... private key" value={importKey} onChange={e => setImportKey(e.target.value)}
+              className="mono text-xs px-3 py-2 rounded-lg" style={{ background: 'var(--bg3)', border: '1px solid var(--border)', color: 'var(--text)' }} />
+          )}
+
           <div className="grid gap-3" style={{ gridTemplateColumns: '1fr 1fr' }}>
             <input type="password" placeholder="Password (min 8 chars)" value={password} onChange={e => setPassword(e.target.value)}
               className="mono text-xs px-3 py-2 rounded-lg" style={{ background: 'var(--bg3)', border: '1px solid var(--border)', color: 'var(--text)' }} />

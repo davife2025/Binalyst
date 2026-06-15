@@ -353,6 +353,12 @@ export function celoWalletFromMnemonic(mnemonic: string) {
   return { address: w.address, privateKey: w.privateKey }
 }
 
+export function celoWalletFromPrivateKey(privateKey: string) {
+  const pk = privateKey.trim().startsWith('0x') ? privateKey.trim() : `0x${privateKey.trim()}`
+  const w  = new ethers.Wallet(pk)
+  return { address: w.address, privateKey: w.privateKey }
+}
+
 export async function encryptCeloPrivateKey(privateKey: string, password: string) {
   const w = new ethers.Wallet(privateKey)
   return w.encrypt(password)
