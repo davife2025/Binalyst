@@ -31,7 +31,7 @@ function Pill({
   label, value, color = 'var(--text)',
 }: { label: string; value: string | number; color?: string }) {
   return (
-    <div className="rounded-xl p-4" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
+    <div className="rounded-md p-4" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
       <div className="mono text-[10px] uppercase tracking-widest mb-1" style={{ color: 'var(--text3)' }}>{label}</div>
       <div className="mono text-lg font-extrabold truncate" style={{ color }}>{value}</div>
     </div>
@@ -212,7 +212,7 @@ export default function AgentWalletTab() {
 
       {/* Header */}
       <div>
-        <h2 className="text-lg font-extrabold" style={{ color: 'var(--text)' }}>Agent Wallet</h2>
+        <h2 className="text-xl font-extrabold uppercase tracking-tight" style={{ color: 'var(--text)' }}>Agent <span style={{color:"var(--yellow)"}}>Wallet</span></h2>
         <p className="mono text-xs mt-1" style={{ color: 'var(--text3)' }}>
           Self-custodial BSC wallet · Keys never leave your device · Powered by Trust Wallet Agent Kit
         </p>
@@ -238,7 +238,7 @@ export default function AgentWalletTab() {
 
       {/* ── STEP: CHOOSE ─────────────────────────────────────────────────── */}
       {step === 'choose' && (
-        <div className="rounded-xl p-6" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
+        <div className="rounded-md p-6" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
           <div className="mono text-[10px] uppercase tracking-widest mb-4" style={{ color: 'var(--text3)' }}>
             Set up your agent wallet
           </div>
@@ -248,22 +248,22 @@ export default function AgentWalletTab() {
           </p>
           <div className="grid gap-3" style={{ gridTemplateColumns: '1fr 1fr' }}>
             <button onClick={handleGenerate}
-              className="rounded-xl p-5 text-left transition-all"
+              className="rounded-md p-5 text-left transition-all"
               style={{ background: 'var(--bg3)', border: '1px solid var(--border)' }}
               onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--yellow)')}
               onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}>
-              <div className="text-2xl mb-2">⚡</div>
+              <div className="w-8 h-8 rounded flex items-center justify-center font-black text-sm mb-2" style={{background:"rgba(240,185,11,.12)",color:"#F0B90B"}}>1</div>
               <div className="font-bold mb-1" style={{ color: 'var(--text)' }}>Generate New Wallet</div>
               <div className="mono text-[10px]" style={{ color: 'var(--text3)' }}>
                 Create a fresh BSC agent wallet in seconds
               </div>
             </button>
             <button onClick={() => setStep('import')}
-              className="rounded-xl p-5 text-left transition-all"
+              className="rounded-md p-5 text-left transition-all"
               style={{ background: 'var(--bg3)', border: '1px solid var(--border)' }}
               onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--yellow)')}
               onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}>
-              <div className="text-2xl mb-2">🔑</div>
+              <div className="w-8 h-8 rounded flex items-center justify-center font-black text-sm mb-2" style={{background:"rgba(240,185,11,.12)",color:"#F0B90B"}}>2</div>
               <div className="font-bold mb-1" style={{ color: 'var(--text)' }}>Import Existing</div>
               <div className="mono text-[10px]" style={{ color: 'var(--text3)' }}>
                 Import via 12/24-word seed phrase
@@ -275,7 +275,7 @@ export default function AgentWalletTab() {
 
       {/* ── STEP: GENERATE ───────────────────────────────────────────────── */}
       {step === 'generate' && generated && (
-        <div className="rounded-xl p-6 flex flex-col gap-4" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
+        <div className="rounded-md p-6 flex flex-col gap-4" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
           <div className="mono text-[10px] uppercase tracking-widest" style={{ color: 'var(--text3)' }}>
             New wallet generated
           </div>
@@ -356,7 +356,7 @@ export default function AgentWalletTab() {
 
       {/* ── STEP: IMPORT ─────────────────────────────────────────────────── */}
       {step === 'import' && (
-        <div className="rounded-xl p-6 flex flex-col gap-4" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
+        <div className="rounded-md p-6 flex flex-col gap-4" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
           <div className="mono text-[10px] uppercase tracking-widest" style={{ color: 'var(--text3)' }}>Import wallet</div>
 
           <div className="flex flex-col gap-1.5">
@@ -405,7 +405,7 @@ export default function AgentWalletTab() {
 
       {/* ── STEP: UNLOCK ─────────────────────────────────────────────────── */}
       {step === 'unlock' && (
-        <div className="rounded-xl p-6 flex flex-col gap-4" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
+        <div className="rounded-md p-6 flex flex-col gap-4" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
           <div className="mono text-[10px] uppercase tracking-widest" style={{ color: 'var(--text3)' }}>
             Unlock your agent wallet
           </div>
@@ -446,7 +446,7 @@ export default function AgentWalletTab() {
       {step === 'ready' && isWalletLoaded && (
         <>
           {/* ── Chain selector (Session 1: X Layer addition) ──────────────── */}
-          <div className="rounded-xl p-4" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
+          <div className="rounded-md p-4" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
             <div className="mono text-[10px] uppercase tracking-widest mb-3" style={{ color: 'var(--text3)' }}>
               Active Chain
             </div>
@@ -459,7 +459,7 @@ export default function AgentWalletTab() {
                   key={chain.id}
                   onClick={() => handleChainSwitch(chain.id)}
                   disabled={chainSwitching || activeChain === chain.id}
-                  className="flex-1 rounded-xl p-3 text-left transition-all"
+                  className="flex-1 rounded-md p-3 text-left transition-all"
                   style={{
                     background: activeChain === chain.id ? `${chain.color}12` : 'var(--bg3)',
                     border: `1px solid ${activeChain === chain.id ? chain.color + '50' : 'var(--border)'}`,
@@ -507,7 +507,7 @@ export default function AgentWalletTab() {
           </div>
 
           {/* Address card */}
-          <div className="rounded-xl p-5" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
+          <div className="rounded-md p-5" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
             <div className="mono text-[10px] uppercase tracking-widest mb-3" style={{ color: 'var(--text3)' }}>
               Agent Wallet Address
             </div>
@@ -538,7 +538,7 @@ export default function AgentWalletTab() {
 
           {/* Registration */}
           {!isRegistered ? (
-            <div className="rounded-xl p-5" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
+            <div className="rounded-md p-5" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
               <div className="mono text-[10px] uppercase tracking-widest mb-2" style={{ color: 'var(--text3)' }}>
                 Competition Registration
               </div>
@@ -583,7 +583,7 @@ export default function AgentWalletTab() {
               </button>
             </div>
           ) : (
-            <div className="rounded-xl p-4 flex items-center gap-3"
+            <div className="rounded-md p-4 flex items-center gap-3"
               style={{ background: 'rgba(14,203,129,0.06)', border: '1px solid rgba(14,203,129,0.2)' }}>
               <span className="text-2xl">✓</span>
               <div>

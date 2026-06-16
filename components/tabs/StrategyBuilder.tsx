@@ -181,7 +181,7 @@ function RegimePanel({ adaptiveCfg }: { adaptiveCfg: AdaptiveStrategyConfig }) {
 
   if (loading) {
     return (
-      <div className="rounded-xl p-5 flex items-center gap-3"
+      <div className="rounded-md p-5 flex items-center gap-3"
         style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
         <span className="w-4 h-4 rounded-full border-2 border-yellow-400/30 border-t-yellow-400 animate-spin-slow" />
         <span className="mono text-xs" style={{ color: 'var(--text3)' }}>Loading BTC regime…</span>
@@ -191,7 +191,7 @@ function RegimePanel({ adaptiveCfg }: { adaptiveCfg: AdaptiveStrategyConfig }) {
 
   if (!snap || !decision) {
     return (
-      <div className="rounded-xl p-4 mono text-xs" style={{ background: 'var(--bg2)', border: '1px solid var(--border)', color: 'var(--text3)' }}>
+      <div className="rounded-md p-4 mono text-xs" style={{ background: 'var(--bg2)', border: '1px solid var(--border)', color: 'var(--text3)' }}>
         Regime data unavailable — connect Binance API or check network.
       </div>
     )
@@ -201,7 +201,7 @@ function RegimePanel({ adaptiveCfg }: { adaptiveCfg: AdaptiveStrategyConfig }) {
   const rBg    = regimeBg(decision.regime)
 
   return (
-    <div className="rounded-xl p-5 flex flex-col gap-4"
+    <div className="rounded-md p-5 flex flex-col gap-4"
       style={{ background: 'var(--bg2)', border: `1px solid var(--border)` }}>
 
       {/* Header row */}
@@ -370,7 +370,7 @@ export default function StrategyBuilder() {
       {/* Header */}
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
-          <h2 className="text-lg font-extrabold" style={{ color: 'var(--text)' }}>Strategy Builder</h2>
+          <h2 className="text-xl font-extrabold uppercase tracking-tight" style={{ color: 'var(--text)' }}>Strategy <span style={{color:"var(--yellow)"}}>Builder</span></h2>
           <p className="mono text-xs mt-1" style={{ color: 'var(--text3)' }}>
             Write in plain English → AI parses into executable rules · Regime-aware adaptive engine
           </p>
@@ -475,7 +475,7 @@ export default function StrategyBuilder() {
           </div>
 
           {/* Technical condition cheatsheet */}
-          <div className="rounded-xl p-4" style={{ background: 'rgba(240,185,11,0.04)', border: '1px solid rgba(240,185,11,0.12)' }}>
+          <div className="rounded-md p-4" style={{ background: 'rgba(240,185,11,0.04)', border: '1px solid rgba(240,185,11,0.12)' }}>
             <div className="mono text-[10px] font-bold mb-2" style={{ color: 'var(--yellow)' }}>
               Technical Condition Phrases (Session J)
             </div>
@@ -499,7 +499,7 @@ export default function StrategyBuilder() {
           </div>
 
           {/* Competition rules reminder */}
-          <div className="rounded-xl p-4" style={{ background: 'rgba(240,185,11,0.06)', border: '1px solid rgba(240,185,11,0.15)' }}>
+          <div className="rounded-md p-4" style={{ background: 'rgba(240,185,11,0.06)', border: '1px solid rgba(240,185,11,0.15)' }}>
             <div className="mono text-[10px] font-bold mb-2" style={{ color: 'var(--yellow)' }}>
               Competition Rules — Baked Into Every Strategy
             </div>
@@ -569,7 +569,7 @@ export default function StrategyBuilder() {
           {!result ? (
             <div className="flex flex-col items-center justify-center py-16 gap-3"
               style={{ background: 'var(--bg2)', border: '1px dashed var(--border)', borderRadius: 12 }}>
-              <div className="text-4xl opacity-30">⚡</div>
+              <div style={{width:32,height:32,borderRadius:6,background:"rgba(240,185,11,.08)",border:"1px solid rgba(240,185,11,.15)",opacity:.6,margin:"0 auto"}}></div>
               <div className="mono text-xs" style={{ color: 'var(--text3)' }}>
                 Write a strategy and click Parse to generate rules
               </div>
@@ -582,7 +582,7 @@ export default function StrategyBuilder() {
           ) : (
             <>
               {result.summary && (
-                <div className="rounded-xl p-4" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
+                <div className="rounded-md p-4" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
                   <div className="mono text-[10px] uppercase tracking-widest mb-2" style={{ color: 'var(--text3)' }}>
                     Strategy Summary
                   </div>
@@ -591,7 +591,7 @@ export default function StrategyBuilder() {
               )}
 
               {result.warnings?.length > 0 && (
-                <div className="rounded-xl p-4"
+                <div className="rounded-md p-4"
                   style={{ background: 'rgba(240,185,11,0.06)', border: '1px solid rgba(240,185,11,0.2)' }}>
                   <div className="mono text-[10px] uppercase tracking-widest mb-2" style={{ color: 'var(--yellow)' }}>Warnings</div>
                   {result.warnings.map((w: string, i: number) => (
@@ -614,7 +614,7 @@ export default function StrategyBuilder() {
                        t => JSON.stringify(rule.condition).includes(t)
                      )
                   return (
-                    <div key={rule.id ?? i} className="rounded-xl p-4 flex items-start gap-3"
+                    <div key={rule.id ?? i} className="rounded-md p-4 flex items-start gap-3"
                       style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
                       <div className="w-6 h-6 rounded-full flex items-center justify-center mono text-[10px] font-bold shrink-0 mt-0.5"
                         style={{ background: 'var(--bg4)', color: 'var(--text3)' }}>
@@ -689,7 +689,7 @@ export default function StrategyBuilder() {
           <RegimePanel adaptiveCfg={adaptiveCfg} />
 
           {/* Sliders */}
-          <div className="rounded-xl p-5 flex flex-col gap-5"
+          <div className="rounded-md p-5 flex flex-col gap-5"
             style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
             <div className="mono text-[10px] uppercase tracking-widest" style={{ color: 'var(--text3)' }}>
               Tune Strategy Parameters
@@ -793,7 +793,7 @@ export default function StrategyBuilder() {
       {/* ── Tab: Config (Session C — unchanged) ─────────────────────────────── */}
       {activeTab === 'config' && (
         <div className="flex flex-col gap-4">
-          <div className="rounded-xl p-5" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
+          <div className="rounded-md p-5" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
             <div className="mono text-[10px] uppercase tracking-widest mb-4" style={{ color: 'var(--text3)' }}>
               Guardrail Configuration
             </div>
@@ -850,7 +850,7 @@ export default function StrategyBuilder() {
           </div>
 
           {/* Dry run toggle */}
-          <div className="rounded-xl p-5 flex items-center justify-between"
+          <div className="rounded-md p-5 flex items-center justify-between"
             style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
             <div>
               <div className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Dry Run Mode</div>
@@ -868,7 +868,7 @@ export default function StrategyBuilder() {
           </div>
 
           {/* Autonomous mode toggle */}
-          <div className="rounded-xl p-5 flex items-center justify-between"
+          <div className="rounded-md p-5 flex items-center justify-between"
             style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
             <div>
               <div className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Autonomous Mode</div>
@@ -889,7 +889,7 @@ export default function StrategyBuilder() {
           </div>
 
           {!agentConfig.dryRun && agentConfig.autonomousMode && (
-            <div className="rounded-xl p-4"
+            <div className="rounded-md p-4"
               style={{ background: 'rgba(246,70,93,0.08)', border: '1px solid rgba(246,70,93,0.25)' }}>
               <div className="mono text-xs font-bold" style={{ color: 'var(--red)' }}>
                 ⚠ LIVE AUTONOMOUS MODE ENABLED
