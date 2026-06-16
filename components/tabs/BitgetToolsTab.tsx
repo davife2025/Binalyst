@@ -58,16 +58,16 @@ function SkillPanel({ skill }: { skill: typeof BITGET_SKILLS[number] }) {
   const [error,    setError]    = useState('')
   const [expanded, setExpanded] = useState(false)
 
+    const p = String(skill.params); 
+
   async function run() {
     setLoading(true); setError(''); setResult(null)
     const params: any[] = []
     
-      // Force cast to 'any' to bypass TS tuple union inference for .includes()
-    const p = skill.params as any;
-    
-    if (p.includes('symbol'))      params.push(symbol)
-    if (p.includes('granularity')) params.push('1H')
-    if (p.includes('keyword?'))    params.push(keyword || undefined)
+
+      if (p.includes('symbol'))         params.push(symbol)
+      if (p.includes('granularity'))    params.push('1H')
+      if (p.includes('keyword?'))       params.push(keyword || undefined)
 
     const res = await bitgetCall(SKILL_ACTIONS[skill.id], params)
     setLoading(false)
@@ -121,7 +121,7 @@ function SkillPanel({ skill }: { skill: typeof BITGET_SKILLS[number] }) {
 
           {/* Param inputs */}
           <div className="flex gap-3 pt-3 flex-wrap">
-            {(skill.params.includes('symbol') || skill.id === 'technical-analysis') && (
+           {(p.includes('symbol') || skill.id === 'technical-analysis') && (
               <div className="flex flex-col gap-1">
                 <label className="mono text-[9px] uppercase tracking-widest" style={{ color: 'var(--text3)' }}>Symbol</label>
                 <select value={symbol} onChange={e => setSymbol(e.target.value)}
@@ -133,7 +133,7 @@ function SkillPanel({ skill }: { skill: typeof BITGET_SKILLS[number] }) {
                 </select>
               </div>
             )}
-            {skill.params.includes('keyword?') && (
+               {p.includes('keyword?') && (
               <div className="flex flex-col gap-1 flex-1">
                 <label className="mono text-[9px] uppercase tracking-widest" style={{ color: 'var(--text3)' }}>Keyword (optional)</label>
                 <input value={keyword} onChange={e => setKeyword(e.target.value)}
