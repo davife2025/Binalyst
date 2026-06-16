@@ -44,11 +44,15 @@ export function get8004ScanUrl(agentId: string | number): string {
 // ABI
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ABI sourced from erc-8004/erc-8004-contracts (IdentityRegistryUpgradeable).
+// register() mints an ERC-721 NFT. agentWallet is set automatically to
+// msg.sender — do NOT pass it in metadata (causes revert). Pass [] instead.
 const IDENTITY_REGISTRY_ABI = [
-  'function register(string agentURI, tuple(string key, bytes value)[] metadata) external returns (uint256 agentId)',
+  'function register(string calldata agentURI, tuple(string key, bytes value)[] calldata metadata) external returns (uint256 agentId)',
   'function ownerOf(uint256 agentId) view returns (address)',
   'function tokenURI(uint256 agentId) view returns (string)',
   'function balanceOf(address owner) view returns (uint256)',
+  'function getAgentWallet(uint256 agentId) view returns (address)',
   'event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)',
 ]
 
@@ -125,17 +129,11 @@ export async function registerAgent(
     })
     const agentURI = toDataURI(registrationFile)
 
-    // Reserved "agentWallet" metadata entry, ABI-encoded address (per spec example)
-    const metadata = [
-      {
-        key:   'agentWallet',
-        value: ethers.AbiCoder.defaultAbiCoder().encode(['address'], [client.address]),
-      },
-    ]
-
+    // Per spec: agentWallet is set automatically to msg.sender on registration.
+    // Passing it in the metadata array causes a revert. Pass empty array.
     const registry = new ethers.Contract(registryAddress, IDENTITY_REGISTRY_ABI, client.getWallet())
 
-    const tx  = await registry.register(agentURI, metadata, { gasLimit: 600_000 })
+    const tx  = await registry.register(agentURI, [], { gasLimit: 500_000 })
     const rec = await tx.wait()
 
     // Parse agentId from the Transfer event (ERC-721 mint: from = 0x0)

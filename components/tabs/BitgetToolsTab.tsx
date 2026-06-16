@@ -61,9 +61,14 @@ function SkillPanel({ skill }: { skill: typeof BITGET_SKILLS[number] }) {
   async function run() {
     setLoading(true); setError(''); setResult(null)
     const params: any[] = []
-    if (skill.params.includes('symbol'))    params.push(symbol)
-    if (skill.params.includes('granularity')) params.push('1H')
-    if (skill.params.includes('keyword?'))   params.push(keyword || undefined)
+    
+      // Force cast to 'any' to bypass TS tuple union inference for .includes()
+    const p = skill.params as any;
+    
+    if (p.includes('symbol'))      params.push(symbol)
+    if (p.includes('granularity')) params.push('1H')
+    if (p.includes('keyword?'))    params.push(keyword || undefined)
+
     const res = await bitgetCall(SKILL_ACTIONS[skill.id], params)
     setLoading(false)
     if (res.success) setResult(res.data)

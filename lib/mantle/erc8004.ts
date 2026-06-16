@@ -1,39 +1,46 @@
 /**
- * lib/mantle/erc8004.ts — Session N2 · ETHERS-FIX
- * Fixed: ethers.utils.defaultAbiCoder → ethers.AbiCoder.defaultAbiCoder() (v6 API)
+ * lib/mantle/erc8004.ts — Session N2 · ERC8004-FIX
  *
- * ERC-8004 (Trustless Agents) Identity Registry integration for Mantle.
- * Part of: The Turing Test Hackathon — defining feature #2:
- * "Every participating AI agent is issued a unique identity NFT via ERC-8004."
+ * ROOT CAUSE OF REVERT:
+ * We were calling register(string agentURI, tuple[] metadata) — a two-argument
+ * function that doesn't exist on the deployed contract.
  *
- * Mirrors the pattern of lib/celo/erc8004.ts but targets Mantle Mainnet.
- * Fully independent — does not import from lib/celo/ or any existing file.
+ * ACTUAL deployed contract ABI (from erc-8004/erc-8004-contracts):
  *
- * The agent registration file is embedded fully on-chain as a
- * data:application/json;base64,... URI — no IPFS or external hosting needed.
+ *   function register(string calldata tokenURI_) external returns (uint256)
  *
- * Network note: ERC-8004 registration is mainnet-only. The UI in
- * MantleAgentTab.tsx (Session N3) disables the Register button on testnet.
+ * Single argument — just the tokenURI string. No metadata tuple array.
+ * The contract also emits: event Registered(uint256 indexed agentId, string tokenURI, address indexed owner)
+ *
+ * FIX:
+ *  1. Updated ABI to single-arg register(string)
+ *  2. Registration file encoded as data: URI — passed directly as tokenURI
+ *  3. Parse agentId from Registered event (not Transfer event)
+ *  4. Removed ethers.AbiCoder call entirely (no metadata encoding needed)
+ *  5. Added fallback: also try to parse agentId from Transfer event
+ *
+ * Everything else (addresses, network guard, registration file format) unchanged.
  */
 
-import { ethers }          from 'ethers'
-import { MantleClient }    from './client'
-import type { MantleNetwork } from './config'
+import { ethers }         from 'ethers'
+import { MantleClient }   from './client'
 import {
   ERC8004_REGISTRY_MANTLE,
   EIGHT004SCAN_MANTLE_URL,
-  MANTLE_MAINNET_CHAIN_ID,
 } from './config'
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ABI — minimal ERC-8004 Identity Registry interface
+// ABI — correct single-arg register function
 // ─────────────────────────────────────────────────────────────────────────────
 
 const IDENTITY_REGISTRY_ABI = [
-  'function register(string agentURI, tuple(string key, bytes value)[] metadata) external returns (uint256 agentId)',
+  // CORRECT: single string argument — tokenURI only
+  'function register(string calldata tokenURI_) external returns (uint256)',
   'function ownerOf(uint256 agentId) view returns (address)',
   'function tokenURI(uint256 agentId) view returns (string)',
   'function balanceOf(address owner) view returns (uint256)',
+  // Events
+  'event Registered(uint256 indexed agentId, string tokenURI, address indexed owner)',
   'event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)',
 ]
 
@@ -42,8 +49,8 @@ const IDENTITY_REGISTRY_ABI = [
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface MantleAgentRegistrationInfo {
-  name:         string
-  description:  string
+  name:          string
+  description:   string
   walletAddress: string
 }
 
@@ -56,10 +63,9 @@ export function buildMantleRegistrationFile(info: MantleAgentRegistrationInfo) {
       {
         type:    'wallet',
         address: info.walletAddress,
-        chainId: MANTLE_MAINNET_CHAIN_ID,
+        chainId: 5000,   // Mantle Mainnet
       },
     ],
-    // Hackathon tracking tag
     tags: ['turing-test-hackathon', 'ai-trading', 'mantle'],
     supportedTrust: ['reputation'],
   }
@@ -86,8 +92,10 @@ export interface RegisterMantleAgentResult {
 }
 
 /**
- * Register the MantleClient's wallet as an ERC-8004 agent identity on
- * Mantle Mainnet. Returns the minted agentId (ERC-721 tokenId).
+ * Register the MantleClient's wallet as an ERC-8004 agent on Mantle Mainnet.
+ *
+ * The contract's register() takes a single tokenURI string.
+ * We encode the registration file as an on-chain data: URI and pass it directly.
  */
 export async function registerMantleAgent(
   client: MantleClient,
@@ -114,7 +122,13 @@ export async function registerMantleAgent(
     return { success: false, error: 'No wallet loaded.' }
   }
 
+  const wallet = client.getWallet()
+  if (!wallet) {
+    return { success: false, error: 'No signer available.' }
+  }
+
   try {
+    // Build the registration file and encode it as a data: URI
     const regFile  = buildMantleRegistrationFile({
       name:          info.name,
       description:   info.description,
@@ -122,39 +136,43 @@ export async function registerMantleAgent(
     })
     const agentURI = toDataURI(regFile)
 
-    // ABI-encode wallet address as metadata (per ERC-8004 spec)
-    const metadata = [
-      {
-        key:   'agentWallet',
-        value: ethers.AbiCoder.defaultAbiCoder().encode(['address'], [address]),
-      },
-    ]
-
-    const wallet   = client.getWallet()
-    if (!wallet) return { success: false, error: 'No signer available.' }
-
+    // Connect to the registry
     const registry = new ethers.Contract(registryAddress, IDENTITY_REGISTRY_ABI, wallet)
-    const tx       = await registry.register(agentURI, metadata, { gasLimit: 600_000 })
-    const receipt  = await tx.wait(1)
 
-    // Parse agentId from Transfer event (ERC-721 mint: from === 0x0)
+    // ── FIXED: single-arg call ──────────────────────────────────────────────
+    const tx      = await registry.register(agentURI, { gasLimit: 300_000 })
+    const receipt = await tx.wait(1)
+
+    // Parse agentId — try Registered event first, then Transfer event
     let agentId: string | undefined
+
     for (const log of receipt.logs ?? []) {
       try {
         const parsed = registry.interface.parseLog(log)
-        if (parsed?.name === 'Transfer') {
-          agentId = parsed.args.tokenId.toString()
+        if (!parsed) continue
+
+        if (parsed.name === 'Registered') {
+          // event Registered(uint256 indexed agentId, string tokenURI, address indexed owner)
+          agentId = parsed.args.agentId.toString()
           break
         }
+
+        if (parsed.name === 'Transfer' && !agentId) {
+          // ERC-721 mint: from === zero address
+          const from = parsed.args.from as string
+          if (from === ethers.ZeroAddress || from === '0x0000000000000000000000000000000000000000') {
+            agentId = parsed.args.tokenId.toString()
+          }
+        }
       } catch {
-        // not a Transfer log from this contract — skip
+        // log doesn't match this contract's ABI — skip
       }
     }
 
     return {
       success:  true,
       agentId,
-      txHash:   receipt.transactionHash,
+      txHash:   receipt.hash,
       agentURI,
       scanUrl:  agentId ? EIGHT004SCAN_MANTLE_URL(agentId) : undefined,
     }
