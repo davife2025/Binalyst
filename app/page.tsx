@@ -40,6 +40,10 @@ import AgentPerformanceTab from '@/components/tabs/AgentPerformanceTab'
 import BacktestTab         from '@/components/tabs/BacktestTab'
 import BitgetConnectTab    from '@/components/tabs/BitgetConnectTab'
 import BitgetToolsTab      from '@/components/tabs/BitgetToolsTab'
+import WorldCupTab           from '@/components/tabs/WorldCupTab'
+import MantleAgentTab from '@/components/tabs/MantleAgentTab'
+import CeloAgentTab from '@/components/tabs/CeloAgentTab'
+import SuiAgentTab from '@/components/tabs/SuiAgentTab'
 
 const TABS: Record<string, React.ReactNode> = {
   // Core Binalyst
@@ -59,18 +63,23 @@ const TABS: Record<string, React.ReactNode> = {
 
   // Autonomous Agent (Sessions A-G)
   'agent-wallet':  <AgentWalletTab />,
-  signals:         <SignalDashboard />,
-  strategy:        <StrategyBuilder />,
-  competition:     <CompetitionTab />,
-  submission:      <DorahacksTab />,
-  performance:     <AgentPerformanceTab />,
+  'signals':         <SignalDashboard />,
+  'strategy':        <StrategyBuilder />,
+  'competition':     <CompetitionTab />,
+  'submission':      <DorahacksTab />,
+  'performance':     <AgentPerformanceTab />,
 
   // Session L — Backtester
-  backtest:          <BacktestTab />,
+  'backtest':          <BacktestTab />,
 
   // Session O — Bitget
   'bitget-connect':  <BitgetConnectTab />,
   'bitget-tools':    <BitgetToolsTab />,
+
+  'world-cup':       <WorldCupTab />,
+  'mantle-agent':    <MantleAgentTab />,
+  'celo-agent':      <CeloAgentTab />,
+  'sui-agent':       <SuiAgentTab />
 }
 
 export default function App() {
