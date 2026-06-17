@@ -310,7 +310,7 @@ function TokenPicker() {
               {XLAYER_TOKENS[selected]?.address || 'Address - deploying soon'}
             </span>
           </div>
-          
+          <a
             href={XLAYER_TOKENS[selected]?.address
               ? `https://app.uniswap.org/swap?outputCurrency=${XLAYER_TOKENS[selected]?.address}&chain=xlayer`
               : 'https://app.uniswap.org'}
