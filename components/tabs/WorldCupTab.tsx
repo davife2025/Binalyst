@@ -2,22 +2,21 @@
 
 /**
  * components/tabs/WorldCupTab.tsx
- * Session 4 — World Cup Hook dashboard.
+ * World Cup Hook dashboard.
  *
- * Tabs: Overview · Match Signals · Volume · X Posts
+ * Tabs: Overview · Match Signals · Volume
  *
  * Data sources:
  *   /api/worldcup              → WorldCupSignal (match state + hook phase)
  *   /api/worldcup?matches=true → full today's match list
  *   /api/xlayer/volume         → OKX Wallet swap volume snapshot
- *
- * SAFE: New file. No existing files modified except page.tsx
- * (two lines added — one import, one TABS entry).
  */
 
 import { useState, useEffect, useCallback } from 'react'
 import type { WorldCupSignal, WorldCupMatch } from '@/lib/xlayer/worldcup'
 import type { VolumeSnapshot }               from '@/app/api/xlayer/volume/route'
+import { switchToXLayer }                    from '@/lib/xlayer/provider'
+import { XLAYER_TOKENS }                     from '@/lib/xlayer/config'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -65,7 +64,7 @@ function phaseColor(phase: string): string {
 }
 
 function phaseLabel(phase: string): string {
-  if (phase === 'GOAL')       return 'GOAL ⚽'
+  if (phase === 'GOAL')       return 'GOAL'
   if (phase === 'LIVE')       return 'LIVE'
   if (phase === 'HT')         return 'HT'
   if (phase === 'PRE_MATCH')  return 'PRE'
@@ -126,14 +125,14 @@ function MatchCard({ match, isActive }: { match: WorldCupMatch; isActive: boolea
           <span className="text-xs font-semibold truncate" style={{ color: 'var(--text)' }}>
             {match.homeFlag} {match.homeTeam}
             {match.homeScore !== null && ` ${match.homeScore}`}
-            {' – '}
+            {' - '}
             {match.awayScore !== null && `${match.awayScore} `}
             {match.awayFlag} {match.awayTeam}
           </span>
         </div>
         <div className="mono text-[9px]" style={{ color: 'var(--text3)' }}>
           {match.stage.replace(/_/g, ' ')}
-          {match.minute ? ` · ${match.minute}'` : ''}
+          {match.minute ? ` - ${match.minute}'` : ''}
         </div>
       </div>
       <div className="flex flex-col items-end gap-1 shrink-0 ml-3">
@@ -152,7 +151,182 @@ function MatchCard({ match, isActive }: { match: WorldCupMatch; isActive: boolea
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Tabs
+// How to Participate steps
+// ─────────────────────────────────────────────────────────────────────────────
+
+const HOW_TO_STEPS = [
+  {
+    num:   '1',
+    title: 'Get OKX Wallet',
+    desc:  'Download OKX Wallet and fund it with OKB for gas on X Layer.',
+    action: { label: 'Get OKX Wallet', href: 'https://www.okx.com/web3' },
+    color: '#3498db',
+  },
+  {
+    num:   '2',
+    title: 'Switch to X Layer',
+    desc:  'Connect to X Layer (chainId 196) - tap the button to add it to your wallet automatically.',
+    action: null,
+    color: 'var(--yellow)',
+  },
+  {
+    num:   '3',
+    title: 'Pick a country token',
+    desc:  'Choose your team - BRA, ARG, FRA, GER, ENG and more. Each token has a Uniswap V4 pool routed through our Hook.',
+    action: { label: 'View pools on OKLink', href: 'https://www.oklink.com/xlayer' },
+    color: 'var(--green)',
+  },
+  {
+    num:   '4',
+    title: 'Swap via OKX Wallet on Uniswap V4',
+    desc:  'Only swaps made through OKX Wallet front-end count toward volume. Swap your country token and watch your volume register here.',
+    action: { label: 'Open Uniswap V4', href: 'https://app.uniswap.org' },
+    color: '#F0B90B',
+  },
+] as const
+
+function HowToPanel() {
+  const [switching, setSwitching] = useState(false)
+  const [switched,  setSwitched]  = useState(false)
+  const [error,     setError]     = useState('')
+
+  async function handleSwitchChain() {
+    setSwitching(true); setError('')
+    const result = await switchToXLayer()
+    if (result.success) {
+      setSwitched(true)
+    } else {
+      setError(result.error ?? 'Switch failed')
+    }
+    setSwitching(false)
+  }
+
+  return (
+    <div className="rounded-xl p-4"
+      style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
+      <div className="mono text-[9px] uppercase tracking-widest mb-4"
+        style={{ color: 'var(--text3)' }}>How to participate</div>
+
+      <div className="flex flex-col gap-3">
+        {HOW_TO_STEPS.map((step, i) => (
+          <div key={step.num} className="flex gap-3">
+            <div className="flex flex-col items-center shrink-0">
+              <div className="w-6 h-6 rounded-full flex items-center justify-center mono text-[10px] font-bold shrink-0"
+                style={{ background: `${step.color}18`, color: step.color, border: `1px solid ${step.color}40` }}>
+                {step.num}
+              </div>
+              {i < HOW_TO_STEPS.length - 1 && (
+                <div className="w-px flex-1 mt-1" style={{ background: 'var(--border)', minHeight: 12 }} />
+              )}
+            </div>
+
+            <div className="flex flex-col gap-1.5 pb-3 flex-1 min-w-0">
+              <div className="text-xs font-bold" style={{ color: 'var(--text)' }}>{step.title}</div>
+              <div className="mono text-[10px] leading-relaxed" style={{ color: 'var(--text3)' }}>{step.desc}</div>
+
+              {step.num === '2' && (
+                <div className="flex flex-col gap-1">
+                  <button
+                    onClick={handleSwitchChain}
+                    disabled={switching || switched}
+                    className="mono text-[10px] font-bold px-3 py-1.5 rounded-lg self-start transition-all"
+                    style={{
+                      background: switched ? 'rgba(14,203,129,0.1)' : `${step.color}18`,
+                      color:      switched ? 'var(--green)' : step.color,
+                      border:     `1px solid ${switched ? 'rgba(14,203,129,0.3)' : step.color + '40'}`,
+                      cursor:     switching || switched ? 'default' : 'pointer',
+                      opacity:    switching ? 0.6 : 1,
+                    }}>
+                    {switching ? 'Switching...' : switched ? 'X Layer active' : '+ Add X Layer to wallet'}
+                  </button>
+                  {error && (
+                    <div className="mono text-[9px]" style={{ color: 'var(--red)' }}>{error}</div>
+                  )}
+                </div>
+              )}
+
+              {step.action && (
+                <a href={step.action.href} target="_blank" rel="noreferrer"
+                  className="mono text-[10px] font-bold self-start px-3 py-1.5 rounded-lg transition-all hover:opacity-80"
+                  style={{
+                    background: `${step.color}18`,
+                    color:      step.color,
+                    border:     `1px solid ${step.color}40`,
+                  }}>
+                  {step.action.label}
+                </a>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Country token picker
+// ─────────────────────────────────────────────────────────────────────────────
+
+const COUNTRY_TOKENS = Object.values(XLAYER_TOKENS).filter(t => t.country)
+
+function TokenPicker() {
+  const [selected, setSelected] = useState<string | null>(null)
+
+  return (
+    <div className="rounded-xl p-4"
+      style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
+      <div className="mono text-[9px] uppercase tracking-widest mb-3"
+        style={{ color: 'var(--text3)' }}>Pick your team</div>
+
+      <div className="grid grid-cols-4 gap-2">
+        {COUNTRY_TOKENS.map(t => (
+          <button
+            key={t.symbol}
+            onClick={() => setSelected(selected === t.symbol ? null : t.symbol)}
+            className="flex flex-col items-center gap-1 py-2 px-1 rounded-xl transition-all"
+            style={{
+              background: selected === t.symbol ? 'rgba(240,185,11,0.1)' : 'var(--bg3)',
+              border:     `1px solid ${selected === t.symbol ? 'rgba(240,185,11,0.4)' : 'var(--border)'}`,
+              cursor:     'pointer',
+            }}>
+            <span style={{ fontSize: 20 }}>{t.flag}</span>
+            <span className="mono text-[9px] font-bold"
+              style={{ color: selected === t.symbol ? 'var(--yellow)' : 'var(--text2)' }}>
+              {t.symbol}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {selected && (
+        <div className="mt-3 rounded-lg p-3 flex items-center justify-between"
+          style={{ background: 'rgba(240,185,11,0.06)', border: '1px solid rgba(240,185,11,0.2)' }}>
+          <div className="flex flex-col gap-0.5">
+            <span className="mono text-[10px] font-bold" style={{ color: 'var(--yellow)' }}>
+              {XLAYER_TOKENS[selected]?.flag} {XLAYER_TOKENS[selected]?.name}
+            </span>
+            <span className="mono text-[9px]" style={{ color: 'var(--text3)' }}>
+              {XLAYER_TOKENS[selected]?.address || 'Address - deploying soon'}
+            </span>
+          </div>
+          
+            href={XLAYER_TOKENS[selected]?.address
+              ? `https://app.uniswap.org/swap?outputCurrency=${XLAYER_TOKENS[selected]?.address}&chain=xlayer`
+              : 'https://app.uniswap.org'}
+            target="_blank" rel="noreferrer"
+            className="mono text-[10px] font-bold px-3 py-1.5 rounded-lg shrink-0 transition-all hover:opacity-80"
+            style={{ background: 'var(--yellow)', color: '#000' }}>
+            Swap
+          </a>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// OverviewTab
 // ─────────────────────────────────────────────────────────────────────────────
 
 function OverviewTab({
@@ -170,7 +344,6 @@ function OverviewTab({
   return (
     <div className="flex flex-col gap-4">
 
-      {/* Signal note banner */}
       {signal?.signalNote && (
         <div className="rounded-xl px-4 py-3 mono text-xs"
           style={{
@@ -182,7 +355,10 @@ function OverviewTab({
         </div>
       )}
 
-      {/* Stats row */}
+      <HowToPanel />
+
+      <TokenPicker />
+
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <StatCard
           label="OKX Volume 24h"
@@ -205,10 +381,8 @@ function OverviewTab({
         />
       </div>
 
-      {/* Two columns */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
-        {/* Active match */}
         <Panel title="Active match">
           {signal?.match ? (
             <div className="flex flex-col gap-3">
@@ -216,7 +390,7 @@ function OverviewTab({
                 <span className="text-sm font-bold" style={{ color: 'var(--text)' }}>
                   {signal.match.homeFlag} {signal.match.homeTeam}
                   {' '}
-                  {signal.match.homeScore ?? '–'} – {signal.match.awayScore ?? '–'}
+                  {signal.match.homeScore ?? '-'} - {signal.match.awayScore ?? '-'}
                   {' '}
                   {signal.match.awayFlag} {signal.match.awayTeam}
                 </span>
@@ -230,13 +404,13 @@ function OverviewTab({
                 </span>
               </div>
               <div className="mono text-[9px]" style={{ color: 'var(--text3)' }}>
-                {signal.match.competition} · {signal.match.stage.replace(/_/g, ' ')}
+                {signal.match.competition} - {signal.match.stage.replace(/_/g, ' ')}
               </div>
               {signal.match.lastGoal && (
                 <div className="rounded-lg p-3"
                   style={{ background: 'rgba(246,70,93,0.07)', border: '1px solid rgba(246,70,93,0.2)' }}>
                   <div className="mono text-[10px]" style={{ color: 'var(--red)' }}>
-                    ⚽ {signal.match.lastGoal.team} — {signal.match.lastGoal.scorerName} ({signal.match.lastGoal.minute}')
+                    Goal! {signal.match.lastGoal.team} - {signal.match.lastGoal.scorerName} ({signal.match.lastGoal.minute}')
                   </div>
                 </div>
               )}
@@ -260,14 +434,13 @@ function OverviewTab({
           )}
         </Panel>
 
-        {/* Hook fee schedule */}
         <Panel title="Hook fee schedule">
           {(
             [
-              { phase: 'PRE_MATCH',  label: 'Pre-match',       bips: 500,  dot: 'var(--text3)' },
+              { phase: 'PRE_MATCH',  label: 'Pre-match',        bips: 500,  dot: 'var(--text3)'  },
               { phase: 'LIVE',       label: 'Match in progress', bips: 3000, dot: 'var(--yellow)' },
-              { phase: 'GOAL',       label: 'Goal scored',      bips: 8000, dot: 'var(--red)'    },
-              { phase: 'POST_MATCH', label: 'Post-match',       bips: 1000, dot: 'var(--text3)'  },
+              { phase: 'GOAL',       label: 'Goal scored',       bips: 8000, dot: 'var(--red)'    },
+              { phase: 'POST_MATCH', label: 'Post-match',        bips: 1000, dot: 'var(--text3)'  },
             ] as const
           ).map(row => {
             const active = hookPhase === row.phase
@@ -296,7 +469,7 @@ function OverviewTab({
                     {(row.bips / 100).toFixed(2)}%
                   </span>
                   {active && (
-                    <span className="mono text-[9px]" style={{ color: hookFeeColor(row.bips) }}>←</span>
+                    <span className="mono text-[9px]" style={{ color: hookFeeColor(row.bips) }}>active</span>
                   )}
                 </div>
               </div>
@@ -305,10 +478,8 @@ function OverviewTab({
         </Panel>
       </div>
 
-      {/* Bottom row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
-        {/* Volume by token */}
         <Panel title="Volume by country token">
           {volume?.byToken?.length ? (
             <div className="flex flex-col gap-3">
@@ -334,17 +505,16 @@ function OverviewTab({
             </div>
           ) : (
             <div className="mono text-xs" style={{ color: 'var(--text3)' }}>
-              Awaiting swap data…
+              Awaiting swap data...
             </div>
           )}
         </Panel>
 
-        {/* Hook activity */}
         <Panel title="Hook activity">
           {[
             { label: 'Swap velocity (1h)',  value: volume ? (volume.swapVelocity1h > 0 ? '+' : '') + volume.swapVelocity1h.toFixed(1) + '%' : '-', color: volume && volume.swapVelocity1h > 0 ? 'var(--green)' : 'var(--red)' },
-            { label: 'Largest swap',        value: volume ? fmtUSD(volume.largestSwap)    : '-', color: 'var(--text)'   },
-            { label: 'Fee revenue (24h)',   value: volume ? fmtUSD(volume.feeRevenue24h)  : '-', color: 'var(--yellow)' },
+            { label: 'Largest swap',        value: volume ? fmtUSD(volume.largestSwap)   : '-', color: 'var(--text)'   },
+            { label: 'Fee revenue (24h)',   value: volume ? fmtUSD(volume.feeRevenue24h) : '-', color: 'var(--yellow)' },
             { label: 'Volatility score',    value: signal ? signal.matchVolatilityScore + '/100' : '-', color: signal && signal.matchVolatilityScore > 70 ? 'var(--red)' : 'var(--text)' },
             { label: 'Hook contract',       value: volume?.hookAddress ? volume.hookAddress.slice(0, 6) + '...' + volume.hookAddress.slice(-4) : 'Not deployed', color: '#3498db' },
           ].map(row => (
@@ -366,7 +536,7 @@ function MatchesTab({ matches, loading }: { matches: WorldCupMatch[]; loading: b
     return (
       <div className="flex items-center justify-center h-48 mono text-xs"
         style={{ color: 'var(--text3)' }}>
-        Loading matches…
+        Loading matches...
       </div>
     )
   }
@@ -407,7 +577,7 @@ function VolumeTab({ volume, loading }: { volume: VolumeSnapshot | null; loading
     return (
       <div className="flex items-center justify-center h-48 mono text-xs"
         style={{ color: 'var(--text3)' }}>
-        Loading volume data…
+        Loading volume data...
       </div>
     )
   }
@@ -489,7 +659,7 @@ function VolumeTab({ volume, loading }: { volume: VolumeSnapshot | null; loading
               target="_blank" rel="noreferrer"
               className="mono text-[10px] text-center py-2 rounded-lg transition-all hover:opacity-80"
               style={{ background: 'rgba(52,152,219,0.1)', color: '#3498db', border: '1px solid rgba(52,152,219,0.2)' }}>
-              View on OKLink ↗
+              View on OKLink
             </a>
           </div>
         </Panel>
@@ -498,11 +668,9 @@ function VolumeTab({ volume, loading }: { volume: VolumeSnapshot | null; loading
   )
 }
 
-
 export default function WorldCupTab() {
   const [activeTab, setActiveTab] = useState<TabId>('overview')
 
-  // Data state
   const [signal,         setSignal]        = useState<WorldCupSignal | null>(null)
   const [matches,        setMatches]       = useState<WorldCupMatch[]>([])
   const [volume,         setVolume]        = useState<VolumeSnapshot | null>(null)
@@ -512,7 +680,6 @@ export default function WorldCupTab() {
   const [lastRefresh,    setLastRefresh]   = useState<number | null>(null)
   const [isMock,         setIsMock]        = useState(false)
 
-  // ── Fetch signal ──────────────────────────────────────────────────────────
   const fetchSignal = useCallback(async () => {
     try {
       const res  = await fetch('/api/worldcup')
@@ -527,7 +694,6 @@ export default function WorldCupTab() {
     }
   }, [])
 
-  // ── Fetch matches (lazy — only when tab active) ───────────────────────────
   const fetchMatches = useCallback(async () => {
     setMatchLoading(true)
     try {
@@ -541,7 +707,6 @@ export default function WorldCupTab() {
     }
   }, [])
 
-  // ── Fetch volume (lazy) ───────────────────────────────────────────────────
   const fetchVolume = useCallback(async () => {
     setVolumeLoading(true)
     try {
@@ -555,26 +720,22 @@ export default function WorldCupTab() {
     }
   }, [])
 
-  // On mount: fetch signal + volume (both needed for overview)
   useEffect(() => {
     fetchSignal()
     fetchVolume()
   }, [fetchSignal, fetchVolume])
 
-  // Auto-refresh signal every 60s
   useEffect(() => {
     const id = setInterval(fetchSignal, 60_000)
     return () => clearInterval(id)
   }, [fetchSignal])
 
-  // Fetch matches when tab switches to 'matches'
   useEffect(() => {
     if (activeTab === 'matches' && matches.length === 0) {
       fetchMatches()
     }
   }, [activeTab, matches.length, fetchMatches])
 
-  // ── Hook phase badge ──────────────────────────────────────────────────────
   const hookPhase = signal?.hookPhase ?? 'PRE_MATCH'
   const phaseCol  = phaseColor(hookPhase)
   const live      = hookPhase === 'LIVE' || hookPhase === 'GOAL'
@@ -588,7 +749,6 @@ export default function WorldCupTab() {
   return (
     <div className="flex flex-col h-full overflow-hidden">
 
-      {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div className="shrink-0 px-5 pt-5 pb-0 flex items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2 mb-1">
@@ -605,7 +765,7 @@ export default function WorldCupTab() {
             </span>
           </div>
           <div className="mono text-[10px]" style={{ color: 'var(--text3)' }}>
-            OKX Wallet swap volume · dynamic fee hook · X Layer mainnet
+            OKX Wallet swap volume - dynamic fee hook - X Layer mainnet
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -625,12 +785,11 @@ export default function WorldCupTab() {
             onClick={() => { fetchSignal(); fetchVolume() }}
             className="mono text-[9px] px-2 py-1 rounded-lg transition-all hover:opacity-80"
             style={{ background: 'var(--bg3)', color: 'var(--text3)', border: '1px solid var(--border)' }}>
-            ↻ {lastRefresh ? timeAgo(lastRefresh) : '-'}
+            {lastRefresh ? timeAgo(lastRefresh) : '-'}
           </button>
         </div>
       </div>
 
-      {/* ── Tab bar ────────────────────────────────────────────────────────── */}
       <div className="flex gap-0 border-b mt-4 px-5 shrink-0"
         style={{ borderColor: 'var(--border)' }}>
         {TABS.map(t => (
@@ -647,21 +806,19 @@ export default function WorldCupTab() {
         ))}
       </div>
 
-      {/* ── Content ────────────────────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto p-5">
-                signalLoading ? (
-                  <div className="flex items-center justify-center h-48 mono text-xs"
-                    style={{ color: 'var(--text3)' }}>
-                    Loading…
-                  </div>
-                ) : activeTab === 'overview' ? (
-                  <OverviewTab signal={signal} volume={volume} />
-                ) : activeTab === 'matches' ? (
-                  <MatchesTab matches={matches} loading={matchesLoading} />
-                ) : activeTab === 'volume' ? (
-                  <VolumeTab volume={volume} loading={volumeLoading} />
-                )
-
+        {signalLoading ? (
+          <div className="flex items-center justify-center h-48 mono text-xs"
+            style={{ color: 'var(--text3)' }}>
+            Loading...
+          </div>
+        ) : activeTab === 'overview' ? (
+          <OverviewTab signal={signal} volume={volume} />
+        ) : activeTab === 'matches' ? (
+          <MatchesTab matches={matches} loading={matchesLoading} />
+        ) : (
+          <VolumeTab volume={volume} loading={volumeLoading} />
+        )}
       </div>
 
     </div>
