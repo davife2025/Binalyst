@@ -127,28 +127,28 @@ export function useAgentLoop() {
         // decision.executed is set by the API route when a swap succeeded
         // (or dryRun simulated success). Blocked decisions have no proof.
         if (decision.executed) {
-          // Reconstruct a minimal ProofSignal from what the API returned.
-          // Full technicals aren't returned by the API route — we use what we have.
-          // The ZK guest proves guardrails + condition fired; signal fields that
-          // aren't returned (technicals) are null, which the guest handles safely.
+          // Reconstruct ProofSignal from what the API now returns (P5 fix: full technicals)
+          const snap = data.snapshots?.find((s: any) => s.symbol === decision.symbol)
+          const t    = snap?.technicals ?? null
           const proofSignal = {
             symbol:       decision.symbol,
-            price:        data.snapshots?.find((s: any) => s.symbol === decision.symbol)?.price ?? 0,
-            change_24h:   data.snapshots?.find((s: any) => s.symbol === decision.symbol)?.change24h ?? 0,
-            fear_greed:   data.fearGreed ?? 50,
+            price:        snap?.price        ?? 0,
+            change_24h:   snap?.change24h    ?? 0,
+            fear_greed:   snap?.fearGreed    ?? data.fearGreed ?? 50,
             signal_score: decision.signalScore ?? 50,
-            rsi14:        null,
-            macd_hist:    null,
-            macd_cross:   null,
-            bb_pct:       null,
-            bb_width:     null,
-            adx:          null,
-            stoch_k:      null,
-            obv_trend:    null,
-            ema_cross:    null,
-            tech_score:   null,
-            regime:       null,
-            tags:         [],
+            // Technical fields — now populated from API response
+            rsi14:      t?.rsi14      ?? null,
+            macd_hist:  t?.macdHist   ?? null,
+            macd_cross: t?.macdCross  ?? null,
+            bb_pct:     t?.bbPct      ?? null,
+            bb_width:   t?.bbWidth    ?? null,
+            adx:        t?.adx        ?? null,
+            stoch_k:    t?.stochK     ?? null,
+            obv_trend:  t?.obvTrend   ?? null,
+            ema_cross:  t?.emaCross   ?? null,
+            tech_score: t?.techScore  ?? null,
+            regime:     t?.regime     ?? null,
+            tags:       snap?.tags    ?? [],
           }
 
           // Find the rule that fired this decision

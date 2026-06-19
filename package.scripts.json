@@ -1,0 +1,9 @@
+{
+  "_comment": "Merge these scripts into your existing package.json scripts block",
+  "scripts": {
+    "test:zk": "ZK_PROVER_MODE=mock STELLAR_MOCK=true npx ts-node tests/zk-smoke-test.ts",
+    "test:zk:real": "npx ts-node tests/zk-smoke-test.ts",
+    "verify-setup": "bash scripts/verify-setup.sh",
+    "fetch-vk": "bash scripts/fetch-vk.sh"
+  }
+}

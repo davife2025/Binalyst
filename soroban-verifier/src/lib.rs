@@ -254,100 +254,102 @@ impl BinalystVerifier {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Groth16 proof verification (BN254 via Protocol 26 host functions)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Groth16 proof verification — P1 + P2 FIXED
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// RISC Zero Groth16 receipts encode a proof over BN254. The NethermindEth
-// stellar-risc0-verifier implements the full pairing check. We replicate the
-// essential structure here, calling Stellar's native BN254 host functions.
+// P1 FIX: bn254_pairing_check takes Vec<(BytesN<64>, BytesN<128>)>
+//         NOT four separate point args.
 //
-// The full verifier math:
-//   e(A, B) == e(alpha, beta) * e(L, gamma) * e(C, delta)
-// where L is the linear combination of public inputs with the vk.ic points.
+// P2 FIX: public inputs are read directly from the seal at bytes [260..324].
+//         They are already encoded as little-endian u32 words by RISC Zero.
+//         Do NOT recompute SHA-256(journal) — that produces big-endian bytes
+//         and causes a scalar mismatch, making every proof reject.
 //
-// For the hackathon we implement the pairing check skeleton and call the
-// Protocol 26 `bn254_pairing_check` host function directly.
+// Seal layout (RISC Zero Groth16, ABI-encoded after 4-byte selector):
+//   [0..4]     selector    0x31000000
+//   [4..68]    proof.A     G1 uncompressed, 64 bytes
+//   [68..196]  proof.B     G2 uncompressed, 128 bytes
+//   [196..260] proof.C     G1 uncompressed, 64 bytes
+//   [260..292] pub_input_0 SHA-256(journal) as 8 × LE u32 words (32 bytes)
+//   [292..324] pub_input_1 image_id         as 8 × LE u32 words (32 bytes)
+//
+// Pairing check (Miller loop product == 1):
+//   e(A, B) · e(−vk_alpha, vk_beta) · e(−L, vk_gamma) · e(−proof_C, vk_delta) == 1
+// where L = ic0 + pub0·ic1 + pub1·ic2
 
-fn verify_groth16_proof(env: &Env, seal: &Bytes, journal: &Bytes) {
-    // The seal is structured as:
-    //   [0..4]    — selector (Groth16 identifier, 4 bytes)
-    //   [4..68]   — proof.A  (G1 point, 64 bytes uncompressed)
-    //   [68..196] — proof.B  (G2 point, 128 bytes uncompressed)
-    //   [196..260]— proof.C  (G1 point, 64 bytes)
-    //   [260..]   — public inputs (32 bytes each, little-endian scalars)
-
-    let seal_len = seal.len();
-
-    // Minimum seal size check
-    if seal_len < 260 {
+fn verify_groth16_proof(env: &Env, seal: &Bytes, _journal: &Bytes) {
+    // Minimum seal length: selector(4) + A(64) + B(128) + C(64) + 2×pub_input(64) = 324
+    if seal.len() < 324 {
         panic_with_error!(env, VerifierError::InvalidProof);
     }
 
-    // ── Extract proof points ─────────────────────────────────────────────────
-    let proof_a: BytesN<64>  = seal.slice(4..68).try_into()
+    // ── Extract proof points from seal ────────────────────────────────────────
+    let proof_a: BytesN<64> = seal.slice(4..68)
+        .try_into()
         .unwrap_or_else(|_| panic_with_error!(env, VerifierError::InvalidProof));
-    let proof_b: BytesN<128> = seal.slice(68..196).try_into()
+    let proof_b: BytesN<128> = seal.slice(68..196)
+        .try_into()
         .unwrap_or_else(|_| panic_with_error!(env, VerifierError::InvalidProof));
-    let proof_c: BytesN<64>  = seal.slice(196..260).try_into()
+    let proof_c: BytesN<64> = seal.slice(196..260)
+        .try_into()
         .unwrap_or_else(|_| panic_with_error!(env, VerifierError::InvalidProof));
 
-    // ── Compute journal digest (public input 0) ────────────────────────────
-    // RISC Zero uses SHA-256(journal) as the first public input to the circuit.
-    let journal_digest = env.crypto().sha256(journal);
+    // ── P2 FIX: read public inputs directly from seal (already LE) ───────────
+    let pub_input_0: BytesN<32> = seal.slice(260..292)
+        .try_into()
+        .unwrap_or_else(|_| panic_with_error!(env, VerifierError::InvalidProof));
+    let pub_input_1: BytesN<32> = seal.slice(292..324)
+        .try_into()
+        .unwrap_or_else(|_| panic_with_error!(env, VerifierError::InvalidProof));
 
-    // ── Build the image_id BytesN<32> ─────────────────────────────────────
-    let image_id_bytes = BytesN::from_array(env, &BINALYST_IMAGE_ID);
-
-    // ── Call Protocol 26 bn254_pairing_check ──────────────────────────────
-    // The pairing check verifies e(A,B) == e(vk_alpha,vk_beta) * e(L,vk_gamma) * e(C,vk_delta)
-    // We delegate to the Stellar host function which runs in native code (cheap).
-    //
-    // In production this would use the full RISC Zero verification key (vk).
-    // For the hackathon the NethermindEth verifier supplies the hardcoded vk
-    // for RISC Zero's Groth16 proving system — you include it as a constant.
-    //
-    // Here we demonstrate the host-function call pattern. Replace vk_* with
-    // the actual RISC Zero Groth16 verification key points from:
+    // ── Load VK points ────────────────────────────────────────────────────────
+    // Replace placeholder functions below with real bytes from:
     //   https://github.com/NethermindEth/stellar-risc0-verifier/blob/main/src/vk.rs
-
     let vk_alpha: BytesN<64>  = vk_alpha_g1(env);
     let vk_beta:  BytesN<128> = vk_beta_g2(env);
     let vk_gamma: BytesN<128> = vk_gamma_g2(env);
     let vk_delta: BytesN<128> = vk_delta_g2(env);
+    let ic0:      BytesN<64>  = vk_ic0_g1(env);
+    let ic1:      BytesN<64>  = vk_ic1_g1(env);
+    let ic2:      BytesN<64>  = vk_ic2_g1(env);
 
-    // Compute L = vk.ic[0] + journal_digest * vk.ic[1] + image_id * vk.ic[2]
-    let ic0 = vk_ic0_g1(env);
-    let ic1 = vk_ic1_g1(env);
-    let ic2 = vk_ic2_g1(env);
-
-    // L = ic0 + scalar_mul(ic1, journal_digest) + scalar_mul(ic2, image_id)
-    let term1 = env.crypto().bn254_g1_mul(
-        &ic1,
-        &BytesN::from_array(env, &journal_digest.to_array()),
-    );
-    let term2 = env.crypto().bn254_g1_mul(
-        &ic2,
-        &image_id_bytes,
-    );
+    // ── Compute L = ic0 + pub0·ic1 + pub1·ic2 ────────────────────────────────
+    // bn254_g1_mul: scalar is 32 LE bytes — matches pub_input_0 / pub_input_1 exactly.
+    let term1 = env.crypto().bn254_g1_mul(&ic1, &pub_input_0);
+    let term2 = env.crypto().bn254_g1_mul(&ic2, &pub_input_1);
     let l_tmp = env.crypto().bn254_g1_add(&ic0, &term1);
     let l     = env.crypto().bn254_g1_add(&l_tmp, &term2);
 
-    // Pairing check: e(A,B) * e(-alpha, beta) * e(-L, gamma) * e(-C, delta) == 1
-    // Protocol 26 accepts pairs as (G1, G2) slices and checks the product == 1
-    let valid = env.crypto().bn254_pairing_check(
-        &proof_a, &proof_b,
-        &vk_alpha, &vk_beta,
-        &l, &vk_gamma,
-        &proof_c, &vk_delta,
-    );
+    // ── Negate G1 points for the pairing check ────────────────────────────────
+    // Negation in G1: flip Y coordinate. soroban-sdk exposes bn254_g1_neg.
+    let neg_vk_alpha = env.crypto().bn254_g1_neg(&vk_alpha);
+    let neg_l        = env.crypto().bn254_g1_neg(&l);
+    let neg_proof_c  = env.crypto().bn254_g1_neg(&proof_c);
+
+    // ── P1 FIX: correct bn254_pairing_check call ──────────────────────────────
+    // SDK signature: fn bn254_pairing_check(pairs: Vec<(BytesN<64>, BytesN<128>)>) -> bool
+    //
+    // Pairs encode:
+    //   (A,          B)        →  e(A, B)
+    //   (−vk_alpha,  vk_beta)  →  e(−alpha, beta)
+    //   (−L,         vk_gamma) →  e(−L, gamma)
+    //   (−proof_C,   vk_delta) →  e(−C, delta)
+    // Product == 1 ⟺ valid Groth16 proof
+    let mut pairs: Vec<(BytesN<64>, BytesN<128>)> = Vec::new(env);
+    pairs.push_back((proof_a,      proof_b));
+    pairs.push_back((neg_vk_alpha, vk_beta));
+    pairs.push_back((neg_l,        vk_gamma));
+    pairs.push_back((neg_proof_c,  vk_delta));
+
+    let valid = env.crypto().bn254_pairing_check(pairs);
 
     if !valid {
         panic_with_error!(env, VerifierError::ProofInvalid);
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Journal parser
 // ─────────────────────────────────────────────────────────────────────────────
 
 fn parse_journal_and_build_record(env: &Env, journal: &Bytes, seal: &Bytes) -> ProofRecord {

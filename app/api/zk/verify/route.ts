@@ -30,8 +30,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
   }
 
+  // P4 FIX: parse body once before try/catch — req.json() can only be called once
+  let body: ZKVerifyRequest
   try {
-    const body: ZKVerifyRequest = await req.json()
+    body = await req.json()
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+  }
+
+  try {
     const { proofId, sealHex, journalHex } = body
 
     if (!proofId || !sealHex || !journalHex) {
@@ -61,7 +68,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     console.error('[zk/verify]', err.message)
     return NextResponse.json<ZKVerifyResponse>({
       success:     false,
-      proofId:     (await req.json().catch(() => ({}))).proofId ?? '',
+      proofId:     body?.proofId ?? '',
       stellarTxId: null,
       proofIndex:  null,
       explorerUrl: null,

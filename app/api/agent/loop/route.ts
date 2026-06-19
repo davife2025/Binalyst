@@ -223,6 +223,10 @@ export async function POST(req: NextRequest) {
       snapshots: snapshots.map(s => ({
         symbol: s.symbol, signalScore: s.signalScore,
         signalDir: s.signalDir, price: s.price, change24h: s.change24h,
+        // P5 FIX: include technicals + tags so ZK guest can prove technical conditions
+        fearGreed:  fg.value,
+        technicals: s.technicals ?? null,
+        tags:       s.tags ?? [],
       })),
       portfolioItems, cycleAt: Date.now(),
     })
