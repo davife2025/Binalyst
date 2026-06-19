@@ -16,7 +16,7 @@ type NavItem = {
   icon:    any
   dot?:    boolean
   badge?:  string
-  section: 'intelligence' | 'agent' | 'binance' | 'tools' | 'celo' | 'sui' | 'mantle' | 'stellar'
+  section: 'intelligence' | 'agent' | 'binance' | 'tools' | 'sui' | 'mantle' | 'stellar'
 }
 
 // ── Tiny inline SVG icon helper ───────────────────────────────────────────────
@@ -86,7 +86,6 @@ const NAV: NavItem[] = [
   { id: 'revocation', label: 'Revocation', section: 'sui',
     icon: <I><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></I> },
 
-
       // ── Stellar ZK (Session R — Stellar Hacks) ───────────────────────────────
   { id: 'zk-proofs',    label: 'ZK Proofs',  section: 'stellar' ,
       icon: <I><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></I> },
@@ -121,9 +120,9 @@ const NAV: NavItem[] = [
 const SECTIONS: { id: NavItem['section']; label: string; color: string }[] = [
   { id: 'intelligence', label: 'Intelligence',  color: '#3498db'  },
   { id: 'agent',        label: 'Trading Agent', color: '#F0B90B'  },
-  { id: 'celo',         label: 'Celo Agent',    color: '#FCFF52'  },
   { id: 'sui',          label: 'Sui Agent',     color: '#61DAFB'  },
   { id: 'mantle',       label: 'Mantle Agent',  color: '#61DAFB'  },
+   { id: 'stellar',      label: 'Stellar Agent',   color: '#FCFF52'  },
   { id: 'binance',      label: 'Binance',       color: '#0ECB81'  },
   { id: 'tools',        label: 'Tools',         color: 'rgba(255,255,255,.3)' },
 ]

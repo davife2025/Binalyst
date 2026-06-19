@@ -11,6 +11,7 @@ import { rateLimit }                 from '@/lib/rateLimit'
 
 export const dynamic = 'force-dynamic'
 
+
 export async function POST(req: NextRequest) {
   const ip = req.headers.get('x-forwarded-for') ?? 'unknown'
   const rl = rateLimit(`agent-status:${ip}`, 'market')

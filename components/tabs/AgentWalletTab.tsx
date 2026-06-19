@@ -7,6 +7,8 @@
  *
  * Session 1 (X Layer): Added chain selector strip at the top of the
  * ready step. All BSC/BNB logic below is unchanged.
+ * 
+ * FIXED: Added auto-refresh every 30 seconds + cache bypass
  */
 
 import { useState, useEffect, useCallback } from 'react'
@@ -73,6 +75,7 @@ export default function AgentWalletTab() {
   const [regResult,     setRegResult]     = useState<{ success: boolean; txHash?: string; message: string } | null>(null)
   const [copied,        setCopied]        = useState('')
   const [showKey,       setShowKey]       = useState(false)
+  const [lastRefresh,   setLastRefresh]   = useState<number | null>(null) // ← ADDED
 
   // ── X Layer chain selector state (Session 1 addition) ───────────────────
   const [activeChain,    setActiveChain]    = useState<'bsc' | 'xlayer'>('bsc')
@@ -86,7 +89,7 @@ export default function AgentWalletTab() {
     })
   }, [])
 
-  async function handleChainSwitch(target: 'bsc' | 'xlayer') {
+   async function handleChainSwitch(target: 'bsc' | 'xlayer') {
     setChainSwitching(true); setChainError('')
     const result = target === 'xlayer' ? await switchToXLayer() : await switchToBSC()
     if (result.success) {
@@ -106,20 +109,36 @@ export default function AgentWalletTab() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ privateKey, tokens: ['USDT', 'FDUSD', 'BNB'] }),
+        cache: 'no-store', // ← ADDED: Bypass Next.js cache
       })
       const data = await res.json()
       if (data.success) {
-        setBNBBalance(data.bnbBalance)
+        setBNBBalance(data.bnbBalance ?? 0)
         setUSDTBalance(data.tokenBalances?.USDT ?? 0)
         if (data.isRegistered) updateSession({ isRegistered: true })
+        setLastRefresh(Date.now()) // ← ADDED: Track refresh time
       }
-    } catch {}
+    } catch (err) {
+      console.error('[AgentWallet] Balance refresh failed:', err)
+    }
     setRefreshing(false)
-  }, [privateKey])
+  }, [privateKey, setBNBBalance, setUSDTBalance, updateSession])
 
+  // Initial fetch on wallet load
   useEffect(() => {
     if (isWalletLoaded && privateKey) refreshBalances()
-  }, [isWalletLoaded, privateKey])
+  }, [isWalletLoaded, privateKey, refreshBalances])
+
+  // ── AUTO-REFRESH EVERY 30 SECONDS ────────────────────────────────────────
+  useEffect(() => {
+    if (!isWalletLoaded || !privateKey) return
+    
+    const interval = setInterval(() => {
+      refreshBalances()
+    }, 30_000) // Refresh every 30 seconds
+    
+    return () => clearInterval(interval)
+  }, [isWalletLoaded, privateKey, refreshBalances])
 
   // ── Wallet generation ────────────────────────────────────────────────────
   function handleGenerate() {
@@ -188,6 +207,7 @@ export default function AgentWalletTab() {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ privateKey }),
+        cache:   'no-store', // ← ADDED
       })
       const data = await res.json()
       setRegResult({ success: data.success, txHash: data.txHash, message: data.message })
@@ -203,6 +223,15 @@ export default function AgentWalletTab() {
   }
 
   const isRegistered = session?.isRegistered ?? false
+
+  // Helper to format time ago
+  function timeAgo(ts: number | null): string {
+    if (!ts) return 'Never'
+    const s = Math.floor((Date.now() - ts) / 1000)
+    if (s < 60) return `${s}s ago`
+    if (s < 3600) return `${Math.floor(s / 60)}m ago`
+    return `${Math.floor(s / 3600)}h ago`
+  }
 
   // ════════════════════════════════════════════════════════════════════════════
   // Render
@@ -499,18 +528,25 @@ export default function AgentWalletTab() {
             )}
           </div>
 
-            {/* Wallet stats */}
+          {/* Wallet stats */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <Pill label="BNB Balance"    value={bnbBalance.toFixed(4) + ' BNB'} color={bnbBalance > 0.005 ? 'var(--green)' : 'var(--red)'} />
             <Pill label="USDT Balance"   value={'$' + usdtBalance.toFixed(2)}   color="var(--text)" />
-            <Pill label="Network"        value="BSC Mainnet"                     color="var(--yellow)" />
+            <Pill label="Network"        value={activeChain === 'xlayer' ? 'X Layer' : 'BSC Mainnet'} color="var(--yellow)" />
             <Pill label="Competition"    value={isRegistered ? '✓ Registered' : 'Not registered'} color={isRegistered ? 'var(--green)' : 'var(--text3)'} />
           </div>
 
           {/* Address card */}
           <div className="rounded-md p-5" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
-            <div className="mono text-[10px] uppercase tracking-widest mb-3" style={{ color: 'var(--text3)' }}>
-              Agent Wallet Address
+            <div className="flex items-center justify-between mb-3">
+              <div className="mono text-[10px] uppercase tracking-widest" style={{ color: 'var(--text3)' }}>
+                Agent Wallet Address
+              </div>
+              {lastRefresh && (
+                <div className="mono text-[9px]" style={{ color: 'var(--text3)' }}>
+                  Last updated: {timeAgo(lastRefresh)}
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <div className="mono text-sm flex-1 truncate px-3 py-2.5 rounded-md"
