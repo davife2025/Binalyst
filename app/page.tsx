@@ -37,13 +37,21 @@ import StrategyBuilder     from '@/components/tabs/StrategyBuilder'
 import CompetitionTab      from '@/components/tabs/CompetitionTab'
 import DorahacksTab        from '@/components/tabs/DorahacksTab'
 import AgentPerformanceTab from '@/components/tabs/AgentPerformanceTab'
+import WorldCupTab        from '@/components/tabs/WorldCupTab'   // Session 4
+
+
+// ── Chain Specific Agents (Celo, Sui, Mantle) ─────────────────────────────────
 import BacktestTab         from '@/components/tabs/BacktestTab'
-import BitgetConnectTab    from '@/components/tabs/BitgetConnectTab'
-import BitgetToolsTab      from '@/components/tabs/BitgetToolsTab'
-import WorldCupTab           from '@/components/tabs/WorldCupTab'
-import MantleAgentTab from '@/components/tabs/MantleAgentTab'
-import CeloAgentTab from '@/components/tabs/CeloAgentTab'
-import SuiAgentTab from '@/components/tabs/SuiAgentTab'
+import CeloAgentTab        from '@/components/tabs/CeloAgentTab'
+import SuiAgentTab         from '@/components/tabs/SuiAgentTab'
+import DeepBookTab         from '@/components/tabs/DeepBookTab'
+import RevocationTab       from '@/components/tabs/RevocationDemo'
+import MantleAgentTab      from '@/components/tabs/MantleAgentTab'
+import MantleSubmissionTab from '@/components/tabs/MantleSubmissionTab'
+
+// ── Stellar ZK (Sessions R+S — Stellar Hacks) ─────────────────────────────────
+import ZKProofTab             from '@/components/tabs/ZKProofTab'
+import StellarSubmissionTab   from '@/components/tabs/StellarSubmissionTab'
 
 const TABS: Record<string, React.ReactNode> = {
   // Core Binalyst
@@ -62,24 +70,32 @@ const TABS: Record<string, React.ReactNode> = {
   settings:     <SettingsTab />,
 
   // Autonomous Agent (Sessions A-G)
-  'agent-wallet':  <AgentWalletTab />,
+  'agent-wallet':    <AgentWalletTab />,
   'signals':         <SignalDashboard />,
   'strategy':        <StrategyBuilder />,
   'competition':     <CompetitionTab />,
   'submission':      <DorahacksTab />,
   'performance':     <AgentPerformanceTab />,
+  'backtest':        <BacktestTab />, // ← ADDED
 
-  // Session L — Backtester
-  'backtest':          <BacktestTab />,
+  // X Layer World Cup (Sessions 1-6)
+  'world-cup':       <WorldCupTab />, // ← FIXED TYPO (was 'worldcup')
 
-  // Session O — Bitget
-  'bitget-connect':  <BitgetConnectTab />,
-  'bitget-tools':    <BitgetToolsTab />,
+  // Celo Agent
+  'celo-agent':      <CeloAgentTab />, // ← ADDED
 
-  'world-cup':       <WorldCupTab />,
-  'mantle-agent':    <MantleAgentTab />,
-  'celo-agent':      <CeloAgentTab />,
-  'sui-agent':       <SuiAgentTab />
+  // Sui Agent
+  'sui-agent':       <SuiAgentTab />, // ← ADDED
+  'deepbook':        <DeepBookTab />, // ← ADDED
+  'revocation':      <RevocationTab />, // ← ADDED
+
+  // Mantle Agent
+  'mantle-agent':      <MantleAgentTab />, // ← ADDED
+  'mantle-submission': <MantleSubmissionTab />, // ← ADDED
+
+  // Stellar ZK (Sessions R+S)
+  'zk-proofs':          <ZKProofTab />,           // ← ADDED
+  'stellar-submission': <StellarSubmissionTab />,  // ← ADDED
 }
 
 export default function App() {
