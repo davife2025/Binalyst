@@ -65,7 +65,6 @@ export type ActiveTab =
   | 'revocation'
   |'world-cup'
   | 'zk-proofs'
-  | 'stellar-submission'
 
 interface OpenClawStore {
   // ── Credentials ────────────────────────────────────────────────────────────

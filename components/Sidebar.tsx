@@ -51,9 +51,8 @@ const NAV: NavItem[] = [
   { id: 'deepbook',   label: 'DeepBook',   icon: '📊',   section: 'sui'},
   { id: 'revocation', label: 'Revocation', icon: '🛑',  section: 'sui' },
 
-  // ── Stellar ZK (Sessions R+S — Stellar Hacks) ────────────────────────────
-  { id: 'zk-proofs',           label: 'ZK Proofs',     icon: '⬡',  dot: true,  section: 'stellar' },
-  { id: 'stellar-submission',  label: 'ZK Submit',     icon: '🏆',             section: 'stellar' },
+  // ── Stellar ZK (Session R — Stellar Hacks) ───────────────────────────────
+  { id: 'zk-proofs',    label: 'ZK Proofs',       icon: '⬡',  dot: true,  section: 'stellar' },
 
   // ── Tools ─────────────────────────────────────────────────────────────────
   { id: 'chat',         label: 'AI Assistant',    icon: '◈',              section: 'tools' },

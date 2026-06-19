@@ -6,6 +6,7 @@ import type { SignalSnapshot } from './signalEngine'
 import type { StrategyRule }   from './signalEngine'
 import { evaluateRules }       from './signalEngine'
 import { COMPETITION_RULES, checkCompetitionGuardrails } from './twak/client'
+import { submitTradeProof }    from './zkProofStore'
 
 // Re-export so DrawdownGauge can import from either path
 export { COMPETITION_RULES } from './twak/client'
@@ -255,6 +256,30 @@ export class AgentLoop {
         if (result.success) {
           executed++
           this.lastFiredRuleAt[rule.id] = now
+
+          // ── ZK proof: fire-and-forget after every executed trade ──────────
+          // Non-blocking — proof runs async so it never delays the agent loop.
+          const _config = cb.getConfig()
+          submitTradeProof({
+            signal:       signal,
+            rule:         rule,
+            decision:     decision,
+            portfolioUSD: portfolioUSD,
+            peakUSD:      cb.getPeakUSD(),
+            startUSD:     cb.getStartUSD(),
+            tradesToday:  todayTrades + executed,
+            totalTrades:  totalTrades + executed,
+            config: {
+              maxDrawdownPct:  _config.maxDrawdownPct,
+              maxPerTradePct:  _config.maxPerTradePct,
+              maxDailyTrades:  _config.maxDailyTrades,
+              dryRun:          _config.dryRun,
+            },
+          }).catch(err =>
+            console.warn('[ZK] submitTradeProof failed (non-fatal):', err.message)
+          )
+          // ─────────────────────────────────────────────────────────────────
+
         } else {
           errors.push(`${rule.symbol} ${rule.action} failed: ${result.reason ?? result.message}`)
         }

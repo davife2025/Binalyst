@@ -49,9 +49,8 @@ import RevocationTab       from '@/components/tabs/RevocationDemo'
 import MantleAgentTab      from '@/components/tabs/MantleAgentTab'
 import MantleSubmissionTab from '@/components/tabs/MantleSubmissionTab'
 
-// ── Stellar ZK (Sessions R+S — Stellar Hacks) ─────────────────────────────────
-import ZKProofTab             from '@/components/tabs/ZKProofTab'
-import StellarSubmissionTab   from '@/components/tabs/StellarSubmissionTab'
+// ── Stellar ZK (Session R — Stellar Hacks) ────────────────────────────────────
+import ZKProofTab          from '@/components/tabs/ZKProofTab'
 
 const TABS: Record<string, React.ReactNode> = {
   // Core Binalyst
@@ -93,9 +92,8 @@ const TABS: Record<string, React.ReactNode> = {
   'mantle-agent':      <MantleAgentTab />, // ← ADDED
   'mantle-submission': <MantleSubmissionTab />, // ← ADDED
 
-  // Stellar ZK (Sessions R+S)
-  'zk-proofs':          <ZKProofTab />,           // ← ADDED
-  'stellar-submission': <StellarSubmissionTab />,  // ← ADDED
+  // Stellar ZK (Session R)
+  'zk-proofs':         <ZKProofTab />, // ← ADDED
 }
 
 export default function App() {
