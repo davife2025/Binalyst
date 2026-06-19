@@ -133,14 +133,15 @@ export default function AgentTab() {
   const triggeredToday = log.filter(l => l.status === 'triggered' && Date.now() - l.timestamp < 86400000).length
 
   return (
+    <div className="flex-1 overflow-y-auto" style={{background:"var(--bg)"}}>
     <div className="max-w-4xl mx-auto px-6 py-6">
       <div className="flex items-start justify-between mb-6 gap-4 flex-wrap">
         <div>
-          <h2 className="text-lg font-extrabold" style={{ color: 'var(--text)' }}>Autonomous Agent</h2>
+          <h2 className="text-xl font-extrabold uppercase tracking-tight" style={{ color: 'var(--text)' }}>Autonomous <span style={{color:"var(--yellow)"}}>Agent</span></h2>
           <p className="mono text-xs mt-0.5" style={{ color: 'var(--text3)' }}>Rules engine · checks every 2 min{lastRun && ` · last run ${lastRun}`}</p>
         </div>
         <button onClick={() => runAgent()} disabled={running || !activeCount}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all"
+          className="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold transition-all"
           style={{ background: running ? 'var(--bg4)' : 'var(--yellow)', color: running ? 'var(--text3)' : '#000', cursor: running || !activeCount ? 'not-allowed' : 'pointer', opacity: !activeCount ? 0.4 : 1 }}>
           {running && <span className="w-4 h-4 rounded-full border-2 border-black/30 border-t-black animate-spin-slow" />}
           {running ? 'Running...' : '▶ Run Now'}
@@ -153,7 +154,7 @@ export default function AgentTab() {
         {techSnap
           ? <TechnicalSignalCard snapshot={techSnap} />
           : (
-            <div className="rounded-xl p-4 flex items-center justify-center mono text-xs"
+            <div className="rounded-md p-4 flex items-center justify-center mono text-xs"
               style={{ background: 'var(--bg2)', border: '1px solid var(--border)', color: 'var(--text3)' }}>
               Loading BTC technicals…
             </div>
@@ -163,7 +164,7 @@ export default function AgentTab() {
 
       <div className="grid grid-cols-3 gap-3 mb-5">
         {[['Total Rules', rules.length, 'var(--text)'], ['Active', activeCount, 'var(--green)'], ['Triggered Today', triggeredToday, 'var(--yellow)']].map(([l, v, c]: any) => (
-          <div key={l} className="rounded-xl p-4" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
+          <div key={l} className="rounded-md p-4" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
             <div className="mono text-[10px] uppercase tracking-widest mb-1" style={{ color: 'var(--text3)' }}>{l}</div>
             <div className="mono text-2xl font-extrabold" style={{ color: c }}>{v}</div>
           </div>
@@ -172,20 +173,20 @@ export default function AgentTab() {
 
       <div className="grid gap-6" style={{ gridTemplateColumns: '1fr 1fr' }}>
         <div className="flex flex-col gap-4">
-          <div className="rounded-xl p-5" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
+          <div className="rounded-md p-5" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
             <div className="mono text-[10px] uppercase tracking-widest mb-4" style={{ color: 'var(--text3)' }}>New Rule</div>
             <div className="flex flex-col gap-3">
               {[{l:'Rule Name',v:name,s:setName,p:'BTC take-profit'},{l:'Coin',v:symbol,s:(v:string)=>setSymbol(v.toUpperCase()),p:'BTC'}].map(({l,v,s,p})=>(
                 <div key={l} className="flex flex-col gap-1">
                   <span className="mono text-[9px] uppercase tracking-widest" style={{color:'var(--text3)'}}>{l}</span>
-                  <input value={v} onChange={e=>s(e.target.value)} placeholder={p} className="mono text-sm px-3 py-2.5 rounded-lg outline-none"
+                  <input value={v} onChange={e=>s(e.target.value)} placeholder={p} className="mono text-sm px-3 py-2.5 rounded-md outline-none"
                     style={{background:'var(--bg3)',border:'1px solid var(--border2)',color:'var(--text)'}}
                     onFocus={e=>(e.target.style.borderColor='var(--yellow)')} onBlur={e=>(e.target.style.borderColor='var(--border2)')} />
                 </div>
               ))}
               <div className="flex flex-col gap-1">
                 <span className="mono text-[9px] uppercase tracking-widest" style={{color:'var(--text3)'}}>When</span>
-                <select value={trigger} onChange={e=>setTrigger(e.target.value as RuleTrigger)} className="mono text-xs px-3 py-2.5 rounded-lg outline-none"
+                <select value={trigger} onChange={e=>setTrigger(e.target.value as RuleTrigger)} className="mono text-xs px-3 py-2.5 rounded-md outline-none"
                   style={{background:'var(--bg3)',border:'1px solid var(--border2)',color:'var(--text)'}}>
                   {Object.entries(TRIGGER_LABELS).map(([k,v])=><option key={k} value={k}>{v}</option>)}
                 </select>
@@ -193,18 +194,18 @@ export default function AgentTab() {
               <div className="flex flex-col gap-1">
                 <span className="mono text-[9px] uppercase tracking-widest" style={{color:'var(--text3)'}}>{trigger.includes('change')?'Value (%)':'Price ($)'}</span>
                 <input type="number" value={value} onChange={e=>setValue(e.target.value)} placeholder={trigger.includes('change')?'5':'100000'}
-                  className="mono text-sm px-3 py-2.5 rounded-lg outline-none"
+                  className="mono text-sm px-3 py-2.5 rounded-md outline-none"
                   style={{background:'var(--bg3)',border:'1px solid var(--border2)',color:'var(--text)'}}
                   onFocus={e=>(e.target.style.borderColor='var(--yellow)')} onBlur={e=>(e.target.style.borderColor='var(--border2)')} />
               </div>
               <div className="flex flex-col gap-1">
                 <span className="mono text-[9px] uppercase tracking-widest" style={{color:'var(--text3)'}}>Then</span>
-                <select value={action} onChange={e=>setAction(e.target.value as RuleAction)} className="mono text-xs px-3 py-2.5 rounded-lg outline-none"
+                <select value={action} onChange={e=>setAction(e.target.value as RuleAction)} className="mono text-xs px-3 py-2.5 rounded-md outline-none"
                   style={{background:'var(--bg3)',border:'1px solid var(--border2)',color:'var(--text)'}}>
                   {Object.entries(ACTION_LABELS).map(([k,v])=><option key={k} value={k}>{v}</option>)}
                 </select>
               </div>
-              <button onClick={addRule} className="py-2.5 rounded-xl text-sm font-bold mt-1" style={{background:'var(--yellow)',color:'#000'}}>+ Add Rule</button>
+              <button onClick={addRule} className="py-2.5 rounded-md text-sm font-bold mt-1" style={{background:'var(--yellow)',color:'#000'}}>+ Add Rule</button>
             </div>
           </div>
 
@@ -212,7 +213,7 @@ export default function AgentTab() {
             <div className="flex flex-col gap-2">
               <div className="mono text-[10px] uppercase tracking-widest" style={{color:'var(--text3)'}}>Rules</div>
               {rules.map(rule => (
-                <div key={rule.id} className="flex items-center gap-3 rounded-xl px-4 py-3"
+                <div key={rule.id} className="flex items-center gap-3 rounded-md px-4 py-3"
                   style={{background:'var(--bg2)',border:'1px solid var(--border)',opacity:rule.active?1:0.5}}>
                   <div className="flex-1 min-w-0">
                     <div className="text-xs font-semibold" style={{color:'var(--text)'}}>{rule.name}</div>
@@ -237,10 +238,10 @@ export default function AgentTab() {
             <div className="mono text-[10px] uppercase tracking-widest" style={{color:'var(--text3)'}}>Activity Log</div>
             {log.length > 0 && <button onClick={()=>{setLog([]);saveLog([])}} className="mono text-[9px] px-2 py-1 rounded" style={{color:'var(--text3)'}}>Clear</button>}
           </div>
-          <div className="rounded-xl overflow-hidden" style={{border:'1px solid var(--border)'}}>
+          <div className="rounded-md overflow-hidden" style={{border:'1px solid var(--border)'}}>
             {log.length === 0 ? (
               <div className="py-12 flex flex-col items-center gap-3 text-center" style={{background:'var(--bg2)'}}>
-                <div className="text-3xl opacity-30">◎</div>
+                <div style={{width:32,height:32,borderRadius:"50%",border:"2px solid rgba(240,185,11,.22)",margin:"0 auto",opacity:.5}}/>
                 <div className="mono text-xs" style={{color:'var(--text3)'}}>No activity yet.</div>
               </div>
             ) : (
@@ -263,5 +264,6 @@ export default function AgentTab() {
         </div>
       </div>
     </div>
+  </div>
   )
 }

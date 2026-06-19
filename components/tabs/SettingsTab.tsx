@@ -54,6 +54,7 @@ export default function SettingsTab() {
   }
 
   return (
+    <div className="flex-1 overflow-y-auto" style={{background:"var(--bg)"}}>
     <div className="max-w-2xl mx-auto px-6 py-8 flex flex-col gap-8">
 
       {/* ── Binance API Key ──────────────────────────────────────── */}
@@ -62,15 +63,15 @@ export default function SettingsTab() {
 
         {isConnected ? (
           <div
-            className="rounded-xl p-5 flex items-start justify-between gap-4"
+            className="rounded-md p-5 flex items-start justify-between gap-4"
             style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}
           >
             <div className="flex items-center gap-3">
               <div
-                className="w-10 h-10 rounded-lg flex items-center justify-center text-lg shrink-0"
+                className="w-10 h-10 rounded-md flex items-center justify-center text-lg shrink-0"
                 style={{ background: 'rgba(14,203,129,0.12)' }}
               >
-                ✓
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--green)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
               </div>
               <div>
                 <div className="text-sm font-semibold" style={{ color: 'var(--green)' }}>
@@ -86,7 +87,7 @@ export default function SettingsTab() {
             </div>
             <button
               onClick={disconnect}
-              className="text-xs px-4 py-2 rounded-lg shrink-0 transition-all"
+              className="text-xs px-4 py-2 rounded-md shrink-0 transition-all"
               style={{
                 background: 'rgba(246,70,93,0.1)',
                 border: '1px solid rgba(246,70,93,0.3)',
@@ -98,7 +99,7 @@ export default function SettingsTab() {
           </div>
         ) : (
           <div
-            className="rounded-xl p-5 flex flex-col gap-4"
+            className="rounded-md p-5 flex flex-col gap-4"
             style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}
           >
             <p className="text-sm" style={{ color: 'var(--text2)' }}>
@@ -115,7 +116,7 @@ export default function SettingsTab() {
                   value={keyInput}
                   onChange={e => setKeyInput(e.target.value)}
                   placeholder="Paste your Binance API key..."
-                  className="w-full mono text-sm px-3 py-2.5 rounded-lg outline-none transition-all"
+                  className="w-full mono text-sm px-3 py-2.5 rounded-md outline-none transition-all"
                   style={{
                     background: 'var(--bg3)',
                     border: '1px solid var(--border2)',
@@ -133,7 +134,7 @@ export default function SettingsTab() {
                     value={secretInput}
                     onChange={e => setSecretInput(e.target.value)}
                     placeholder="Paste your API secret..."
-                    className="w-full mono text-sm px-3 py-2.5 pr-16 rounded-lg outline-none transition-all"
+                    className="w-full mono text-sm px-3 py-2.5 pr-16 rounded-md outline-none transition-all"
                     style={{
                       background: 'var(--bg3)',
                       border: '1px solid var(--border2)',
@@ -155,7 +156,7 @@ export default function SettingsTab() {
 
             {testResult && (
               <div
-                className="mono text-xs p-3 rounded-lg"
+                className="mono text-xs p-3 rounded-md"
                 style={{
                   background: testResult.ok ? 'rgba(14,203,129,0.08)' : 'rgba(246,70,93,0.08)',
                   border: `1px solid ${testResult.ok ? 'rgba(14,203,129,0.25)' : 'rgba(246,70,93,0.25)'}`,
@@ -169,7 +170,7 @@ export default function SettingsTab() {
             <button
               onClick={testAndConnect}
               disabled={!keyInput || !secretInput || testing}
-              className="flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold transition-all"
+              className="flex items-center justify-center gap-2 py-2.5 rounded-md text-sm font-bold transition-all"
               style={{
                 background: keyInput && secretInput ? 'var(--yellow)' : 'var(--bg4)',
                 color: keyInput && secretInput ? '#000' : 'var(--text3)',
@@ -185,7 +186,7 @@ export default function SettingsTab() {
             </button>
 
             <div
-              className="text-xs rounded-lg p-3"
+              className="text-xs rounded-md p-3"
               style={{ background: 'var(--bg3)', color: 'var(--text3)' }}
             >
               <p className="font-semibold mb-1" style={{ color: 'var(--text2)' }}>
@@ -207,7 +208,7 @@ export default function SettingsTab() {
       <section>
         <SectionTitle label="Auto-trade" />
         <div
-          className="rounded-xl p-5"
+          className="rounded-md p-5"
           style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}
         >
           <div className="flex items-start justify-between gap-4">
@@ -245,7 +246,7 @@ export default function SettingsTab() {
 
           {autoTradeEnabled && (
             <div
-              className="mt-4 mono text-xs p-3 rounded-lg"
+              className="mt-4 mono text-xs p-3 rounded-md"
               style={{
                 background: 'rgba(246,70,93,0.08)',
                 border: '1px solid rgba(246,70,93,0.2)',
@@ -262,12 +263,12 @@ export default function SettingsTab() {
       <section>
         <SectionTitle label="Account" />
         <div
-          className="rounded-xl p-5 flex items-center justify-between gap-4"
+          className="rounded-md p-5 flex items-center justify-between gap-4"
           style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}
         >
           <div className="flex items-center gap-3">
             <div
-              className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0"
+              className="w-10 h-10 rounded flex items-center justify-center font-bold text-sm shrink-0"
               style={{ background: 'var(--yellow)', color: '#000' }}
             >
               {(session?.user?.name ?? session?.user?.email ?? 'U').slice(0, 1).toUpperCase()}
@@ -284,7 +285,7 @@ export default function SettingsTab() {
           <button
             onClick={handleSignOut}
             disabled={signingOut}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all shrink-0"
+            className="flex items-center gap-2 px-4 py-2 rounded-md text-xs font-bold transition-all shrink-0"
             style={{
               background: 'rgba(246,70,93,0.08)',
               border: '1px solid rgba(246,70,93,0.25)',
@@ -305,7 +306,7 @@ export default function SettingsTab() {
       <section>
         <SectionTitle label="About" />
         <div
-          className="rounded-xl p-5 flex flex-col gap-2"
+          className="rounded-md p-5 flex flex-col gap-2"
           style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}
         >
           <Row label="Platform"    value="Binalyst" />
@@ -316,16 +317,18 @@ export default function SettingsTab() {
         </div>
       </section>
     </div>
+  </div>
   )
 }
 
 function SectionTitle({ label }: { label: string }) {
   return (
-    <div
-      className="mono text-xs font-bold tracking-widest uppercase mb-3"
-      style={{ color: 'var(--text3)' }}
-    >
-      {label}
+    <div className="flex items-center gap-3 mb-3">
+      <div className="mono font-bold tracking-widest uppercase"
+        style={{ fontSize: 9, color: 'var(--text3)', letterSpacing: '.12em' }}>
+        {label}
+      </div>
+      <div className="flex-1 h-px" style={{ background: 'var(--border)' }} />
     </div>
   )
 }

@@ -226,7 +226,7 @@ function RegimePanel({ adaptiveCfg }: { adaptiveCfg: AdaptiveStrategyConfig }) {
             {decision.regimeConf.toFixed(0)}%
           </span>
         </div>
-        <div className="mono text-xs px-3 py-1.5 rounded-lg"
+        <div className="mono text-xs px-3 py-1.5 rounded-md"
           style={{ background: 'var(--bg3)', color: 'var(--text2)' }}>
           Mode: <span style={{ color: 'var(--yellow)' }}>{modeLabel(decision.mode)}</span>
         </div>
@@ -267,7 +267,7 @@ function RegimePanel({ adaptiveCfg }: { adaptiveCfg: AdaptiveStrategyConfig }) {
                  : 'var(--yellow)',
           },
         ].map(item => (
-          <div key={item.label} className="rounded-lg p-2.5 text-center"
+          <div key={item.label} className="rounded-md p-2.5 text-center"
             style={{ background: 'var(--bg3)' }}>
             <div className="mono text-[9px] uppercase tracking-widest mb-1" style={{ color: 'var(--text3)' }}>
               {item.label}
@@ -285,9 +285,13 @@ function RegimePanel({ adaptiveCfg }: { adaptiveCfg: AdaptiveStrategyConfig }) {
       </div>
 
       {/* Active rules count */}
-      <div className="mono text-[10px] px-3 py-1.5 rounded-lg inline-flex items-center gap-2 self-start"
+      <div className="mono text-[10px] px-3 py-1.5 rounded-md inline-flex items-center gap-2 self-start"
         style={{ background: 'rgba(240,185,11,0.08)', border: '1px solid rgba(240,185,11,0.15)' }}>
-        <span style={{ color: 'var(--yellow)' }}>⚡</span>
+        <span style={{ color: 'var(--yellow)', display:'flex', alignItems:'center' }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+          </svg>
+        </span>
         <span style={{ color: 'var(--text2)' }}>
           {decision.rules.length} adaptive rules active for this regime
         </span>
@@ -365,6 +369,7 @@ export default function StrategyBuilder() {
   ] as const
 
   return (
+    <div className="flex-1 overflow-y-auto" style={{background:"var(--bg)"}}>
     <div className="max-w-4xl mx-auto px-6 py-6 flex flex-col gap-6">
 
       {/* Header */}
@@ -376,7 +381,7 @@ export default function StrategyBuilder() {
           </p>
         </div>
         {result && (
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full"
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded"
             style={{ background: riskCfg!.bg, border: `1px solid ${riskCfg!.border}` }}>
             <span className="mono text-[10px] font-bold" style={{ color: riskCfg!.color }}>
               {result.riskLevel} RISK
@@ -393,7 +398,7 @@ export default function StrategyBuilder() {
         <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
           {TEMPLATES.map(t => (
             <button key={t.name} onClick={() => loadTemplate(t)}
-              className="flex items-start gap-3 px-4 py-3 rounded-xl text-left transition-all relative"
+              className="flex items-start gap-3 px-4 py-3 rounded-md text-left transition-all relative"
               style={{ background: 'var(--bg2)', border: `1px solid ${t.isNew ? 'rgba(240,185,11,0.3)' : 'var(--border)'}` }}
               onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--yellow)')}
               onMouseLeave={e => (e.currentTarget.style.borderColor = t.isNew ? 'rgba(240,185,11,0.3)' : 'var(--border)')}>
@@ -438,7 +443,7 @@ export default function StrategyBuilder() {
               Live Regime Overlay
             </span>
             <button onClick={() => setShowRegime(v => !v)}
-              className="mono text-[10px] px-3 py-1 rounded-lg transition-all"
+              className="mono text-[10px] px-3 py-1 rounded-md transition-all"
               style={{
                 background: showRegime ? 'rgba(240,185,11,0.1)' : 'var(--bg2)',
                 border: '1px solid var(--border)',
@@ -463,7 +468,7 @@ export default function StrategyBuilder() {
               onChange={e => setText(e.target.value)}
               rows={10}
               placeholder={`Describe your strategy in plain English. Examples:\n\nBuy BTC with 10% when RSI drops below 32 and regime is trending up.\nSell BTC when MACD crosses bearish.\nBuy ETH with 8% when Fear & Greed drops below 25.\nSell ETH when signal score drops below 40.`}
-              className="mono text-sm px-4 py-3 rounded-xl outline-none resize-none leading-relaxed"
+              className="mono text-sm px-4 py-3 rounded-md outline-none resize-none leading-relaxed"
               style={{
                 background: 'var(--bg2)',
                 border:     '1px solid var(--border2)',
@@ -520,12 +525,12 @@ export default function StrategyBuilder() {
           {/* Eligible tokens */}
           <div>
             <button onClick={() => setShowTokens(v => !v)}
-              className="mono text-[10px] px-3 py-1.5 rounded-lg"
+              className="mono text-[10px] px-3 py-1.5 rounded-md"
               style={{ background: 'var(--bg2)', border: '1px solid var(--border)', color: 'var(--text3)' }}>
               {showTokens ? '▲ Hide' : '▼ Show'} 149 eligible tokens
             </button>
             {showTokens && (
-              <div className="flex flex-wrap gap-1.5 mt-3 p-4 rounded-xl"
+              <div className="flex flex-wrap gap-1.5 mt-3 p-4 rounded-md"
                 style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
                 {ALL_ELIGIBLE_SYMBOLS.map(sym => (
                   <button key={sym}
@@ -542,14 +547,14 @@ export default function StrategyBuilder() {
           </div>
 
           {error && (
-            <div className="mono text-xs p-3 rounded-lg"
+            <div className="mono text-xs p-3 rounded-md"
               style={{ background: 'rgba(246,70,93,0.08)', border: '1px solid rgba(246,70,93,0.25)', color: 'var(--red)' }}>
               {error}
             </div>
           )}
 
           <button onClick={handleParse} disabled={parsing || !text.trim()}
-            className="py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all"
+            className="py-3 rounded-md text-sm font-bold flex items-center justify-center gap-2 transition-all"
             style={{
               background: parsing || !text.trim() ? 'var(--bg4)' : 'var(--yellow)',
               color:      parsing || !text.trim() ? 'var(--text3)' : '#000',
@@ -574,7 +579,7 @@ export default function StrategyBuilder() {
                 Write a strategy and click Parse to generate rules
               </div>
               <button onClick={() => setActiveTab('write')}
-                className="mono text-xs px-4 py-2 rounded-lg"
+                className="mono text-xs px-4 py-2 rounded-md"
                 style={{ background: 'var(--yellow)', color: '#000' }}>
                 ← Write Strategy
               </button>
@@ -616,7 +621,7 @@ export default function StrategyBuilder() {
                   return (
                     <div key={rule.id ?? i} className="rounded-md p-4 flex items-start gap-3"
                       style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
-                      <div className="w-6 h-6 rounded-full flex items-center justify-center mono text-[10px] font-bold shrink-0 mt-0.5"
+                      <div className="w-6 h-6 rounded flex items-center justify-center mono text-[10px] font-bold shrink-0 mt-0.5"
                         style={{ background: 'var(--bg4)', color: 'var(--text3)' }}>
                         {i + 1}
                       </div>
@@ -625,7 +630,7 @@ export default function StrategyBuilder() {
                           <span className="mono text-xs font-extrabold" style={{ color: 'var(--text)' }}>
                             {rule.symbol}
                           </span>
-                          <span className="mono text-[10px] px-2 py-0.5 rounded-full font-bold"
+                          <span className="mono text-[10px] px-2 py-0.5 rounded font-bold"
                             style={{
                               background: rule.action === 'BUY' ? 'rgba(14,203,129,0.15)' : 'rgba(246,70,93,0.15)',
                               color:      rule.action === 'BUY' ? 'var(--green)' : 'var(--red)',
@@ -636,7 +641,7 @@ export default function StrategyBuilder() {
                             {rule.sizePct}% portfolio
                           </span>
                           {isTech && (
-                            <span className="mono text-[9px] px-2 py-0.5 rounded-full"
+                            <span className="mono text-[9px] px-2 py-0.5 rounded"
                               style={{ background: 'rgba(240,185,11,0.1)', color: 'var(--yellow)', border: '1px solid rgba(240,185,11,0.2)' }}>
                               📊 Technical
                             </span>
@@ -669,7 +674,7 @@ export default function StrategyBuilder() {
                 })}
               </div>
               <button onClick={() => setActiveTab('config')}
-                className="py-2.5 rounded-xl mono text-sm font-bold"
+                className="py-2.5 rounded-md mono text-sm font-bold"
                 style={{ background: 'var(--yellow)', color: '#000' }}>
                 Save & Configure Agent →
               </button>
@@ -783,7 +788,7 @@ export default function StrategyBuilder() {
               setText(BTC_ADAPTIVE_TEMPLATE_TEXT)
               setActiveTab('write')
             }}
-            className="py-2.5 rounded-xl mono text-sm font-bold"
+            className="py-2.5 rounded-md mono text-sm font-bold"
             style={{ background: 'var(--yellow)', color: '#000' }}>
             Load BTC Adaptive Template →
           </button>
@@ -907,12 +912,13 @@ export default function StrategyBuilder() {
                 alert('✓ Strategy and config saved. Go to the Competition tab to start the agent.')
               }
             }}
-            className="py-3 rounded-xl text-sm font-bold"
+            className="py-3 rounded-md text-sm font-bold"
             style={{ background: 'var(--yellow)', color: '#000' }}>
             ✓ Save Configuration
           </button>
         </div>
       )}
     </div>
+  </div>
   )
 }
