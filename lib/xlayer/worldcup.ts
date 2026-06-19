@@ -205,9 +205,11 @@ const FD_HEADERS = () => ({
   'X-Auth-Token': process.env.FOOTBALL_DATA_API_KEY ?? '',
 })
 
-// FIFA World Cup 2026 competition ID (update when confirmed by football-data.org)
-// For 2022 it was 2000. Check: https://api.football-data.org/v4/competitions
-const WC_COMPETITION_ID = process.env.WC_COMPETITION_ID ?? '2000'
+// FIFA World Cup competition code on football-data.org.
+// football-data.org uses letter codes, not numeric IDs, for major tournaments:
+// PL (Premier League), WC (World Cup), CL (Champions League), etc.
+// Confirmed: https://www.football-data.org/coverage lists "Worldcup" under code WC.
+const WC_COMPETITION_ID = process.env.WC_COMPETITION_ID ?? 'WC'
 
 interface FDMatch {
   id:          number

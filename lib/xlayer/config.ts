@@ -27,15 +27,23 @@ export const XLAYER_NATIVE_SYMBOL   = 'OKB'
 export const XLAYER_NATIVE_DECIMALS = 18
 
 // Uniswap V4 on X Layer
-export const UNISWAP_V4_POOL_MANAGER = '0x9a13510627fe66e71cA1FF0c0e4cE13E5A5b64d7'  // replace with verified address post-deploy
-export const UNISWAP_V4_ROUTER       = '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D'  // replace with verified address post-deploy
+// ⚠️ UNVERIFIED PLACEHOLDER — Uniswap's official deployments page
+// (docs.uniswap.org/contracts/v4/deployments) lists X Layer (196) as a
+// supported chain, but the specific PoolManager/Router addresses for X Layer
+// were not retrievable at the time this was written. PoolManager addresses
+// differ per chain (they are NOT the same across all deployments — verify
+// each one individually). DO NOT deploy against this address without
+// confirming it directly on the Uniswap deployments page or X Layer's
+// OKLink explorer first.
+export const UNISWAP_V4_POOL_MANAGER = ''  // MUST be set before deploy — see warning above
+export const UNISWAP_V4_ROUTER       = ''  // MUST be set before deploy — see warning above
 
 // Eulr.fun launchpad (Method 2 deployment)
 export const EULR_LAUNCHPAD_URL = 'https://eulr.fun'
 
 // Competition submission
 export const XLAYER_COMPETITION_FORM    = 'https://forms.gle/worldcuphooks'   // replace with actual Google Form URL
-export const XLAYER_COMPETITION_DEADLINE = new Date('2025-07-12T23:59:00Z').getTime()
+export const XLAYER_COMPETITION_DEADLINE = new Date('2026-07-12T23:59:00Z').getTime()
 export const XLAYER_COMPETITION_X_TAG   = '@XLayerOfficial'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -51,29 +59,36 @@ export const XLAYER_TOKENS: Record<string, {
   country?: string   // ISO country code — used for World Cup theming
   flag?:    string
 }> = {
-  // Stablecoins (core liquidity)
+  // Stablecoins (core liquidity) — verified against OKX's official
+  // "Transfer Assets From OKX to X Layer" guide and OKLink explorer.
   USDT: {
     symbol:   'USDT',
-    name:     'Tether USD',
+    name:     'Tether USD (legacy — being phased out for USDT0)',
     address:  '0x1E4a5963aBFD975d8c9021ce480b42188849D41d',
+    decimals: 6,
+  },
+  USDT0: {
+    symbol:   'USDT0',
+    name:     'Tether USD0 (LayerZero OFT — the future canonical USDT on X Layer)',
+    address:  '0x779Ded0c9e1022225f8E0630b35a9b54bE713736',
     decimals: 6,
   },
   USDC: {
     symbol:   'USDC',
-    name:     'USD Coin',
-    address:  '0x74b7F16337b8972027F6196A17a631aC6dE26d22',
+    name:     'USD Coin (native, Circle Bridged USDC Standard)',
+    address:  '0x74b7f16337b8972027f6196a17a631ac6de26d22',
     decimals: 6,
   },
   OKB: {
     symbol:   'OKB',
-    name:     'OKB',
-    address:  '0xe538905cf8410324e03A5A23C1c177a474D59b2b',
+    name:     'OKB (native gas token — no contract address needed)',
+    address:  '',
     decimals: 18,
   },
   WETH: {
     symbol:   'WETH',
     name:     'Wrapped Ether',
-    address:  '0x5A77f1443D16ee5761d310e38b62f77f726bC71c',
+    address:  '0x5a77f1443d16ee5761d310e38b62f77f726bc71c',
     decimals: 18,
   },
 
