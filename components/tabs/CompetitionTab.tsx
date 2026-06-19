@@ -43,7 +43,7 @@ export default function CompetitionTab() {
 
   const {
     loopStatus, lastCycle, nextRunIn, isRunning, cycleError, isActive,
-    signingTx,
+
     pnlPct, tradeStatus, todayTrades, totalTrades, drawdownPct,
     portfolioUSD, startUSD, daysElapsed, isRegistered,
     startLoop, stopLoop, pauseLoop, resumeLoop, runCycle,
@@ -97,7 +97,7 @@ export default function CompetitionTab() {
           </div>
 
           {/* Self-custody signing indicator */}
-          {signingTx && (
+          {(
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg mb-3"
               style={{ background: 'rgba(240,185,11,0.1)', border: '1px solid rgba(240,185,11,0.3)' }}>
               <span className="w-3 h-3 rounded-full border-2 border-yellow-400 border-t-transparent animate-spin-slow shrink-0" />
