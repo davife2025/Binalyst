@@ -9,7 +9,7 @@ import {
   Contract,
   Keypair,
   Networks,
-  SorobanRpc,
+  rpc,
   TransactionBuilder,
   xdr,
   nativeToScVal,
@@ -38,7 +38,7 @@ const NETWORK_PASSPHRASE =
 // ─────────────────────────────────────────────────────────────────────────────
 
 export class StellarVerifierClient {
-  private server:   SorobanRpc.Server
+  private server:   rpc.Server
   private contract: Contract
   private keypair:  Keypair
 
@@ -46,7 +46,7 @@ export class StellarVerifierClient {
     if (!CONTRACT_ID) throw new Error('STELLAR_CONTRACT_ID not set in environment')
     if (!SECRET_KEY)  throw new Error('STELLAR_SECRET_KEY not set in environment')
 
-    this.server   = new SorobanRpc.Server(RPC_URL, { allowHttp: false })
+    this.server   = new rpc.Server(RPC_URL, { allowHttp: false })
     this.contract = new Contract(CONTRACT_ID)
     this.keypair  = Keypair.fromSecret(SECRET_KEY)
   }
@@ -102,12 +102,12 @@ export class StellarVerifierClient {
 
     // Simulate to get resource footprint + fee
     const simResult = await this.server.simulateTransaction(tx)
-    if (SorobanRpc.Api.isSimulationError(simResult)) {
+    if (rpc.Api.isSimulationError(simResult)) {
       throw new Error(`Soroban simulation failed: ${simResult.error}`)
     }
 
     // Assemble + sign + submit
-    const preparedTx = SorobanRpc.assembleTransaction(tx, simResult).build()
+    const preparedTx = rpc.assembleTransaction(tx, simResult).build()
     preparedTx.sign(this.keypair)
 
     const sendResult = await this.server.sendTransaction(preparedTx)
@@ -139,7 +139,7 @@ export class StellarVerifierClient {
     const result = await this.server.simulateTransaction(
       await this.buildReadTx('proof_count', [])
     )
-    if (SorobanRpc.Api.isSimulationError(result)) return 0
+    if (rpc.Api.isSimulationError(result)) return 0
     return result.result?.retval
       ? (scValToNative(result.result.retval) as number)
       : 0
@@ -153,7 +153,7 @@ export class StellarVerifierClient {
         nativeToScVal(n, { type: 'u32' }),
       ])
     )
-    if (SorobanRpc.Api.isSimulationError(result)) return []
+    if (rpc.Api.isSimulationError(result)) return []
     const raw = result.result?.retval
       ? scValToNative(result.result.retval)
       : []
@@ -169,7 +169,7 @@ export class StellarVerifierClient {
           nativeToScVal(index, { type: 'u32' }),
         ])
       )
-      if (SorobanRpc.Api.isSimulationError(result)) return null
+      if (rpc.Api.isSimulationError(result)) return null
       const raw = result.result?.retval
         ? scValToNative(result.result.retval)
         : null
@@ -196,14 +196,14 @@ export class StellarVerifierClient {
     txHash: string,
     maxAttempts = 20,
     intervalMs  = 2000,
-  ): Promise<SorobanRpc.Api.GetSuccessfulTransactionResponse> {
+  ): Promise<rpc.Api.GetSuccessfulTransactionResponse> {
     for (let i = 0; i < maxAttempts; i++) {
       await sleep(intervalMs)
       const status = await this.server.getTransaction(txHash)
-      if (status.status === SorobanRpc.Api.GetTransactionStatus.SUCCESS) {
-        return status as SorobanRpc.Api.GetSuccessfulTransactionResponse
+      if (status.status === rpc.Api.GetTransactionStatus.SUCCESS) {
+        return status as rpc.Api.GetSuccessfulTransactionResponse
       }
-      if (status.status === SorobanRpc.Api.GetTransactionStatus.FAILED) {
+      if (status.status === rpc.Api.GetTransactionStatus.FAILED) {
         throw new Error(`Stellar tx ${txHash} failed on-chain`)
       }
     }
