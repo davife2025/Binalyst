@@ -1,0 +1,15 @@
+[package]
+name        = "binalyst-zk-guest"
+version     = "0.1.0"
+edition     = "2021"
+
+# RISC Zero requires the guest to target the zkVM ISA.
+# This is set automatically when you run via `cargo risczero build`.
+[[bin]]
+name = "binalyst-zk-guest"
+path = "src/main.rs"
+
+[dependencies]
+risc0-zkvm = { workspace = true, default-features = false, features = ["std"] }
+serde      = { workspace = true }
+serde_json = { workspace = true }

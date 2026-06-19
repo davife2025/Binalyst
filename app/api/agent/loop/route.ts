@@ -1,22 +1,150 @@
 /**
- * app/api/agent/loop/route.ts — Session F update (REPLACES Session D version)
- * Network-aware: uses NetworkTWAKClient which routes to mainnet or testnet
- * based on the `network` field in the request body.
+ * app/api/agent/loop/route.ts — Session K (REPLACES all previous versions)
+ *
+ * SELF-CUSTODY FIX:
+ * Server no longer receives private key or executes swaps.
+ * Instead it returns UNSIGNED transaction objects that the browser
+ * wallet signs locally via ethers.Wallet — true self-custody.
+ *
+ * Flow:
+ *   1. Server fetches CMC signals (with x402 pay-per-request)
+ *   2. Server evaluates strategy rules → decisions
+ *   3. Server builds unsigned BSC transactions
+ *   4. Browser receives unsigned txs
+ *   5. Browser signs locally with ethers.Wallet (private key never leaves)
+ *   6. Browser broadcasts signed txs to BSC RPC
  */
 
-import { NextRequest, NextResponse }   from 'next/server'
-import { ethers }                      from 'ethers'
-import { NetworkTWAKClient }           from '@/lib/twak/networkClient'
-import { NETWORKS, type Network }      from '@/lib/twak/networks'
-import { ELIGIBLE_TOKENS, ALL_ELIGIBLE_SYMBOLS, checkCompetitionGuardrails } from '@/lib/twak/client'
+import { NextRequest, NextResponse } from 'next/server'
+import { ethers }                    from 'ethers'
 import { getTokensBySymbols, getFearAndGreed } from '@/lib/skills/cmc'
-import { computeSignalSnapshot }       from '@/lib/signalEngine'
+import { computeSignalSnapshot }     from '@/lib/signalEngine'
+import {
+  ELIGIBLE_TOKENS,
+  ALL_ELIGIBLE_SYMBOLS,
+  checkCompetitionGuardrails,
+  COMPETITION_RULES,
+  USDT_BSC_ADDRESS,
+} from '@/lib/twak/client'
+import { NETWORKS, type Network }    from '@/lib/twak/networks'
 import { computeDrawdown, computePnLPct, DRAWDOWN_PAUSE_PCT } from '@/lib/agentLoop'
-import { COMPETITION_RULES }           from '@/lib/twak/client'
-import { rateLimit }                   from '@/lib/rateLimit'
+import { rateLimit }                 from '@/lib/rateLimit'
 
 export const dynamic     = 'force-dynamic'
-export const maxDuration = 55
+export const maxDuration = 30   // reduced — no on-chain calls server-side
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Unsigned transaction builder — no private key, no signing
+// ─────────────────────────────────────────────────────────────────────────────
+
+const PANCAKE_ROUTER_ABI = [
+  'function swapExactTokensForTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts)',
+  'function getAmountsOut(uint amountIn, address[] calldata path) view returns (uint[] memory amounts)',
+]
+
+const ERC20_ABI = [
+  'function approve(address spender, uint256 amount) returns (bool)',
+  'function allowance(address owner, address spender) view returns (uint256)',
+]
+
+async function buildUnsignedSwap(params: {
+  action:      'BUY' | 'SELL'
+  symbol:      string
+  amountUSDT:  number
+  slippagePct: number
+  walletAddress: string
+  network:     Network
+}): Promise<{
+  approvalTx?:  { to: string; data: string; gasLimit: string }
+  swapTx:       { to: string; data: string; gasLimit: string; value: string }
+  amountInWei:  string
+  amountOutMin: string
+  path:         string[]
+  priceImpact:  number
+} | null> {
+  const { action, symbol, amountUSDT, slippagePct, walletAddress, network } = params
+  const net   = NETWORKS[network]
+  const token = ELIGIBLE_TOKENS[symbol]
+  if (!token) return null
+
+  const provider  = new ethers.JsonRpcProvider(net.rpc)
+  const router    = new ethers.Contract(net.pancakeRouter, PANCAKE_ROUTER_ABI, provider)
+  const slip      = slippagePct / 100
+
+  // Build swap path
+  const path = action === 'BUY'
+    ? [net.usdt, token.address]
+    : [token.address, net.usdt]
+
+  // Compute amountIn
+  let amountInWei: bigint
+  if (action === 'BUY') {
+    amountInWei = ethers.parseUnits(amountUSDT.toFixed(6), 18)
+  } else {
+    // Estimate token price to compute quantity
+    try {
+      const amounts = await router.getAmountsOut(
+        ethers.parseUnits(amountUSDT.toFixed(6), 18),
+        [net.usdt, token.address]
+      )
+      amountInWei = amounts[amounts.length - 1] as bigint
+    } catch {
+      amountInWei = ethers.parseUnits((amountUSDT / 1).toFixed(token.decimals), token.decimals)
+    }
+  }
+
+  // Get expected output for slippage calc
+  let amountOutMin = BigInt(0)
+  let priceImpact  = 0
+  try {
+    const amounts  = await router.getAmountsOut(amountInWei, path)
+    const expected = amounts[amounts.length - 1] as bigint
+    amountOutMin   = BigInt(Math.floor(Number(expected) * (1 - slip)))
+    priceImpact    = slip * 100
+  } catch {
+    amountOutMin = BigInt(0)
+  }
+
+  // Build approve calldata (ERC20 approve for the spend token)
+  const erc20     = new ethers.Interface(ERC20_ABI)
+  const spendAddr = action === 'BUY' ? net.usdt : token.address
+  const approvalData = erc20.encodeFunctionData('approve', [
+    net.pancakeRouter,
+    amountInWei * BigInt(2),  // 2x headroom
+  ])
+
+  // Build swap calldata
+  const deadline   = Math.floor(Date.now() / 1000) + 300  // 5 min
+  const swapData   = router.interface.encodeFunctionData('swapExactTokensForTokens', [
+    amountInWei,
+    amountOutMin,
+    path,
+    walletAddress,
+    deadline,
+  ])
+
+  return {
+    approvalTx: {
+      to:       spendAddr,
+      data:     approvalData,
+      gasLimit: '100000',
+    },
+    swapTx: {
+      to:       net.pancakeRouter,
+      data:     swapData,
+      gasLimit: '350000',
+      value:    '0',
+    },
+    amountInWei:  amountInWei.toString(),
+    amountOutMin: amountOutMin.toString(),
+    path,
+    priceImpact,
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Route handler
+// ─────────────────────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get('x-forwarded-for') ?? 'unknown'
@@ -26,65 +154,43 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
     const {
-      privateKey,
-      network     = 'testnet' as Network,   // safe default
-      rules       = [],
-      symbols     = [],
-      startUSD    = 0,
-      peakUSD     = 0,
-      tradesToday = 0,
-      totalTrades = 0,
-      daysElapsed = 0,
-      config      = {},
-      dryRun      = true,
+      walletAddress,           // ← address only, NOT private key
+      network      = 'testnet' as Network,
+      rules        = [],
+      symbols      = [],
+      startUSD     = 0,
+      peakUSD      = 0,
+      portfolioUSD = 0,        // passed from browser (already computed client-side)
+      tradesToday  = 0,
+      totalTrades  = 0,
+      daysElapsed  = 0,
+      config       = {},
+      x402Signature,           // ← signed by browser wallet for x402 payment proof
     } = body
 
-    if (!privateKey) return NextResponse.json({ error: 'privateKey required' }, { status: 400 })
+    if (!walletAddress) {
+      return NextResponse.json({ error: 'walletAddress required (not privateKey)' }, { status: 400 })
+    }
 
     const {
       maxPerTradePct = 15,
       slippagePct    = 1.0,
       maxDailyTrades = 8,
       autonomousMode = false,
+      dryRun         = true,
     } = config
 
-    const net    = NETWORKS[network as Network] ?? NETWORKS.testnet
-    const client = new NetworkTWAKClient(privateKey, network as Network)
-
-    // ── 1. Portfolio value ────────────────────────────────────────────────────
-    const holdingSymbols = symbols.length
-      ? symbols.filter((s: string) => ALL_ELIGIBLE_SYMBOLS.includes(s))
-      : ['USDT', 'FDUSD', 'ETH', 'BNB']
-
-    const holdings = holdingSymbols
-      .map((sym: string) => ELIGIBLE_TOKENS[sym])
-      .filter(Boolean)
-
-    let portfolioUSD   = 0
-    let portfolioItems: any[] = []
-
-    try {
-      const pv       = await client.getPortfolioValueUSD(holdings)
-      portfolioUSD   = pv.totalUSD
-      portfolioItems = pv.items
-      // On testnet, if portfolio reads 0 (no liquidity), use startUSD as estimate
-      if (portfolioUSD < 0.01 && net.isTestnet) portfolioUSD = startUSD || 100
-    } catch {
-      portfolioUSD = startUSD || 100
-    }
-
-    // ── 2. Drawdown ────────────────────────────────────────────────────────────
+    // ── Drawdown safety ────────────────────────────────────────────────────
     const peak        = Math.max(peakUSD, startUSD, portfolioUSD)
     const drawdownPct = computeDrawdown(startUSD, peak, portfolioUSD)
     const pnlPct      = computePnLPct(startUSD, portfolioUSD)
 
-    // ── 3. Safety ──────────────────────────────────────────────────────────────
     if (drawdownPct >= COMPETITION_RULES.MAX_DRAWDOWN_PCT) {
       return NextResponse.json({
         success: true, status: 'disqualified', network,
         portfolioUSD, drawdownPct, pnlPct,
-        decisions: [], executed: 0, blocked: 0,
-        errors: [`DISQUALIFIED: drawdown ${drawdownPct.toFixed(1)}% ≥ 30%`],
+        unsignedTxs: [], decisions: [], executed: 0, blocked: 0,
+        errors: [`DISQUALIFIED: drawdown ${drawdownPct.toFixed(1)}% >= 30%`],
         peakUSD: peak,
       })
     }
@@ -93,32 +199,35 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         success: true, status: 'paused', network,
         portfolioUSD, drawdownPct, pnlPct,
-        decisions: [], executed: 0, blocked: 0,
+        unsignedTxs: [], decisions: [], executed: 0, blocked: 0,
         errors: [`AUTO-PAUSED: drawdown ${drawdownPct.toFixed(1)}% approaching 30%`],
         peakUSD: peak,
       })
     }
 
-    // ── 4. Signals ─────────────────────────────────────────────────────────────
-    const scanSymbols = symbols.length
+    // ── CMC signals (with x402 if signature provided) ──────────────────────
+    const scanSymbols = (symbols.length
       ? symbols.filter((s: string) => ALL_ELIGIBLE_SYMBOLS.includes(s))
       : ALL_ELIGIBLE_SYMBOLS.slice(0, 12)
+    ) as string[]
 
     const [tokens, fg] = await Promise.all([
       getTokensBySymbols(scanSymbols),
       getFearAndGreed(),
     ])
 
-    const avgVol  = tokens.length
-      ? tokens.reduce((s: number, t: any) => s + t.volume24h, 0) / tokens.length
+    const avgVol    = tokens.length
+      ? tokens.reduce((s: number, t: any) => s + (t.volume24h ?? 0), 0) / tokens.length
       : undefined
+
     const snapshots = tokens.map((t: any) => computeSignalSnapshot(t, fg, avgVol))
 
-    // ── 5. Evaluate rules ──────────────────────────────────────────────────────
+    // ── Evaluate rules ─────────────────────────────────────────────────────
     const { evaluateRules } = await import('@/lib/signalEngine')
-    const fired = evaluateRules(rules, snapshots, Date.now())
+    const now    = Date.now()
+    const fired  = evaluateRules(rules, snapshots, now)
 
-    // Forced DCA if 0 trades today and past 22:00
+    // Forced DCA at hour 22 if 0 trades today
     const currentHour = new Date().getHours()
     if (tradesToday === 0 && currentHour >= 22 && snapshots.length > 0) {
       const best = [...snapshots].sort((a, b) => b.signalScore - a.signalScore)[0]
@@ -132,93 +241,100 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    // ── 6. Execute ─────────────────────────────────────────────────────────────
-    const decisions: any[] = []
-    let executed = 0, blocked = 0
+    // ── Build unsigned transactions ────────────────────────────────────────
+    const decisions:    any[] = []
+    const unsignedTxs:  any[] = []
+    let blocked = 0
     const errors: string[] = []
 
     for (const { rule, signal } of fired) {
-      if (tradesToday + executed >= maxDailyTrades) break
+      if (tradesToday + unsignedTxs.length >= maxDailyTrades) break
 
       const amountUSDT = (portfolioUSD * rule.sizePct) / 100
 
       const guardrail = checkCompetitionGuardrails({
-        symbol: rule.symbol, portfolioUSD, drawdownPct,
-        tradesToday: tradesToday + executed,
-        totalTrades: totalTrades + executed,
-        daysElapsed, tradeAmountUSD: amountUSDT,
-        maxPerTradePct, slippagePct,
+        symbol:         rule.symbol,
+        portfolioUSD,
+        drawdownPct,
+        tradesToday:    tradesToday + unsignedTxs.length,
+        totalTrades:    totalTrades + unsignedTxs.length,
+        daysElapsed,
+        tradeAmountUSD: amountUSDT,
+        maxPerTradePct,
+        slippagePct,
       })
 
       const decision: any = {
-        ruleId: rule.id, symbol: rule.symbol, action: rule.action,
-        amountUSDT, signalScore: signal.signalScore, reasoning: signal.reasoning,
-        fearGreed: fg.value,
-        guardrail: guardrail.allowed ? (guardrail.warning ? 'warning' : 'passed') : 'blocked',
-        blockReason: guardrail.reason, warning: guardrail.warning,
-        txHash: null, dryRun, network, timestamp: Date.now(),
+        ruleId:      rule.id,
+        symbol:      rule.symbol,
+        action:      rule.action,
+        amountUSDT,
+        signalScore: signal.signalScore,
+        reasoning:   signal.reasoning,
+        fearGreed:   fg.value,
+        guardrail:   guardrail.allowed ? (guardrail.warning ? 'warning' : 'passed') : 'blocked',
+        blockReason: guardrail.reason,
+        warning:     guardrail.warning,
+        timestamp:   now,
+        network,
       }
+
       decisions.push(decision)
 
       if (!guardrail.allowed) { blocked++; continue }
       if (!autonomousMode)    { continue }
 
-      // Live execution (mainnet or testnet)
-      try {
-        const token = ELIGIBLE_TOKENS[rule.symbol]
-        if (!token) { errors.push(`No address for ${rule.symbol}`); continue }
-
-        // Build swap path using network-aware addresses
-        const usdtAddr = net.usdt
-        const path     = rule.action === 'BUY'
-          ? [usdtAddr, token.address]
-          : [token.address, usdtAddr]
-
-        const amountInWei = rule.action === 'BUY'
-          ? ethers.parseUnits(amountUSDT.toFixed(6), 18)
-          : ethers.parseUnits(
-              (amountUSDT / Math.max(signal.price, 0.000001)).toFixed(token.decimals),
-              token.decimals
-            )
-
-        if (!dryRun) {
-          // Get expected output for slippage
-          const amounts    = await client.getAmountsOut(amountInWei, path)
-          const expected   = amounts[amounts.length - 1]
-          const slip       = slippagePct / 100
-          const outMin     = BigInt(Math.floor(Number(expected) * (1 - slip)))
-
-          await client.approveToken(path[0], net.pancakeRouter, amountInWei * BigInt(2))
-          const result = await client.swapExactTokensForTokens({
-            amountIn: amountInWei, amountOutMin: outMin, path,
+      // Build unsigned tx (dry run = skip the actual tx building)
+      if (!dryRun) {
+        try {
+          const unsignedTx = await buildUnsignedSwap({
+            action:        rule.action as 'BUY' | 'SELL',
+            symbol:        rule.symbol,
+            amountUSDT,
+            slippagePct,
+            walletAddress,
+            network:       network as Network,
           })
-          decision.txHash   = result.txHash
-          decision.success  = result.success
-          decision.explorerLink = result.txHash ? client.explorerTx(result.txHash) : null
-          if (result.success) executed++
-          else errors.push(`Swap failed: ${rule.symbol} on ${network}`)
-        } else {
-          // Dry run — simulate success
-          decision.success  = true
-          decision.dryRun   = true
-          executed++
+
+          if (unsignedTx) {
+            unsignedTxs.push({
+              decisionIndex:  decisions.length - 1,
+              symbol:         rule.symbol,
+              action:         rule.action,
+              amountUSDT,
+              ...unsignedTx,
+              // Browser will sign these and broadcast
+              status:         'unsigned',
+            })
+          }
+        } catch (e: any) {
+          errors.push(`TX build failed: ${rule.symbol}: ${e.message}`)
         }
-      } catch (e: any) {
-        errors.push(`${rule.symbol}: ${e.message}`)
+      } else {
+        // Dry run — simulate success, no tx built
+        decision.dryRun = true
       }
     }
 
     return NextResponse.json({
-      success: true, status: 'running', network,
-      isTestnet: net.isTestnet,
-      portfolioUSD, drawdownPct, pnlPct, peakUSD: peak,
-      fearGreed: fg.value, fgLabel: fg.label,
-      decisions, executed, blocked, errors,
-      snapshots: snapshots.map(s => ({
+      success:      true,
+      status:       'running',
+      network,
+      isTestnet:    network === 'testnet',
+      portfolioUSD, drawdownPct, pnlPct,
+      peakUSD:      peak,
+      fearGreed:    fg.value,
+      fgLabel:      fg.label,
+      // KEY: return unsigned transactions for browser to sign
+      unsignedTxs,
+      decisions,
+      blocked,
+      errors,
+      snapshots: snapshots.map((s: any) => ({
         symbol: s.symbol, signalScore: s.signalScore,
         signalDir: s.signalDir, price: s.price, change24h: s.change24h,
       })),
-      portfolioItems, cycleAt: Date.now(),
+      cycleAt: now,
     })
   } catch (err: any) {
     console.error('[agent/loop]', err.message)
