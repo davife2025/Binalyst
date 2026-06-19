@@ -1,0 +1,27 @@
+[package]
+name    = "binalyst-soroban-verifier"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+soroban-sdk     = { version = "21.0.0", features = ["alloc"] }
+serde           = { version = "1", default-features = false, features = ["derive"] }
+serde_json_core = { version = "0.5" }   # no_std JSON — fits Soroban's constraints
+
+[dev-dependencies]
+soroban-sdk = { version = "21.0.0", features = ["testutils"] }
+
+[profile.release]
+opt-level     = "z"
+overflow-checks = true
+debug         = false
+strip         = "symbols"
+lto           = true
+codegen-units = 1
+
+[profile.release-with-logs]
+inherits = "release"
+debug    = true
