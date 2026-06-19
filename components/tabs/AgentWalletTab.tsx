@@ -44,7 +44,7 @@ function StatusDot({ ok, pulse }: { ok: boolean; pulse?: boolean }) {
 export default function AgentWalletTab() {
   const {
     agentAddress, privateKey, encryptedKey, isWalletLoaded,
-    bnbBalance, usdtBalance,
+    bnbBalance, usdtBalance, network, setNetwork,
     setWallet, setEncryptedKey, clearWallet, setBNBBalance, setUSDTBalance,
     session, updateSession,
   } = useAgentStore()
@@ -73,7 +73,8 @@ export default function AgentWalletTab() {
       const res  = await fetch('/api/agent/status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ privateKey, tokens: ['USDT', 'FDUSD', 'BNB'] }),
+        body: JSON.stringify({ privateKey, network, tokens: ['USDT', 'FDUSD', 'BNB'] }),
+        cache: 'no-store',
       })
       const data = await res.json()
       if (data.success) {
@@ -83,7 +84,7 @@ export default function AgentWalletTab() {
       }
     } catch {}
     setRefreshing(false)
-  }, [privateKey])
+  }, [privateKey, network])
 
   useEffect(() => {
     if (isWalletLoaded && privateKey) refreshBalances()
@@ -413,6 +414,48 @@ export default function AgentWalletTab() {
       {/* ── STEP: READY ──────────────────────────────────────────────────── */}
       {step === 'ready' && isWalletLoaded && (
         <>
+          {/* Network selector */}
+          <div className="rounded-xl p-4" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
+            <div className="mono text-[10px] uppercase tracking-widest mb-3" style={{ color: 'var(--text3)' }}>
+              BSC Network
+            </div>
+            <div className="flex gap-2">
+              {(['mainnet', 'testnet'] as const).map(n => (
+                <button key={n} onClick={() => { setNetwork(n); setTimeout(refreshBalances, 100) }}
+                  className="flex-1 rounded-xl py-2.5 px-3 text-left transition-all"
+                  style={{
+                    background: network === n ? 'rgba(240,185,11,0.1)' : 'var(--bg3)',
+                    border: `1px solid ${network === n ? 'rgba(240,185,11,0.4)' : 'var(--border)'}`,
+                    cursor: 'pointer',
+                  }}>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full shrink-0"
+                      style={{ background: network === n ? (n === 'mainnet' ? 'var(--green)' : 'var(--yellow)') : 'var(--text3)' }} />
+                    <span className="mono text-xs font-bold"
+                      style={{ color: network === n ? 'var(--yellow)' : 'var(--text2)' }}>
+                      {n === 'mainnet' ? 'BSC Mainnet' : 'BSC Testnet'}
+                    </span>
+                    {network === n && (
+                      <span className="mono text-[9px] ml-auto px-1.5 py-0.5 rounded"
+                        style={{ background: 'rgba(240,185,11,0.15)', color: 'var(--yellow)' }}>
+                        ACTIVE
+                      </span>
+                    )}
+                  </div>
+                  <div className="mono text-[9px] mt-0.5" style={{ color: 'var(--text3)' }}>
+                    {n === 'mainnet' ? 'Real funds · chainId 56' : 'Test funds · chainId 97'}
+                  </div>
+                </button>
+              ))}
+            </div>
+            {network === 'mainnet' && (
+              <div className="mono text-[10px] mt-2 p-2 rounded-lg"
+                style={{ background: 'rgba(14,203,129,0.07)', border: '1px solid rgba(14,203,129,0.2)', color: 'var(--green)' }}>
+                Mainnet active — showing real wallet balances
+              </div>
+            )}
+          </div>
+
           {/* Wallet stats */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <Pill label="BNB Balance"    value={bnbBalance.toFixed(4) + ' BNB'} color={bnbBalance > 0.005 ? 'var(--green)' : 'var(--red)'} />
