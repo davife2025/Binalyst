@@ -4,11 +4,6 @@
  * components/tabs/AgentWalletTab.tsx
  * Session A: Wallet setup, competition registration, balance display.
  * Self-custodial — private key never leaves the browser unencrypted.
- *
- * Session 1 (X Layer): Added chain selector strip at the top of the
- * ready step. All BSC/BNB logic below is unchanged.
- * 
- * FIXED: Added auto-refresh every 30 seconds + cache bypass
  */
 
 import { useState, useEffect, useCallback } from 'react'
@@ -20,12 +15,6 @@ import {
   decryptPrivateKey,
   ELIGIBLE_TOKENS,
 } from '@/lib/twak/client'
-import {
-  switchToXLayer,
-  switchToBSC,
-  getConnectedChainId,
-} from '@/lib/xlayer/provider'
-import { XLAYER_CHAIN_ID, XLAYER_EXPLORER_ADDR } from '@/lib/xlayer/config'
 
 type SetupStep = 'choose' | 'generate' | 'import' | 'unlock' | 'ready'
 
@@ -33,7 +22,7 @@ function Pill({
   label, value, color = 'var(--text)',
 }: { label: string; value: string | number; color?: string }) {
   return (
-    <div className="rounded-md p-4" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
+    <div className="rounded-xl p-4" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
       <div className="mono text-[10px] uppercase tracking-widest mb-1" style={{ color: 'var(--text3)' }}>{label}</div>
       <div className="mono text-lg font-extrabold truncate" style={{ color }}>{value}</div>
     </div>
@@ -75,30 +64,6 @@ export default function AgentWalletTab() {
   const [regResult,     setRegResult]     = useState<{ success: boolean; txHash?: string; message: string } | null>(null)
   const [copied,        setCopied]        = useState('')
   const [showKey,       setShowKey]       = useState(false)
-  const [lastRefresh,   setLastRefresh]   = useState<number | null>(null) // ← ADDED
-
-  // ── X Layer chain selector state (Session 1 addition) ───────────────────
-  const [activeChain,    setActiveChain]    = useState<'bsc' | 'xlayer'>('bsc')
-  const [chainSwitching, setChainSwitching] = useState(false)
-  const [chainError,     setChainError]     = useState('')
-
-  // Detect connected chain on load
-  useEffect(() => {
-    getConnectedChainId().then(id => {
-      if (id === XLAYER_CHAIN_ID) setActiveChain('xlayer')
-    })
-  }, [])
-
-   async function handleChainSwitch(target: 'bsc' | 'xlayer') {
-    setChainSwitching(true); setChainError('')
-    const result = target === 'xlayer' ? await switchToXLayer() : await switchToBSC()
-    if (result.success) {
-      setActiveChain(target)
-    } else {
-      setChainError(result.error ?? 'Chain switch failed')
-    }
-    setChainSwitching(false)
-  }
 
   // ── Balance refresh ──────────────────────────────────────────────────────
   const refreshBalances = useCallback(async () => {
@@ -109,36 +74,20 @@ export default function AgentWalletTab() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ privateKey, tokens: ['USDT', 'FDUSD', 'BNB'] }),
-        cache: 'no-store', // ← ADDED: Bypass Next.js cache
       })
       const data = await res.json()
       if (data.success) {
-        setBNBBalance(data.bnbBalance ?? 0)
+        setBNBBalance(data.bnbBalance)
         setUSDTBalance(data.tokenBalances?.USDT ?? 0)
         if (data.isRegistered) updateSession({ isRegistered: true })
-        setLastRefresh(Date.now()) // ← ADDED: Track refresh time
       }
-    } catch (err) {
-      console.error('[AgentWallet] Balance refresh failed:', err)
-    }
+    } catch {}
     setRefreshing(false)
-  }, [privateKey, setBNBBalance, setUSDTBalance, updateSession])
+  }, [privateKey])
 
-  // Initial fetch on wallet load
   useEffect(() => {
     if (isWalletLoaded && privateKey) refreshBalances()
-  }, [isWalletLoaded, privateKey, refreshBalances])
-
-  // ── AUTO-REFRESH EVERY 30 SECONDS ────────────────────────────────────────
-  useEffect(() => {
-    if (!isWalletLoaded || !privateKey) return
-    
-    const interval = setInterval(() => {
-      refreshBalances()
-    }, 30_000) // Refresh every 30 seconds
-    
-    return () => clearInterval(interval)
-  }, [isWalletLoaded, privateKey, refreshBalances])
+  }, [isWalletLoaded, privateKey])
 
   // ── Wallet generation ────────────────────────────────────────────────────
   function handleGenerate() {
@@ -207,7 +156,6 @@ export default function AgentWalletTab() {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ privateKey }),
-        cache:   'no-store', // ← ADDED
       })
       const data = await res.json()
       setRegResult({ success: data.success, txHash: data.txHash, message: data.message })
@@ -224,20 +172,10 @@ export default function AgentWalletTab() {
 
   const isRegistered = session?.isRegistered ?? false
 
-  // Helper to format time ago
-  function timeAgo(ts: number | null): string {
-    if (!ts) return 'Never'
-    const s = Math.floor((Date.now() - ts) / 1000)
-    if (s < 60) return `${s}s ago`
-    if (s < 3600) return `${Math.floor(s / 60)}m ago`
-    return `${Math.floor(s / 3600)}h ago`
-  }
-
   // ════════════════════════════════════════════════════════════════════════════
   // Render
   // ════════════════════════════════════════════════════════════════════════════
   return (
-    <div className="flex-1 overflow-y-auto" style={{background:"var(--bg)"}}>
     <div className="max-w-3xl mx-auto px-6 py-6 flex flex-col gap-6">
 
       {/* Header */}
@@ -268,7 +206,7 @@ export default function AgentWalletTab() {
 
       {/* ── STEP: CHOOSE ─────────────────────────────────────────────────── */}
       {step === 'choose' && (
-        <div className="rounded-md p-6" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
+        <div className="rounded-xl p-6" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
           <div className="mono text-[10px] uppercase tracking-widest mb-4" style={{ color: 'var(--text3)' }}>
             Set up your agent wallet
           </div>
@@ -278,7 +216,7 @@ export default function AgentWalletTab() {
           </p>
           <div className="grid gap-3" style={{ gridTemplateColumns: '1fr 1fr' }}>
             <button onClick={handleGenerate}
-              className="rounded-md p-5 text-left transition-all"
+              className="rounded-xl p-5 text-left transition-all"
               style={{ background: 'var(--bg3)', border: '1px solid var(--border)' }}
               onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--yellow)')}
               onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}>
@@ -289,7 +227,7 @@ export default function AgentWalletTab() {
               </div>
             </button>
             <button onClick={() => setStep('import')}
-              className="rounded-md p-5 text-left transition-all"
+              className="rounded-xl p-5 text-left transition-all"
               style={{ background: 'var(--bg3)', border: '1px solid var(--border)' }}
               onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--yellow)')}
               onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}>
@@ -305,12 +243,12 @@ export default function AgentWalletTab() {
 
       {/* ── STEP: GENERATE ───────────────────────────────────────────────── */}
       {step === 'generate' && generated && (
-        <div className="rounded-md p-6 flex flex-col gap-4" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
+        <div className="rounded-xl p-6 flex flex-col gap-4" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
           <div className="mono text-[10px] uppercase tracking-widest" style={{ color: 'var(--text3)' }}>
             New wallet generated
           </div>
 
-          <div className="rounded-md p-4" style={{ background: 'rgba(246,70,93,0.06)', border: '1px solid rgba(246,70,93,0.2)' }}>
+          <div className="rounded-lg p-4" style={{ background: 'rgba(246,70,93,0.06)', border: '1px solid rgba(246,70,93,0.2)' }}>
             <div className="mono text-xs font-bold mb-1" style={{ color: 'var(--red)' }}>⚠ Back up your seed phrase</div>
             <div className="mono text-[10px]" style={{ color: 'var(--text2)' }}>
               Write this down and store it safely. This is the only way to recover your wallet.
@@ -320,12 +258,12 @@ export default function AgentWalletTab() {
           <div>
             <div className="mono text-[9px] uppercase tracking-widest mb-2" style={{ color: 'var(--text3)' }}>Address</div>
             <div className="flex items-center gap-2">
-              <div className="mono text-xs flex-1 truncate px-3 py-2 rounded-md"
+              <div className="mono text-xs flex-1 truncate px-3 py-2 rounded-lg"
                 style={{ background: 'var(--bg3)', color: 'var(--text)' }}>
                 {generated.address}
               </div>
               <button onClick={() => copy(generated.address, 'address')}
-                className="mono text-[10px] px-3 py-2 rounded-md transition-all"
+                className="mono text-[10px] px-3 py-2 rounded-lg transition-all"
                 style={{ background: 'var(--bg3)', color: copied === 'address' ? 'var(--green)' : 'var(--text3)' }}>
                 {copied === 'address' ? '✓' : 'Copy'}
               </button>
@@ -334,7 +272,7 @@ export default function AgentWalletTab() {
 
           <div>
             <div className="mono text-[9px] uppercase tracking-widest mb-2" style={{ color: 'var(--text3)' }}>Seed Phrase</div>
-            <div className="grid gap-2 p-3 rounded-md" style={{ background: 'var(--bg3)', gridTemplateColumns: 'repeat(4, 1fr)' }}>
+            <div className="grid gap-2 p-3 rounded-lg" style={{ background: 'var(--bg3)', gridTemplateColumns: 'repeat(4, 1fr)' }}>
               {generated.mnemonic.split(' ').map((word, i) => (
                 <div key={i} className="flex items-center gap-1.5">
                   <span className="mono text-[9px]" style={{ color: 'var(--text3)' }}>{i + 1}.</span>
@@ -343,7 +281,7 @@ export default function AgentWalletTab() {
               ))}
             </div>
             <button onClick={() => copy(generated.mnemonic, 'mnemonic')}
-              className="mono text-[10px] mt-2 px-3 py-1.5 rounded-md w-full transition-all"
+              className="mono text-[10px] mt-2 px-3 py-1.5 rounded-lg w-full transition-all"
               style={{ background: 'var(--bg3)', color: copied === 'mnemonic' ? 'var(--green)' : 'var(--text3)' }}>
               {copied === 'mnemonic' ? '✓ Copied' : 'Copy seed phrase'}
             </button>
@@ -358,7 +296,7 @@ export default function AgentWalletTab() {
               <div key={label} className="flex flex-col gap-1.5">
                 <label className="mono text-[9px] uppercase tracking-widest" style={{ color: 'var(--text3)' }}>{label}</label>
                 <input type="password" value={val} onChange={e => set(e.target.value)} placeholder={placeholder}
-                  className="mono text-sm px-4 py-3 rounded-md outline-none"
+                  className="mono text-sm px-4 py-3 rounded-xl outline-none"
                   style={{ background: 'var(--bg3)', border: '1px solid var(--border2)', color: 'var(--text)' }}
                   onFocus={e => (e.target.style.borderColor = 'var(--yellow)')}
                   onBlur={e => (e.target.style.borderColor = 'var(--border2)')} />
@@ -370,12 +308,12 @@ export default function AgentWalletTab() {
 
           <div className="flex gap-2">
             <button onClick={() => { setStep('choose'); setGenerated(null); setError('') }}
-              className="flex-1 py-2.5 rounded-md mono text-xs"
+              className="flex-1 py-2.5 rounded-xl mono text-xs"
               style={{ background: 'var(--bg3)', border: '1px solid var(--border)', color: 'var(--text2)' }}>
               ← Back
             </button>
             <button onClick={handleSaveGenerated} disabled={loading}
-              className="flex-1 py-2.5 rounded-md text-sm font-bold flex items-center justify-center gap-2"
+              className="flex-1 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2"
               style={{ background: loading ? 'var(--bg4)' : 'var(--yellow)', color: loading ? 'var(--text3)' : '#000' }}>
               {loading && <Spinner />}
               {loading ? 'Encrypting...' : 'Save & Continue →'}
@@ -386,7 +324,7 @@ export default function AgentWalletTab() {
 
       {/* ── STEP: IMPORT ─────────────────────────────────────────────────── */}
       {step === 'import' && (
-        <div className="rounded-md p-6 flex flex-col gap-4" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
+        <div className="rounded-xl p-6 flex flex-col gap-4" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
           <div className="mono text-[10px] uppercase tracking-widest" style={{ color: 'var(--text3)' }}>Import wallet</div>
 
           <div className="flex flex-col gap-1.5">
@@ -395,7 +333,7 @@ export default function AgentWalletTab() {
             </label>
             <textarea value={mnemonic} onChange={e => setMnemonic(e.target.value)} rows={3}
               placeholder="word1 word2 word3 ..."
-              className="mono text-sm px-4 py-3 rounded-md outline-none resize-none"
+              className="mono text-sm px-4 py-3 rounded-xl outline-none resize-none"
               style={{ background: 'var(--bg3)', border: '1px solid var(--border2)', color: 'var(--text)' }}
               onFocus={e => (e.target.style.borderColor = 'var(--yellow)')}
               onBlur={e => (e.target.style.borderColor = 'var(--border2)')} />
@@ -408,7 +346,7 @@ export default function AgentWalletTab() {
             <div key={label} className="flex flex-col gap-1.5">
               <label className="mono text-[9px] uppercase tracking-widest" style={{ color: 'var(--text3)' }}>{label}</label>
               <input type="password" value={val} onChange={e => set(e.target.value)} placeholder={ph}
-                className="mono text-sm px-4 py-3 rounded-md outline-none"
+                className="mono text-sm px-4 py-3 rounded-xl outline-none"
                 style={{ background: 'var(--bg3)', border: '1px solid var(--border2)', color: 'var(--text)' }}
                 onFocus={e => (e.target.style.borderColor = 'var(--yellow)')}
                 onBlur={e => (e.target.style.borderColor = 'var(--border2)')} />
@@ -419,12 +357,12 @@ export default function AgentWalletTab() {
 
           <div className="flex gap-2">
             <button onClick={() => { setStep('choose'); setError('') }}
-              className="flex-1 py-2.5 rounded-md mono text-xs"
+              className="flex-1 py-2.5 rounded-xl mono text-xs"
               style={{ background: 'var(--bg3)', border: '1px solid var(--border)', color: 'var(--text2)' }}>
               ← Back
             </button>
             <button onClick={handleImport} disabled={loading}
-              className="flex-1 py-2.5 rounded-md text-sm font-bold flex items-center justify-center gap-2"
+              className="flex-1 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2"
               style={{ background: loading ? 'var(--bg4)' : 'var(--yellow)', color: loading ? 'var(--text3)' : '#000' }}>
               {loading && <Spinner />}
               {loading ? 'Importing...' : 'Import Wallet →'}
@@ -435,7 +373,7 @@ export default function AgentWalletTab() {
 
       {/* ── STEP: UNLOCK ─────────────────────────────────────────────────── */}
       {step === 'unlock' && (
-        <div className="rounded-md p-6 flex flex-col gap-4" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
+        <div className="rounded-xl p-6 flex flex-col gap-4" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
           <div className="mono text-[10px] uppercase tracking-widest" style={{ color: 'var(--text3)' }}>
             Unlock your agent wallet
           </div>
@@ -447,7 +385,7 @@ export default function AgentWalletTab() {
             <label className="mono text-[9px] uppercase tracking-widest" style={{ color: 'var(--text3)' }}>Password</label>
             <input type="password" value={unlockPass} onChange={e => setUnlockPass(e.target.value)}
               placeholder="Enter encryption password"
-              className="mono text-sm px-4 py-3 rounded-md outline-none"
+              className="mono text-sm px-4 py-3 rounded-xl outline-none"
               style={{ background: 'var(--bg3)', border: '1px solid var(--border2)', color: 'var(--text)' }}
               onFocus={e => (e.target.style.borderColor = 'var(--yellow)')}
               onBlur={e => (e.target.style.borderColor = 'var(--border2)')}
@@ -458,12 +396,12 @@ export default function AgentWalletTab() {
 
           <div className="flex gap-2">
             <button onClick={() => { clearWallet(); setStep('choose'); setError('') }}
-              className="mono text-xs px-4 py-2.5 rounded-md"
+              className="mono text-xs px-4 py-2.5 rounded-xl"
               style={{ background: 'var(--bg3)', border: '1px solid var(--border)', color: 'var(--text3)' }}>
               Use different wallet
             </button>
             <button onClick={handleUnlock} disabled={loading}
-              className="flex-1 py-2.5 rounded-md text-sm font-bold flex items-center justify-center gap-2"
+              className="flex-1 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2"
               style={{ background: loading ? 'var(--bg4)' : 'var(--yellow)', color: loading ? 'var(--text3)' : '#000' }}>
               {loading && <Spinner />}
               {loading ? 'Unlocking...' : 'Unlock →'}
@@ -475,97 +413,33 @@ export default function AgentWalletTab() {
       {/* ── STEP: READY ──────────────────────────────────────────────────── */}
       {step === 'ready' && isWalletLoaded && (
         <>
-          {/* ── Chain selector (Session 1: X Layer addition) ──────────────── */}
-          <div className="rounded-md p-4" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
-            <div className="mono text-[10px] uppercase tracking-widest mb-3" style={{ color: 'var(--text3)' }}>
-              Active Chain
-            </div>
-            <div className="flex gap-2">
-              {([
-                { id: 'bsc',    label: 'BNB Smart Chain', sub: 'BSC · chainId 56',   color: '#F0B90B' },
-                { id: 'xlayer', label: 'X Layer',         sub: 'OKX · chainId 196',  color: '#3498db' },
-              ] as const).map(chain => (
-                <button
-                  key={chain.id}
-                  onClick={() => handleChainSwitch(chain.id)}
-                  disabled={chainSwitching || activeChain === chain.id}
-                  className="flex-1 rounded-md p-3 text-left transition-all"
-                  style={{
-                    background: activeChain === chain.id ? `${chain.color}12` : 'var(--bg3)',
-                    border: `1px solid ${activeChain === chain.id ? chain.color + '50' : 'var(--border)'}`,
-                    cursor: activeChain === chain.id ? 'default' : 'pointer',
-                    opacity: chainSwitching && activeChain !== chain.id ? 0.5 : 1,
-                  }}>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="w-2 h-2 rounded-full"
-                      style={{ background: activeChain === chain.id ? chain.color : 'var(--text3)' }} />
-                    <span className="text-xs font-bold"
-                      style={{ color: activeChain === chain.id ? chain.color : 'var(--text2)' }}>
-                      {chain.label}
-                    </span>
-                    {activeChain === chain.id && (
-                      <span className="mono text-[9px] ml-auto px-1.5 py-0.5 rounded"
-                        style={{ background: `${chain.color}20`, color: chain.color }}>
-                        ACTIVE
-                      </span>
-                    )}
-                  </div>
-                  <div className="mono text-[9px]" style={{ color: 'var(--text3)' }}>{chain.sub}</div>
-                </button>
-              ))}
-            </div>
-            {chainError && (
-              <div className="mono text-[10px] mt-2 p-2 rounded-md"
-                style={{ background: 'rgba(246,70,93,0.08)', color: 'var(--red)' }}>
-                {chainError}
-              </div>
-            )}
-            {activeChain === 'xlayer' && (
-              <div className="mono text-[10px] mt-2 p-2 rounded-md"
-                style={{ background: 'rgba(52,152,219,0.08)', border: '1px solid rgba(52,152,219,0.2)', color: '#3498db' }}>
-                X Layer active — World Cup Hook tab available in Intelligence section
-              </div>
-            )}
-          </div>
-
           {/* Wallet stats */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <Pill label="BNB Balance"    value={bnbBalance.toFixed(4) + ' BNB'} color={bnbBalance > 0.005 ? 'var(--green)' : 'var(--red)'} />
             <Pill label="USDT Balance"   value={'$' + usdtBalance.toFixed(2)}   color="var(--text)" />
-            <Pill label="Network"        value={activeChain === 'xlayer' ? 'X Layer' : 'BSC Mainnet'} color="var(--yellow)" />
+            <Pill label="Network"        value="BSC Mainnet"                     color="var(--yellow)" />
             <Pill label="Competition"    value={isRegistered ? '✓ Registered' : 'Not registered'} color={isRegistered ? 'var(--green)' : 'var(--text3)'} />
           </div>
 
           {/* Address card */}
-          <div className="rounded-md p-5" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
-            <div className="flex items-center justify-between mb-3">
-              <div className="mono text-[10px] uppercase tracking-widest" style={{ color: 'var(--text3)' }}>
-                Agent Wallet Address
-              </div>
-              {lastRefresh && (
-                <div className="mono text-[9px]" style={{ color: 'var(--text3)' }}>
-                  Last updated: {timeAgo(lastRefresh)}
-                </div>
-              )}
+          <div className="rounded-xl p-5" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
+            <div className="mono text-[10px] uppercase tracking-widest mb-3" style={{ color: 'var(--text3)' }}>
+              Agent Wallet Address
             </div>
             <div className="flex items-center gap-2">
-              <div className="mono text-sm flex-1 truncate px-3 py-2.5 rounded-md"
+              <div className="mono text-sm flex-1 truncate px-3 py-2.5 rounded-lg"
                 style={{ background: 'var(--bg3)', color: 'var(--text)' }}>
                 {agentAddress}
               </div>
               <button onClick={() => copy(agentAddress, 'addr')}
-                className="mono text-[10px] px-3 py-2.5 rounded-md transition-all shrink-0"
+                className="mono text-[10px] px-3 py-2.5 rounded-lg transition-all shrink-0"
                 style={{ background: 'var(--bg3)', color: copied === 'addr' ? 'var(--green)' : 'var(--text3)', border: '1px solid var(--border)' }}>
                 {copied === 'addr' ? '✓ Copied' : 'Copy'}
               </button>
-              <a
-                href={activeChain === 'xlayer'
-                  ? XLAYER_EXPLORER_ADDR(agentAddress)
-                  : `https://bscscan.com/address/${agentAddress}`}
-                target="_blank" rel="noreferrer"
-                className="mono text-[10px] px-3 py-2.5 rounded-md shrink-0"
+              <a href={`https://bscscan.com/address/${agentAddress}`} target="_blank" rel="noreferrer"
+                className="mono text-[10px] px-3 py-2.5 rounded-lg shrink-0"
                 style={{ background: 'var(--bg3)', color: 'var(--text3)', border: '1px solid var(--border)' }}>
-                {activeChain === 'xlayer' ? 'OKLink ↗' : 'BSCScan ↗'}
+                BSCScan ↗
               </a>
             </div>
             <div className="mono text-[10px] mt-2" style={{ color: 'var(--text3)' }}>
@@ -575,7 +449,7 @@ export default function AgentWalletTab() {
 
           {/* Registration */}
           {!isRegistered ? (
-            <div className="rounded-md p-5" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
+            <div className="rounded-xl p-5" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
               <div className="mono text-[10px] uppercase tracking-widest mb-2" style={{ color: 'var(--text3)' }}>
                 Competition Registration
               </div>
@@ -583,7 +457,7 @@ export default function AgentWalletTab() {
                 Register your agent wallet on the BSC competition contract to participate in live trading.
                 This writes your address on-chain — one transaction, ~0.001 BNB gas.
               </p>
-              <div className="mono text-xs p-3 rounded-md mb-4"
+              <div className="mono text-xs p-3 rounded-lg mb-4"
                 style={{ background: 'var(--bg3)', color: 'var(--text2)' }}>
                 Contract: <a href="https://bscscan.com/address/0x212c61b9b72c95d95bf29cf032f5e5635629aed5"
                   target="_blank" rel="noreferrer" style={{ color: 'var(--yellow)' }}>
@@ -592,7 +466,7 @@ export default function AgentWalletTab() {
               </div>
 
               {regResult && (
-                <div className="mono text-xs p-3 rounded-md mb-4"
+                <div className="mono text-xs p-3 rounded-lg mb-4"
                   style={{
                     background: regResult.success ? 'rgba(14,203,129,0.08)' : 'rgba(246,70,93,0.08)',
                     border: `1px solid ${regResult.success ? 'rgba(14,203,129,0.25)' : 'rgba(246,70,93,0.25)'}`,
@@ -609,7 +483,7 @@ export default function AgentWalletTab() {
               )}
 
               <button onClick={handleRegister} disabled={registering || bnbBalance < 0.001}
-                className="w-full py-3 rounded-md text-sm font-bold flex items-center justify-center gap-2"
+                className="w-full py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2"
                 style={{
                   background: registering || bnbBalance < 0.001 ? 'var(--bg4)' : 'var(--yellow)',
                   color: registering || bnbBalance < 0.001 ? 'var(--text3)' : '#000',
@@ -620,7 +494,7 @@ export default function AgentWalletTab() {
               </button>
             </div>
           ) : (
-            <div className="rounded-md p-4 flex items-center gap-3"
+            <div className="rounded-xl p-4 flex items-center gap-3"
               style={{ background: 'rgba(14,203,129,0.06)', border: '1px solid rgba(14,203,129,0.2)' }}>
               <span className="text-2xl">✓</span>
               <div>
@@ -638,20 +512,20 @@ export default function AgentWalletTab() {
           {/* Actions row */}
           <div className="flex gap-2 flex-wrap">
             <button onClick={refreshBalances} disabled={refreshing}
-              className="flex items-center gap-2 px-4 py-2 rounded-md mono text-xs transition-all"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg mono text-xs transition-all"
               style={{ background: 'var(--bg2)', border: '1px solid var(--border)', color: 'var(--text2)' }}>
               {refreshing && <Spinner small />}
               {refreshing ? 'Refreshing...' : '↻ Refresh balances'}
             </button>
             <button onClick={() => { clearWallet(); setStep('choose') }}
-              className="px-4 py-2 rounded-md mono text-xs"
+              className="px-4 py-2 rounded-lg mono text-xs"
               style={{ background: 'rgba(246,70,93,0.06)', border: '1px solid rgba(246,70,93,0.2)', color: 'var(--red)' }}>
               Lock wallet
             </button>
           </div>
 
           {/* Eligible tokens preview */}
-          <div className="rounded-md overflow-hidden" style={{ border: '1px solid var(--border)' }}>
+          <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
             <div className="px-4 py-3 border-b" style={{ borderColor: 'var(--border)', background: 'var(--bg2)' }}>
               <span className="mono text-[10px] uppercase tracking-widest" style={{ color: 'var(--text3)' }}>
                 Eligible Tokens ({Object.keys(ELIGIBLE_TOKENS).length})
@@ -673,13 +547,12 @@ export default function AgentWalletTab() {
         <ErrBox msg={error} />
       )}
     </div>
-  </div>
   )
 }
 
 function ErrBox({ msg }: { msg: string }) {
   return (
-    <div className="mono text-xs p-3 rounded-md"
+    <div className="mono text-xs p-3 rounded-lg"
       style={{ background: 'rgba(246,70,93,0.08)', border: '1px solid rgba(246,70,93,0.25)', color: 'var(--red)' }}>
       {msg}
     </div>
