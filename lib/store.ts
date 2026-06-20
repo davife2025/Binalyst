@@ -65,6 +65,7 @@ export type ActiveTab =
   | 'revocation'
   |'world-cup'
   | 'zk-proofs'
+  | 'pokt-agent'
 
 interface OpenClawStore {
   // ── Credentials ────────────────────────────────────────────────────────────

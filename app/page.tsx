@@ -52,6 +52,8 @@ import MantleSubmissionTab from '@/components/tabs/MantleSubmissionTab'
 // ── Stellar ZK (Session R — Stellar Hacks) ────────────────────────────────────
 import ZKProofTab          from '@/components/tabs/ZKProofTab'
 
+import POKTAgentTab from '@/components/tabs/POKTAgentTab'
+
 const TABS: Record<string, React.ReactNode> = {
   // Core Binalyst
   home:         <DashboardTab />,
@@ -94,6 +96,8 @@ const TABS: Record<string, React.ReactNode> = {
 
   // Stellar ZK (Session R)
   'zk-proofs':         <ZKProofTab />, // ← ADDED
+
+    'pokt-agent':      <POKTAgentTab />
 }
 
 export default function App() {
