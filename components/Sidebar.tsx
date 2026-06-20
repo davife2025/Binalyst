@@ -16,7 +16,7 @@ type NavItem = {
   icon:    any
   dot?:    boolean
   badge?:  string
-  section: 'intelligence' | 'agent' | 'binance' | 'tools' | 'sui' | 'mantle' | 'stellar' | 'pokt'
+  section: 'intelligence' | 'agent' | 'binance' | 'tools' | 'sui' | 'mantle' | 'stellar' | 'pokt' | 'croo'
 }
 
 // ── Tiny inline SVG icon helper ───────────────────────────────────────────────
@@ -110,6 +110,10 @@ const NAV: NavItem[] = [
   { id: 'pokt-agent' as const, label: 'POKT Agent', badge: 'NEW', section: 'pokt' as const,
     icon: <I><circle cx="12" cy="12" r="9"/><path d="M12 3v9l4.5 4.5"/><circle cx="12" cy="12" r="3"/></I> },
 
+      // ── CROO CAP ──────────────────────────────────────────────────────────────
+  { id: 'croo-cap', label: 'CROO Agent Protocol', badge: 'NEW', section: 'croo',
+    icon: <I><circle cx="12" cy="12" r="3"/><path d="M3 12h2M19 12h2M12 3v2M12 19v2"/><path d="M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4l1.4-1.4M17 7l1.4-1.4"/></I> },
+
   // ── Tools ─────────────────────────────────────────────────────────────────
   { id: 'chat',      label: 'AI Assistant', section: 'tools',
     icon: <I><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></I> },
@@ -128,6 +132,7 @@ const SECTIONS: { id: NavItem['section']; label: string; color: string }[] = [
   { id: 'mantle',       label: 'Mantle Agent',  color: '#61DAFB'  },
     { id: 'pokt',         label: 'POKT Agent',   color: '#5C6BC0'  },
    { id: 'stellar',      label: 'Stellar Agent',   color: '#FCFF52'  },
+    { id: 'croo',         label: 'CROO Agent Protocol',   color: '#f59e0b'  },
   { id: 'binance',      label: 'Binance',       color: '#0ECB81'  },
   { id: 'tools',        label: 'Tools',         color: 'rgba(255,255,255,.3)' },
 ]

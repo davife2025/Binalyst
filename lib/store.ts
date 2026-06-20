@@ -66,6 +66,7 @@ export type ActiveTab =
   |'world-cup'
   | 'zk-proofs'
   | 'pokt-agent'
+  | 'croo-cap'
 
 interface OpenClawStore {
   // ── Credentials ────────────────────────────────────────────────────────────

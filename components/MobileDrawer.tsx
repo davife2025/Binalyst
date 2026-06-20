@@ -67,7 +67,7 @@ const SECTIONS: DrawerSection[] = [
       { id: 'messaging', label: 'Messaging',    icon: '📱', desc: 'Telegram & WhatsApp bot' },
     ],
   },
-  // ── Mantle AI Trading Agent (Session N — The Turing Test Hackathon) ───────
+  // ── Mantle AI Trading Agent) ───────
   {
     label: 'Mantle Agent',
     color: '#61DAFB',

@@ -54,6 +54,8 @@ import ZKProofTab          from '@/components/tabs/ZKProofTab'
 
 import POKTAgentTab from '@/components/tabs/POKTAgentTab'
 
+import CrooTab from '@/components/tabs/CrooTab'
+
 const TABS: Record<string, React.ReactNode> = {
   // Core Binalyst
   home:         <DashboardTab />,
@@ -97,7 +99,9 @@ const TABS: Record<string, React.ReactNode> = {
   // Stellar ZK (Session R)
   'zk-proofs':         <ZKProofTab />, // ← ADDED
 
-    'pokt-agent':      <POKTAgentTab />
+    'pokt-agent':      <POKTAgentTab />,
+
+      'croo-cap':        <CrooTab />,
 }
 
 export default function App() {
