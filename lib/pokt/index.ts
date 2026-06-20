@@ -1,5 +1,5 @@
 /**
- * lib/pokt/index.ts — updated Session P4
+ * lib/pokt/index.ts — updated Session P5
  * Barrel export for all POKT module exports.
  */
 
@@ -9,3 +9,4 @@ export * from './poktscan'
 export * from './skills'
 export * from './store'
 export * from './rpcRouter'
+export * from './analytics'

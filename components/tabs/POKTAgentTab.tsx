@@ -29,6 +29,7 @@ import {
 import type { POKTNetworkMetrics } from '@/lib/pokt/poktscan'
 import { usePOKTAgent } from '@/hooks/usePOKTAgent'
 import { usePOKTAgentStore } from '@/lib/pokt/store'
+import AnalyticsPanel from '@/components/pokt/AnalyticsPanel'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared UI primitives
@@ -684,13 +685,14 @@ function RPCConfigPanel() {
 // Main Tab
 // ─────────────────────────────────────────────────────────────────────────────
 
-type Panel = 'health' | 'query' | 'chains' | 'rpc'
+type Panel = 'health' | 'query' | 'chains' | 'rpc' | 'analytics'
 
 const PANELS: { id: Panel; label: string; icon: string }[] = [
   { id: 'health', label: 'Network Health', icon: '◉' },
   { id: 'query',  label: 'Chain Query',    icon: '◈' },
   { id: 'chains', label: 'Chain Grid',     icon: '⬡' },
-  { id: 'rpc',    label: 'RPC Setup',      icon: '⚙' },
+  { id: 'rpc',       label: 'RPC Setup',      icon: '⚙' },
+  { id: 'analytics', label: 'Analytics',      icon: '📈' },
 ]
 
 export default function POKTAgentTab() {
@@ -759,7 +761,8 @@ export default function POKTAgentTab() {
       {activePanel === 'health'  && <NetworkHealthPanel />}
       {activePanel === 'query'   && <ChainQueryPanel />}
       {activePanel === 'chains'  && <ChainGridPanel />}
-      {activePanel === 'rpc'     && <RPCConfigPanel />}
+      {activePanel === 'rpc'       && <RPCConfigPanel />}
+      {activePanel === 'analytics'  && <AnalyticsPanel />}
     </div>
   )
 }

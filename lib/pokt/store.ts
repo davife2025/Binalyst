@@ -25,7 +25,7 @@ import type { POKTNetworkMetrics }    from './poktscan'
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type POKTAgentPanel = 'health' | 'query' | 'chains' | 'rpc'
+export type POKTAgentPanel = 'health' | 'query' | 'chains' | 'rpc' | 'analytics'
 
 export interface POKTQueryRecord {
   id:          string        // nanoid-style: `q_${Date.now()}`
