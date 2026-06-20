@@ -27,6 +27,8 @@ import {
   type POKTQueryCategory,
 } from '@/lib/pokt/config'
 import type { POKTNetworkMetrics } from '@/lib/pokt/poktscan'
+import { usePOKTAgent } from '@/hooks/usePOKTAgent'
+import { usePOKTAgentStore } from '@/lib/pokt/store'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared UI primitives
@@ -692,7 +694,9 @@ const PANELS: { id: Panel; label: string; icon: string }[] = [
 ]
 
 export default function POKTAgentTab() {
-  const [activePanel, setActivePanel] = useState<Panel>('health')
+  // Use persisted store for panel + chain state
+  const { activePanel, setActivePanel, totalQueries, successQueries } = usePOKTAgentStore()
+  const { onlineChainCount, totalChainCount } = usePOKTAgent()
 
   return (
     <div className="flex flex-col gap-4 pb-8">
@@ -707,9 +711,20 @@ export default function POKTAgentTab() {
             </h2>
             <Badge label="POKT" color="#5C6BC0" />
             <Badge label="Decentralised RPC" color="var(--green)" />
+            {totalQueries > 0 && (
+              <Badge
+                label={`${successQueries}/${totalQueries} queries`}
+                color="var(--yellow)"
+              />
+            )}
           </div>
           <p className="mono text-[10px] mt-1" style={{ color: 'var(--text3)' }}>
             Query any chain via 5,000+ independent nodes · No censorship · No single point of failure
+            {totalChainCount > 0 && (
+              <span style={{ color: onlineChainCount === totalChainCount ? 'var(--green)' : 'var(--yellow)' }}>
+                {' '}· {onlineChainCount}/{totalChainCount} chains online
+              </span>
+            )}
           </p>
         </div>
         <a
@@ -727,7 +742,7 @@ export default function POKTAgentTab() {
         {PANELS.map(p => (
           <button
             key={p.id}
-            onClick={() => setActivePanel(p.id)}
+            onClick={() => setActivePanel(p.id as Panel)}
             className="mono text-[10px] px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all"
             style={{
               background: activePanel === p.id ? 'var(--yellow)' : 'var(--bg3)',
