@@ -1,5 +1,7 @@
 'use client'
 
+import React from 'react'
+
 /**
  * components/tabs/CrooTab.tsx
  * CROO Agent Protocol (CAP) Integration Dashboard
@@ -237,6 +239,236 @@ function CAPTestPanel({
   )
 }
 
+// ── Registration Panel (Session 4) ───────────────────────────────────────────
+
+function RegistrationPanel({ agentAddress }: { agentAddress: string }) {
+  const [loading,       setLoading]       = React.useState(false)
+  const [status,        setStatus]        = React.useState<'idle'|'checking'|'submitting'|'done'|'error'>('idle')
+  const [readiness,     setReadiness]     = React.useState<any>(null)
+  const [result,        setResult]        = React.useState<any>(null)
+  const [demoUrl,       setDemoUrl]       = React.useState('')
+  const [email,         setEmail]         = React.useState('')
+  const [listingId,     setListingId]     = React.useState(() => {
+    if (typeof window !== 'undefined') return localStorage.getItem('croo_listing_id') ?? ''
+    return ''
+  })
+  const [listingStatus, setListingStatus] = React.useState<string>('')
+
+  React.useEffect(() => {
+    async function check() {
+      setStatus('checking')
+      try {
+        const res  = await fetch('/api/cap/register')
+        const data = await res.json()
+        setReadiness(data)
+      } catch { /* ignore */ } finally {
+        setStatus('idle')
+      }
+    }
+    check()
+  }, [])
+
+  React.useEffect(() => {
+    if (!listingId) return
+    async function poll() {
+      try {
+        const res  = await fetch(`/api/cap/register?listingId=${listingId}`)
+        const data = await res.json()
+        setListingStatus(data.status ?? 'unknown')
+      } catch { /* ignore */ }
+    }
+    poll()
+    const t = setInterval(poll, 30_000)
+    return () => clearInterval(t)
+  }, [listingId])
+
+  async function handleSubmit() {
+    setLoading(true)
+    setStatus('submitting')
+    setResult(null)
+    try {
+      const res  = await fetch('/api/cap/register', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ demoVideoUrl: demoUrl, contactEmail: email }),
+      })
+      const data = await res.json()
+      setResult(data)
+      if (data.success && data.listingId) {
+        setListingId(data.listingId)
+        localStorage.setItem('croo_listing_id', data.listingId)
+        setListingStatus('pending')
+      }
+      setStatus(data.success ? 'done' : 'error')
+    } catch (err: any) {
+      setResult({ success: false, error: err.message })
+      setStatus('error')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const statusColor: Record<string, string> = {
+    active:   'var(--green)',
+    verified: 'var(--green)',
+    pending:  'var(--yellow)',
+    rejected: 'var(--red)',
+    error:    'var(--red)',
+    unknown:  'var(--text3)',
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Pre-flight checklist */}
+      <div className="rounded-xl p-4" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
+        <div className="font-bold text-sm mb-3" style={{ color: 'var(--text)' }}>Pre-flight Checklist</div>
+        {status === 'checking' && (
+          <div className="text-xs" style={{ color: 'var(--text3)' }}>Checking configuration…</div>
+        )}
+        {readiness && (
+          <div className="flex flex-col gap-2">
+            {[
+              { label: 'Agent wallet set',    ok: readiness.agentWallet !== 'not set', val: readiness.agentWallet },
+              { label: 'App URL (HTTPS)',      ok: readiness.appUrl !== 'not set',      val: readiness.appUrl },
+              { label: 'CAP services loaded', ok: (readiness.servicesCount ?? 0) > 0,  val: `${readiness.servicesCount ?? 0} services` },
+              { label: 'Multi-chain ready',   ok: (readiness.chainsCount ?? 0) > 0,    val: `${readiness.chainsCount ?? 0} chains` },
+            ].map(({ label, ok, val }) => (
+              <div key={label} className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  <span style={{ color: ok ? 'var(--green)' : 'var(--red)' }}>{ok ? '✓' : '✗'}</span>
+                  <span style={{ color: 'var(--text2)' }}>{label}</span>
+                </div>
+                <span className="mono" style={{ color: ok ? 'var(--text)' : 'var(--red)' }}>{val}</span>
+              </div>
+            ))}
+            {(readiness.validationErrors ?? []).length > 0 && (
+              <div className="rounded-lg p-3 mt-1" style={{ background: 'rgba(246,70,93,0.08)', border: '1px solid var(--red)' }}>
+                {readiness.validationErrors.map((e: string) => (
+                  <div key={e} className="text-xs" style={{ color: 'var(--red)' }}>• {e}</div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Already listed banner */}
+      {listingId && (
+        <div className="rounded-xl p-4" style={{ background: 'rgba(14,203,129,0.08)', border: '1px solid var(--green)' }}>
+          <div className="font-bold text-sm mb-2" style={{ color: 'var(--green)' }}>✓ Listing Submitted</div>
+          <div className="flex flex-col gap-1 text-xs">
+            <div className="flex justify-between">
+              <span style={{ color: 'var(--text3)' }}>Listing ID</span>
+              <span className="mono" style={{ color: 'var(--text)' }}>{listingId.slice(0, 28)}…</span>
+            </div>
+            <div className="flex justify-between">
+              <span style={{ color: 'var(--text3)' }}>Status</span>
+              <span className="font-bold" style={{ color: statusColor[listingStatus] ?? 'var(--text3)' }}>
+                {listingStatus || 'polling…'}
+              </span>
+            </div>
+          </div>
+          <a
+            href={result?.storeUrl ?? 'https://agent.croo.network/agents/binalyst-trading-agent'}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block text-center text-xs mt-3 py-2 rounded-lg font-semibold"
+            style={{ background: 'var(--green)', color: '#000' }}
+          >
+            View on Agent Store ↗
+          </a>
+        </div>
+      )}
+
+      {/* Submission form */}
+      <div className="rounded-xl p-4" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
+        <div className="font-bold text-sm mb-3" style={{ color: 'var(--text)' }}>
+          {listingId ? 'Re-submit / Update Listing' : 'Submit to CROO Agent Store'}
+        </div>
+        <div className="flex flex-col gap-3">
+          <div>
+            <label className="text-[10px] mono mb-1 block" style={{ color: 'var(--text3)' }}>
+              Demo Video URL (optional — YouTube / Loom, max 5 min)
+            </label>
+            <input
+              type="url"
+              placeholder="https://youtube.com/watch?v=..."
+              value={demoUrl}
+              onChange={e => setDemoUrl(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg text-sm"
+              style={{ background: 'var(--bg1)', border: '1px solid var(--border)', color: 'var(--text)' }}
+            />
+          </div>
+          <div>
+            <label className="text-[10px] mono mb-1 block" style={{ color: 'var(--text3)' }}>
+              Contact Email (optional)
+            </label>
+            <input
+              type="email"
+              placeholder="your@email.com"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg text-sm"
+              style={{ background: 'var(--bg1)', border: '1px solid var(--border)', color: 'var(--text)' }}
+            />
+          </div>
+        </div>
+        <button
+          onClick={handleSubmit}
+          disabled={loading}
+          className="w-full mt-4 py-3 rounded-xl font-bold text-sm transition"
+          style={{
+            background: loading ? 'var(--bg3)' : 'var(--yellow)',
+            color:      loading ? 'var(--text3)' : '#000',
+          }}
+        >
+          {loading
+            ? status === 'checking' ? 'Checking…' : 'Submitting…'
+            : listingId ? '↺ Re-submit Listing' : '🚀 List on CROO Agent Store'}
+        </button>
+
+        {result && (
+          <div
+            className="mt-3 rounded-lg p-3 text-xs"
+            style={{
+              background: result.success ? 'rgba(14,203,129,0.08)' : 'rgba(246,70,93,0.08)',
+              border:     `1px solid ${result.success ? 'var(--green)' : 'var(--red)'}`,
+              color:      'var(--text2)',
+            }}
+          >
+            <div className="font-bold mb-1" style={{ color: result.success ? 'var(--green)' : 'var(--red)' }}>
+              {result.success ? '✓ Submitted' : '✗ Failed'}
+            </div>
+            {result.warning  && <div style={{ color: 'var(--yellow)' }}>⚠ {result.warning}</div>}
+            {!result.success && result.error && <div style={{ color: 'var(--red)' }}>{result.error}</div>}
+            {result.listingId && <div className="mt-1 mono" style={{ color: 'var(--text3)' }}>ID: {result.listingId}</div>}
+            {(result.validationErrors ?? []).map((e: string) => (
+              <div key={e} style={{ color: 'var(--red)' }}>• {e}</div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* What happens next */}
+      <div className="rounded-xl p-4" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
+        <div className="font-bold text-sm mb-2" style={{ color: 'var(--text)' }}>What happens next</div>
+        <div className="flex flex-col gap-1.5">
+          {[
+            ['Pending',  'var(--yellow)', 'CROO reviews manifest + tests CAP endpoint'],
+            ['Active',   'var(--blue)',   'Binalyst is live and discoverable by agents'],
+            ['Verified', 'var(--green)',  'CROO confirmed CAP calls work end-to-end'],
+          ].map(([s, c, desc]) => (
+            <div key={s} className="flex gap-3 text-xs">
+              <span className="w-16 shrink-0 font-bold" style={{ color: c }}>{s}</span>
+              <span style={{ color: 'var(--text2)' }}>{desc}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Submission Panel ──────────────────────────────────────────────────────────
 
 function SubmissionPanel({
@@ -380,6 +612,7 @@ export default function CrooTab() {
     { id: 'services',    label: 'Services'    },
     { id: 'a2a',         label: 'A2A Live'    },
     { id: 'submission',  label: 'Submission'  },
+    { id: 'register',    label: 'Register'    },
   ] as const
 
   return (
@@ -630,6 +863,11 @@ Content-Type: application/json
           trades={trades ?? []}
           session={session}
         />
+      )}
+
+      {/* ── Register (Session 4) ── */}
+      {activeSection === 'register' && (
+        <RegistrationPanel agentAddress={agentAddress} />
       )}
 
       {/* Test panel modal */}
