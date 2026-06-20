@@ -242,17 +242,17 @@ function CAPTestPanel({
 // ── Payment Panel (Session 6) ─────────────────────────────────────────────────
 
 function PaymentPanel({ agentAddress }: { agentAddress: string }) {
-  const [toAddress,    setToAddress]    = React.useState('')
-  const [amountUSDC,   setAmountUSDC]   = React.useState('0.10')
-  const [estimating,   setEstimating]   = React.useState(false)
-  const [estimate,     setEstimate]     = React.useState<any>(null)
-  const [sending,      setSending]      = React.useState(false)
-  const [sendResult,   setSendResult]   = React.useState<any>(null)
-  const [balances,     setBalances]     = React.useState<any>(null)
-  const [loadingBal,   setLoadingBal]   = React.useState(false)
+  const [toAddress,    setToAddress]    = useState('')
+  const [amountUSDC,   setAmountUSDC]   = useState('0.10')
+  const [estimating,   setEstimating]   = useState(false)
+  const [estimate,     setEstimate]     = useState<any>(null)
+  const [sending,      setSending]      = useState(false)
+  const [sendResult,   setSendResult]   = useState<any>(null)
+  const [balances,     setBalances]     = useState<any>(null)
+  const [loadingBal,   setLoadingBal]   = useState(false)
 
   // Load agent wallet balances on mount
-  React.useEffect(() => {
+  useEffect(() => {
     if (!agentAddress || agentAddress === '0x0000000000000000000000000000000000000000') return
     setLoadingBal(true)
     fetch(`/api/cap/pay?address=${agentAddress}`)
@@ -514,25 +514,25 @@ function PaymentPanel({ agentAddress }: { agentAddress: string }) {
 // ── A2A Outbound Panel (Session 5) ───────────────────────────────────────────
 
 function OutboundPanel({ agentAddress }: { agentAddress: string }) {
-  const [agents,       setAgents]       = React.useState<any[]>([])
-  const [loadingAgents,setLoadingAgents]= React.useState(false)
-  const [track,        setTrack]        = React.useState('all')
-  const [keyword,      setKeyword]      = React.useState('')
-  const [selected,     setSelected]     = React.useState<any>(null)
-  const [selectedSvc,  setSelectedSvc]  = React.useState<any>(null)
-  const [params,       setParams]       = React.useState<Record<string,string>>({})
-  const [calling,      setCalling]      = React.useState(false)
-  const [callResult,   setCallResult]   = React.useState<any>(null)
-  const [callHistory,  setCallHistory]  = React.useState<any[]>([])
-  const [callStats,    setCallStats]    = React.useState<any>(null)
+  const [agents,       setAgents]       = useState<any[]>([])
+  const [loadingAgents,setLoadingAgents]= useState(false)
+  const [track,        setTrack]        = useState('all')
+  const [keyword,      setKeyword]      = useState('')
+  const [selected,     setSelected]     = useState<any>(null)
+  const [selectedSvc,  setSelectedSvc]  = useState<any>(null)
+  const [params,       setParams]       = useState<Record<string,string>>({})
+  const [calling,      setCalling]      = useState(false)
+  const [callResult,   setCallResult]   = useState<any>(null)
+  const [callHistory,  setCallHistory]  = useState<any[]>([])
+  const [callStats,    setCallStats]    = useState<any>(null)
   // S6 — payment mode
-  const [livePayment,  setLivePayment]  = React.useState(false)
-  const [walletBal,    setWalletBal]    = React.useState<any>(null)
-  const [payEstimate,  setPayEstimate]  = React.useState<any>(null)
-  const [loadingEst,   setLoadingEst]   = React.useState(false)
+  const [livePayment,  setLivePayment]  = useState(false)
+  const [walletBal,    setWalletBal]    = useState<any>(null)
+  const [payEstimate,  setPayEstimate]  = useState<any>(null)
+  const [loadingEst,   setLoadingEst]   = useState(false)
 
   // Load call history on mount
-  React.useEffect(() => {
+  useEffect(() => {
     fetch('/api/cap/call')
       .then(r => r.json())
       .then(d => { setCallHistory(d.calls ?? []); setCallStats(d.stats) })
@@ -540,7 +540,7 @@ function OutboundPanel({ agentAddress }: { agentAddress: string }) {
   }, [])
 
   // S6 — wallet USDC balance
-  React.useEffect(() => {
+  useEffect(() => {
     const agentWallet = process.env.NEXT_PUBLIC_AGENT_WALLET ?? ''
     if (!agentWallet) return
     fetch(`/api/cap/pay?address=${agentWallet}`)
@@ -548,7 +548,7 @@ function OutboundPanel({ agentAddress }: { agentAddress: string }) {
   }, [])
 
   // S6 — payment estimate when service + live mode selected
-  React.useEffect(() => {
+  useEffect(() => {
     if (!selectedSvc || !selected?.wallet || !livePayment) { setPayEstimate(null); return }
     const agentWallet = process.env.NEXT_PUBLIC_AGENT_WALLET ?? ''
     if (!agentWallet) return
@@ -575,7 +575,7 @@ function OutboundPanel({ agentAddress }: { agentAddress: string }) {
   }
 
   // Auto-discover on mount
-  React.useEffect(() => { discover() }, [])
+  useEffect(() => { discover() }, [])
 
   async function callAgent() {
     if (!selected || !selectedSvc) return
@@ -846,19 +846,19 @@ function OutboundPanel({ agentAddress }: { agentAddress: string }) {
 // ── Registration Panel (Session 4) ───────────────────────────────────────────
 
 function RegistrationPanel({ agentAddress }: { agentAddress: string }) {
-  const [loading,       setLoading]       = React.useState(false)
-  const [status,        setStatus]        = React.useState<'idle'|'checking'|'submitting'|'done'|'error'>('idle')
-  const [readiness,     setReadiness]     = React.useState<any>(null)
-  const [result,        setResult]        = React.useState<any>(null)
-  const [demoUrl,       setDemoUrl]       = React.useState('')
-  const [email,         setEmail]         = React.useState('')
-  const [listingId,     setListingId]     = React.useState(() => {
+  const [loading,       setLoading]       = useState(false)
+  const [status,        setStatus]        = useState<'idle'|'checking'|'submitting'|'done'|'error'>('idle')
+  const [readiness,     setReadiness]     = useState<any>(null)
+  const [result,        setResult]        = useState<any>(null)
+  const [demoUrl,       setDemoUrl]       = useState('')
+  const [email,         setEmail]         = useState('')
+  const [listingId,     setListingId]     = useState(() => {
     if (typeof window !== 'undefined') return localStorage.getItem('croo_listing_id') ?? ''
     return ''
   })
-  const [listingStatus, setListingStatus] = React.useState<string>('')
+  const [listingStatus, setListingStatus] = useState<string>('')
 
-  React.useEffect(() => {
+  useEffect(() => {
     async function check() {
       setStatus('checking')
       try {
@@ -872,7 +872,7 @@ function RegistrationPanel({ agentAddress }: { agentAddress: string }) {
     check()
   }, [])
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!listingId) return
     async function poll() {
       try {
@@ -1075,26 +1075,38 @@ function RegistrationPanel({ agentAddress }: { agentAddress: string }) {
 
 // ── Submission Panel ──────────────────────────────────────────────────────────
 
+// ── Submission Panel (Session 7 — FINAL) ──────────────────────────────────────
+
 function SubmissionPanel({
-  agentAddress,
-  strategyText,
-  trades,
-  session,
+  agentAddress, strategyText, trades, session,
 }: {
   agentAddress: string
   strategyText: string
   trades:       any[]
   session:      any
 }) {
-  const [loading, setLoading]         = useState(false)
-  const [submission, setSubmission]   = useState('')
-  const [copied, setCopied]           = useState(false)
+  const [loading,      setLoading]      = useState(false)
+  const [result,       setResult]       = useState<any>(null)
+  const [activeOutput, setActiveOutput] = useState<'dorahacks'|'twitter'|'badges'|'checklist'|'scores'>('checklist')
+  const [copied,       setCopied]       = useState(false)
+  const [demoUrl,      setDemoUrl]      = useState('')
+  const [doraFiled,    setDoraFiled]    = useState(false)
+  const [capLive,      setCapLive]      = useState(false)
+
+  // Load checklist on mount
+  useEffect(() => {
+    const listingId = typeof window !== 'undefined' ? localStorage.getItem('croo_listing_id') ?? '' : ''
+    fetch(`/api/cap/submission?registered=${!!listingId}&demoVideoUrl=${demoUrl}&capLive=${capLive}`)
+      .then(r => r.json())
+      .then(d => setResult((prev: any) => prev ?? d))
+      .catch(() => {})
+  }, [])
 
   async function generate() {
     setLoading(true)
-    setSubmission('')
     try {
-      const res = await fetch('/api/cap/submission', {
+      const listingId = typeof window !== 'undefined' ? localStorage.getItem('croo_listing_id') ?? '' : ''
+      const res  = await fetch('/api/cap/submission', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({
@@ -1102,50 +1114,112 @@ function SubmissionPanel({
           strategyText,
           trades,
           session,
-          capCalls:         0,
-          capRevenue:       '0.00',
-          registeredOnStore: false,
+          capCalls:          result?.capCallsLive  ?? 0,
+          capRevenue:        result?.capRevenue     ?? '0.00',
+          capOutboundCalls:  0,
+          capSpent:          '0.00',
+          registeredOnStore: !!listingId,
+          listingId,
+          demoVideoUrl:      demoUrl,
+          doraHacksFiled:    doraFiled,
+          capEndpointLive:   capLive,
+          appUrl:            typeof window !== 'undefined' ? window.location.origin : '',
         }),
       })
       const data = await res.json()
-      if (data.success) setSubmission(data.submission)
-      else setSubmission('Error: ' + data.error)
+      if (data.success) { setResult(data); setActiveOutput('dorahacks') }
+      else setResult((prev: any) => ({ ...prev, error: data.error }))
     } catch (err: any) {
-      setSubmission('Error: ' + err.message)
+      setResult((prev: any) => ({ ...prev, error: err.message }))
     } finally {
       setLoading(false)
     }
   }
 
-  function copyToClipboard() {
-    navigator.clipboard.writeText(submission)
+  function copy(text: string) {
+    navigator.clipboard.writeText(text)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
 
+  const OUTPUT_TABS = [
+    { id: 'checklist', label: '✓ Checklist' },
+    { id: 'scores',    label: '📊 Scores'   },
+    { id: 'dorahacks', label: '📝 Writeup'  },
+    { id: 'twitter',   label: '🐦 Thread'   },
+    { id: 'badges',    label: '🏷 Badges'   },
+  ] as const
+
+  const checklist: any[]          = result?.checklist         ?? []
+  const scores:    any[]          = result?.scores            ?? []
+  const metCount                  = checklist.filter((c: any) => c.met).length
+  const allMet                    = metCount === 5
+  const totalScore: number        = result?.totalScore        ?? 0
+  const dorahacks:  string        = result?.dorahacks         ?? ''
+  const twitter:    string        = result?.twitter           ?? ''
+  const badges:     string        = result?.badges            ?? ''
+
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-xl p-4" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
+
+      {/* Prize banner */}
+      <div
+        className="rounded-xl p-4"
+        style={{ background: 'linear-gradient(135deg,#f59e0b22,#3b82f622)', border: '1px solid var(--border)' }}
+      >
         <div className="flex items-center justify-between mb-3">
           <div>
-            <div className="font-bold text-sm" style={{ color: 'var(--text)' }}>DoraHacks Submission</div>
-            <div className="text-xs" style={{ color: 'var(--text3)' }}>AI-generated CROO hackathon writeup</div>
+            <div className="font-bold text-sm" style={{ color: 'var(--text)' }}>CROO Hackathon — DoraHacks</div>
+            <div className="text-xs" style={{ color: 'var(--text3)' }}>Final submission generator · Claude Sonnet</div>
           </div>
-          <Badge label="CROO Hackathon" color="var(--yellow)" />
+          <Badge label="~$10.2K Prize Pool" color="var(--yellow)" />
         </div>
-
-        <div className="flex flex-col gap-2">
+        <div className="grid grid-cols-2 gap-2 text-xs">
           {[
-            ['Prize Pool', '~$10,200 USDC cash'],
-            ['Tracks', 'DeFi/On-chain Ops + Research & Intelligence'],
-            ['Deadline', 'See CROO Discord for current dates'],
-            ['Venue', 'dorahacks.io / CROO Hackathon'],
+            ['Tracks',     'DeFi/On-chain Ops + Research + Open A2A'],
+            ['Prize Pool', '~$10,200 USDC cash + Store listing + airdrop'],
+            ['Venue',      'dorahacks.io / CROO Hackathon'],
+            ['License',    'MIT — github.com/davife2025/Binalyst'],
           ].map(([k, v]) => (
-            <div key={k} className="flex justify-between text-xs">
-              <span style={{ color: 'var(--text3)' }}>{k}</span>
-              <span style={{ color: 'var(--text)' }}>{v}</span>
+            <div key={k}>
+              <div className="text-[10px] uppercase" style={{ color: 'var(--text3)' }}>{k}</div>
+              <div style={{ color: 'var(--text)' }}>{v}</div>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Pre-submission form */}
+      <div className="rounded-xl p-4" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
+        <div className="font-bold text-sm mb-3" style={{ color: 'var(--text)' }}>Before You Generate</div>
+        <div className="flex flex-col gap-3">
+          <div>
+            <label className="text-[10px] mono mb-1 block" style={{ color: 'var(--text3)' }}>Demo Video URL (YouTube / Loom — max 5 min)</label>
+            <input
+              type="url"
+              placeholder="https://youtube.com/watch?v=..."
+              value={demoUrl}
+              onChange={e => setDemoUrl(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg text-sm"
+              style={{ background: 'var(--bg1)', border: '1px solid var(--border)', color: 'var(--text)' }}
+            />
+          </div>
+          <div className="flex gap-4">
+            {[
+              { id: 'capLive',   val: capLive,   set: setCapLive,   label: 'CAP endpoint deployed to Vercel' },
+              { id: 'doraFiled', val: doraFiled,  set: setDoraFiled,  label: 'DoraHacks BUIDL filed'           },
+            ].map(({ id, val, set, label }) => (
+              <label key={id} className="flex items-center gap-2 text-xs cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={val}
+                  onChange={e => set(e.target.checked)}
+                  className="w-4 h-4 accent-green-400"
+                />
+                <span style={{ color: 'var(--text2)' }}>{label}</span>
+              </label>
+            ))}
+          </div>
         </div>
 
         <button
@@ -1154,29 +1228,128 @@ function SubmissionPanel({
           className="w-full mt-4 py-3 rounded-xl font-bold text-sm transition"
           style={{ background: loading ? 'var(--bg3)' : 'var(--yellow)', color: loading ? 'var(--text3)' : '#000' }}
         >
-          {loading ? 'Generating with Claude...' : '⚡ Generate Submission'}
+          {loading ? '⚡ Claude is writing your submission…' : '⚡ Generate Full Submission'}
         </button>
+        {result?.error && (
+          <div className="mt-2 text-xs" style={{ color: 'var(--red)' }}>Error: {result.error}</div>
+        )}
       </div>
 
-      {submission && (
-        <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
-          <div className="flex items-center justify-between px-4 py-2" style={{ background: 'var(--bg2)', borderBottom: '1px solid var(--border)' }}>
-            <div className="text-xs font-semibold" style={{ color: 'var(--text2)' }}>Submission Draft</div>
-            <button
-              onClick={copyToClipboard}
-              className="text-xs px-3 py-1 rounded-lg font-semibold transition"
-              style={{ background: 'var(--green)', color: '#000' }}
+      {/* Output tabs */}
+      {(checklist.length > 0 || dorahacks) && (
+        <>
+          <div className="flex gap-2 overflow-x-auto">
+            {OUTPUT_TABS.map(t => (
+              <button
+                key={t.id}
+                onClick={() => setActiveOutput(t.id)}
+                className="px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap shrink-0"
+                style={{
+                  background: activeOutput === t.id ? 'var(--blue)' : 'var(--bg2)',
+                  color:      activeOutput === t.id ? '#fff'        : 'var(--text2)',
+                  border:     '1px solid var(--border)',
+                }}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Checklist */}
+          {activeOutput === 'checklist' && (
+            <div className="rounded-xl p-4" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
+              <div className="flex items-center justify-between mb-3">
+                <div className="font-bold text-sm" style={{ color: 'var(--text)' }}>5 Mandatory Requirements</div>
+                <Badge
+                  label={allMet ? 'All Met ✓' : `${metCount}/5`}
+                  color={allMet ? 'var(--green)' : 'var(--yellow)'}
+                />
+              </div>
+              <div className="flex flex-col gap-3">
+                {checklist.map((c: any) => (
+                  <div key={c.req} className="flex gap-3">
+                    <span className="mt-0.5 text-base shrink-0" style={{ color: c.met ? 'var(--green)' : 'var(--red)' }}>
+                      {c.met ? '✓' : '✗'}
+                    </span>
+                    <div>
+                      <div className="text-xs font-semibold" style={{ color: 'var(--text)' }}>{c.req}</div>
+                      <div className="text-[11px] mt-0.5" style={{ color: c.met ? 'var(--text3)' : 'var(--yellow)' }}>{c.note}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Scores */}
+          {activeOutput === 'scores' && (
+            <div className="rounded-xl p-4" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
+              <div className="flex items-center justify-between mb-3">
+                <div className="font-bold text-sm" style={{ color: 'var(--text)' }}>Estimated Judging Score</div>
+                <div className="font-extrabold text-xl mono" style={{ color: totalScore >= 80 ? 'var(--green)' : 'var(--yellow)' }}>
+                  {totalScore}<span className="text-xs font-normal">/100</span>
+                </div>
+              </div>
+              <div className="flex flex-col gap-3">
+                {scores.map((s: any) => (
+                  <div key={s.id}>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span style={{ color: 'var(--text2)' }}>{s.label}</span>
+                      <span className="mono" style={{ color: 'var(--text3)' }}>{s.weight}% weight · {s.score}/100</span>
+                    </div>
+                    <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--bg1)' }}>
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{ width: `${s.score}%`, background: s.score >= 85 ? 'var(--green)' : 'var(--yellow)' }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Text outputs: DoraHacks / Twitter / Badges */}
+          {(['dorahacks','twitter','badges'] as const).includes(activeOutput as any) && (
+            <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
+              <div className="flex items-center justify-between px-4 py-2" style={{ background: 'var(--bg2)', borderBottom: '1px solid var(--border)' }}>
+                <div className="text-xs font-semibold" style={{ color: 'var(--text2)' }}>
+                  {activeOutput === 'dorahacks' ? 'DoraHacks BUIDL Writeup'
+                    : activeOutput === 'twitter' ? 'Twitter / X Thread'
+                    : 'GitHub README Badges'}
+                </div>
+                <button
+                  onClick={() => copy(activeOutput === 'dorahacks' ? dorahacks : activeOutput === 'twitter' ? twitter : badges)}
+                  className="text-xs px-3 py-1 rounded-lg font-semibold"
+                  style={{ background: 'var(--green)', color: '#000' }}
+                >
+                  {copied ? '✓ Copied!' : 'Copy'}
+                </button>
+              </div>
+              <div
+                className="p-4 max-h-[420px] overflow-y-auto text-xs leading-relaxed whitespace-pre-wrap mono"
+                style={{ background: 'var(--bg1)', color: 'var(--text2)' }}
+              >
+                {activeOutput === 'dorahacks' ? dorahacks
+                  : activeOutput === 'twitter'   ? twitter
+                  : badges || '(generate submission to see badges)'}
+              </div>
+            </div>
+          )}
+
+          {/* DoraHacks CTA */}
+          {activeOutput === 'dorahacks' && dorahacks && (
+            <a
+              href="https://dorahacks.io"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block w-full text-center py-3 rounded-xl font-bold text-sm"
+              style={{ background: 'var(--yellow)', color: '#000' }}
             >
-              {copied ? '✓ Copied!' : 'Copy'}
-            </button>
-          </div>
-          <div
-            className="p-4 max-h-96 overflow-y-auto text-xs leading-relaxed whitespace-pre-wrap"
-            style={{ background: 'var(--bg1)', color: 'var(--text2)', fontFamily: 'monospace' }}
-          >
-            {submission}
-          </div>
-        </div>
+              File BUIDL on DoraHacks ↗
+            </a>
+          )}
+        </>
       )}
     </div>
   )
@@ -1187,7 +1360,9 @@ function SubmissionPanel({
 export default function CrooTab() {
   const { agentAddress, strategyText, trades, session } = useAgentStore()
 
-  const [activeSection, setActiveSection]     = useState<'overview' | 'services' | 'a2a' | 'submission'>('overview')
+  type SectionId = 'overview' | 'services' | 'a2a' | 'outbound' | 'payment' | 'submission' | 'register'
+
+  const [activeSection, setActiveSection]     = useState<SectionId>('overview')
   const [testService, setTestService]         = useState<CAPService | null>(null)
   const [manifestData, setManifestData]       = useState<any>(null)
   const [statusData, setStatusData]           = useState<any>(null)
@@ -1211,15 +1386,15 @@ export default function CrooTab() {
     loadManifest()
   }, [loadManifest])
 
-  const sections = [
-    { id: 'overview',    label: 'Overview'    },
-    { id: 'services',    label: 'Services'    },
+  const sections: { id: SectionId; label: string }[] = [
+    { id: 'overview',    label: 'Overview'     },
+    { id: 'services',    label: 'Services'     },
     { id: 'a2a',         label: 'A2A Inbound'  },
     { id: 'outbound',    label: 'A2A Outbound' },
     { id: 'payment',     label: 'USDC Pay'     },
-    { id: 'submission',  label: 'Submission'  },
-    { id: 'register',    label: 'Register'    },
-  ] as const
+    { id: 'submission',  label: 'Submission'   },
+    { id: 'register',    label: 'Register'     },
+  ]
 
   return (
     <div className="flex flex-col gap-6 pb-24">
