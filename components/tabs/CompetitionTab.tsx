@@ -1,12 +1,12 @@
 'use client'
 
 /**
- * components/tabs/CompetitionTab.tsx — Session K
- * Updated to show:
- * - Self-custody signing indicator (🔐 Signing locally...)
- * - x402 payment proof badge per cycle
- * - Unsigned → Signed → Broadcast flow status
- * Preserves all existing UI from Session D.
+ * components/tabs/CompetitionTab.tsx — Session K + Live Trading Fix
+ * Fixed:
+ * - Blocking warnings when dryRun=true or autonomousMode=false
+ * - Direct toggle buttons for dryRun and autonomousMode from this tab
+ * - Network warning when on testnet with live settings
+ * - canStart now requires dryRun=false + autonomousMode=true for live trades
  */
 
 import { useState }              from 'react'
@@ -37,19 +37,21 @@ const STATUS_CONFIG: Record<string, { color: string; bg: string; label: string }
 }
 
 export default function CompetitionTab() {
-  const { agentAddress, isWalletLoaded, agentConfig, strategyParsed, trades, session } = useAgentStore()
+  const {
+    agentAddress, isWalletLoaded, agentConfig, strategyParsed, trades, session,
+    setAgentConfig,
+  } = useAgentStore()
   const network = (useAgentStore() as any).network ?? 'testnet'
   const netCfg  = NETWORKS[network as 'mainnet' | 'testnet']
 
   const {
     loopStatus, lastCycle, nextRunIn, isRunning, cycleError, isActive,
-
     pnlPct, tradeStatus, todayTrades, totalTrades, drawdownPct,
     portfolioUSD, startUSD, daysElapsed, isRegistered,
     startLoop, stopLoop, pauseLoop, resumeLoop, runCycle,
   } = useAgentLoop()
 
-  const { data: fg }               = useFearAndGreed()
+  const { data: fg }                    = useFearAndGreed()
   const [startCapital, setStartCapital] = useState('100')
   const [activeView, setActiveView]     = useState<'overview' | 'trades' | 'decisions'>('overview')
   const [tradeFilter, setTradeFilter]   = useState<'all' | 'buy' | 'sell' | 'live'>('all')
@@ -58,7 +60,13 @@ export default function CompetitionTab() {
   const pnlColor   = pnlPct >= 0 ? 'var(--green)' : 'var(--red)'
   const noWallet   = !isWalletLoaded || !agentAddress
   const noStrategy = strategyParsed.length === 0
-  const canStart   = !noWallet && !noStrategy && loopStatus !== 'disqualified'
+
+  // ── Live trading readiness checks ─────────────────────────────────────────
+  const isDryRun       = agentConfig.dryRun
+  const isAutoOff      = !agentConfig.autonomousMode
+  const isTestnet      = network !== 'mainnet'
+  const isLiveReady    = !isDryRun && !isAutoOff && !isTestnet
+  const canStart       = !noWallet && !noStrategy && loopStatus !== 'disqualified'
 
   const filteredTrades = trades.filter(t => {
     if (tradeFilter === 'buy')  return t.side === 'BUY'
@@ -96,22 +104,6 @@ export default function CompetitionTab() {
             )}
           </div>
 
-          {/* Self-custody signing indicator */}
-          {(
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg mb-3"
-              style={{ background: 'rgba(240,185,11,0.1)', border: '1px solid rgba(240,185,11,0.3)' }}>
-              <span className="w-3 h-3 rounded-full border-2 border-yellow-400 border-t-transparent animate-spin-slow shrink-0" />
-              <div>
-                <div className="mono text-[10px] font-bold" style={{ color: 'var(--yellow)' }}>
-                  🔐 Signing locally...
-                </div>
-                <div className="mono text-[9px]" style={{ color: 'var(--text3)' }}>
-                  Private key never leaves device
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Self-custody badge */}
           <div className="flex items-center gap-2 px-3 py-2 rounded-lg mb-3"
             style={{ background: 'rgba(14,203,129,0.06)', border: '1px solid rgba(14,203,129,0.2)' }}>
@@ -126,37 +118,92 @@ export default function CompetitionTab() {
             </div>
           </div>
 
-          {/* x402 badge */}
-          <div className="flex items-center gap-2 px-3 py-2 rounded-lg mb-3"
-            style={{ background: 'rgba(52,152,219,0.06)', border: '1px solid rgba(52,152,219,0.2)' }}>
-            <span style={{ fontSize: 14 }}>⚡</span>
-            <div>
-              <div className="mono text-[10px] font-bold" style={{ color: '#3498db' }}>
-                x402 Pay-Per-Signal
-              </div>
-              <div className="mono text-[9px]" style={{ color: 'var(--text3)' }}>
-                0.001 USDT per CMC signal
-              </div>
+          {/* ── LIVE TRADING READINESS PANEL ─────────────────────────────── */}
+          <div className="rounded-lg p-3 mb-3 flex flex-col gap-2"
+            style={{
+              background: isLiveReady ? 'rgba(14,203,129,0.06)' : 'rgba(246,70,93,0.06)',
+              border: `1px solid ${isLiveReady ? 'rgba(14,203,129,0.25)' : 'rgba(246,70,93,0.25)'}`,
+            }}>
+            <div className="mono text-[10px] font-bold mb-1"
+              style={{ color: isLiveReady ? 'var(--green)' : 'var(--red)' }}>
+              {isLiveReady ? '✓ Ready for live trading' : '⚠ Not executing real trades'}
             </div>
+
+            {/* Dry Run toggle */}
+            <div className="flex items-center justify-between">
+              <span className="mono text-[10px]" style={{ color: isDryRun ? 'var(--red)' : 'var(--green)' }}>
+                {isDryRun ? '🔵 Dry Run ON' : '🔴 Live Mode ON'}
+              </span>
+              <button
+                onClick={() => setAgentConfig({ dryRun: !agentConfig.dryRun })}
+                className="mono text-[9px] px-2 py-1 rounded transition-all"
+                style={{
+                  background: isDryRun ? 'rgba(246,70,93,0.15)' : 'rgba(14,203,129,0.15)',
+                  color:      isDryRun ? 'var(--red)' : 'var(--green)',
+                  border:     `1px solid ${isDryRun ? 'rgba(246,70,93,0.3)' : 'rgba(14,203,129,0.3)'}`,
+                }}>
+                {isDryRun ? 'Enable Live' : 'Enable Dry Run'}
+              </button>
+            </div>
+
+            {/* Autonomous Mode toggle */}
+            <div className="flex items-center justify-between">
+              <span className="mono text-[10px]" style={{ color: isAutoOff ? 'var(--red)' : 'var(--green)' }}>
+                {isAutoOff ? '✗ Auto trade OFF' : '✓ Auto trade ON'}
+              </span>
+              <button
+                onClick={() => setAgentConfig({ autonomousMode: !agentConfig.autonomousMode })}
+                className="mono text-[9px] px-2 py-1 rounded transition-all"
+                style={{
+                  background: isAutoOff ? 'rgba(246,70,93,0.15)' : 'rgba(14,203,129,0.15)',
+                  color:      isAutoOff ? 'var(--red)' : 'var(--green)',
+                  border:     `1px solid ${isAutoOff ? 'rgba(246,70,93,0.3)' : 'rgba(14,203,129,0.3)'}`,
+                }}>
+                {isAutoOff ? 'Enable Auto' : 'Disable Auto'}
+              </button>
+            </div>
+
+            {/* Network warning */}
+            {isTestnet && (
+              <div className="mono text-[9px] mt-1 p-1.5 rounded"
+                style={{ background: 'rgba(240,185,11,0.1)', color: 'var(--yellow)', border: '1px solid rgba(240,185,11,0.2)' }}>
+                On testnet — switch to Mainnet in Agent Wallet tab for real trades
+              </div>
+            )}
+
+            {/* Confirmation when all good */}
+            {!isDryRun && !isAutoOff && isTestnet && (
+              <div className="mono text-[9px] mt-1 p-1.5 rounded"
+                style={{ background: 'rgba(240,185,11,0.08)', color: 'var(--yellow)' }}>
+                Switch network to Mainnet to execute real swaps
+              </div>
+            )}
+
+            {isLiveReady && (
+              <div className="mono text-[9px] mt-1 p-1.5 rounded"
+                style={{ background: 'rgba(14,203,129,0.08)', color: 'var(--green)' }}>
+                Real BSC swaps will be signed and broadcast each cycle
+              </div>
+            )}
           </div>
 
           {/* Blockers */}
           {noWallet && (
             <div className="mono text-[10px] p-2 rounded mb-2"
               style={{ background: 'rgba(246,70,93,0.08)', color: 'var(--red)' }}>
-              ⚠ No wallet — go to Agent Wallet
+              ⚠ No wallet — go to Agent Wallet tab
             </div>
           )}
           {noStrategy && !noWallet && (
             <div className="mono text-[10px] p-2 rounded mb-2"
               style={{ background: 'rgba(240,185,11,0.08)', color: 'var(--yellow)' }}>
-              ⚠ No strategy — go to Strategy Builder
+              ⚠ No strategy — go to Strategy Builder tab
             </div>
           )}
           {!isRegistered && !noWallet && (
             <div className="mono text-[10px] p-2 rounded mb-2"
               style={{ background: 'rgba(240,185,11,0.08)', color: 'var(--yellow)' }}>
-              ⚠ Not registered on BSC
+              ⚠ Not registered on BSC — register in Agent Wallet tab
             </div>
           )}
 
@@ -186,7 +233,7 @@ export default function CompetitionTab() {
                   color:      canStart ? '#000' : 'var(--text3)',
                   cursor:     canStart ? 'pointer' : 'not-allowed',
                 }}>
-                ▶ Start Agent
+                {isDryRun ? '▶ Start (Dry Run)' : '▶ Start Agent'}
               </button>
             ) : (
               <div className="flex gap-2">
@@ -239,17 +286,17 @@ export default function CompetitionTab() {
             Config
           </div>
           {[
-            { label: 'Mode',      value: agentConfig.dryRun ? '🔵 Dry Run' : '🔴 Live' },
-            { label: 'Auto',      value: agentConfig.autonomousMode ? '✓ On' : '✗ Off' },
-            { label: 'Max DD',    value: agentConfig.maxDrawdownPct + '%' },
-            { label: 'Per trade', value: agentConfig.maxPerTradePct + '%' },
-            { label: 'Rules',     value: strategyParsed.length + ' active' },
-            { label: 'Network',   value: network === 'mainnet' ? '🔴 Mainnet' : '🟢 Testnet' },
-          ].map(({ label, value }) => (
+            { label: 'Mode',      value: agentConfig.dryRun ? '🔵 Dry Run' : '🔴 Live',         color: agentConfig.dryRun ? 'var(--text3)' : 'var(--red)' },
+            { label: 'Auto',      value: agentConfig.autonomousMode ? '✓ On' : '✗ Off',          color: agentConfig.autonomousMode ? 'var(--green)' : 'var(--red)' },
+            { label: 'Network',   value: network === 'mainnet' ? '🔴 Mainnet' : '🟡 Testnet',    color: network === 'mainnet' ? 'var(--green)' : 'var(--yellow)' },
+            { label: 'Max DD',    value: agentConfig.maxDrawdownPct + '%',                        color: 'var(--text2)' },
+            { label: 'Per trade', value: agentConfig.maxPerTradePct + '%',                        color: 'var(--text2)' },
+            { label: 'Rules',     value: strategyParsed.length + ' active',                       color: strategyParsed.length > 0 ? 'var(--green)' : 'var(--red)' },
+          ].map(({ label, value, color }) => (
             <div key={label} className="flex justify-between py-1 border-b"
               style={{ borderColor: 'var(--border)' }}>
               <span className="mono text-[10px]" style={{ color: 'var(--text3)' }}>{label}</span>
-              <span className="mono text-[10px] font-bold" style={{ color: 'var(--text2)' }}>{value}</span>
+              <span className="mono text-[10px] font-bold" style={{ color }}>{value}</span>
             </div>
           ))}
         </div>
@@ -316,7 +363,7 @@ export default function CompetitionTab() {
               </div>
             </div>
 
-            {/* Self-custody proof */}
+            {/* On-chain proof */}
             <div className="rounded-xl p-4"
               style={{ background: 'rgba(14,203,129,0.04)', border: '1px solid rgba(14,203,129,0.15)' }}>
               <div className="mono text-[10px] uppercase tracking-widest mb-1" style={{ color: 'var(--text3)' }}>
@@ -352,7 +399,7 @@ export default function CompetitionTab() {
                 Last Cycle
               </div>
               <div className="mono text-xs font-bold" style={{ color: 'var(--text)' }}>
-                {lastCycle ? fmtTime(lastCycle.cycleAt) : '—'}
+                {lastCycle ? fmtTime(lastCycle.cycleAt) : '-'}
               </div>
               {lastCycle && (
                 <div className="mono text-[10px] mt-0.5" style={{ color: 'var(--text3)' }}>
@@ -381,11 +428,12 @@ export default function CompetitionTab() {
         {/* Overview */}
         {activeView === 'overview' && (
           <div className="px-6 py-4 flex flex-col gap-4">
-            {/* Self-custody explanation */}
+
+            {/* How Self-Custody Works */}
             <div className="rounded-xl p-4"
               style={{ background: 'rgba(14,203,129,0.04)', border: '1px solid rgba(14,203,129,0.15)' }}>
               <div className="mono text-[10px] uppercase tracking-widest mb-2" style={{ color: 'var(--green)' }}>
-                🔐 How Self-Custody Works Here
+                How Self-Custody Works Here
               </div>
               <div className="grid gap-2" style={{ gridTemplateColumns: '1fr 1fr' }}>
                 {[
@@ -420,7 +468,7 @@ export default function CompetitionTab() {
               </div>
               {strategyParsed.length === 0 ? (
                 <div className="px-4 py-8 text-center mono text-xs" style={{ color: 'var(--text3)' }}>
-                  No rules — go to Strategy Builder
+                  No rules — go to Strategy Builder tab
                 </div>
               ) : (
                 <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
@@ -472,9 +520,7 @@ export default function CompetitionTab() {
               <div className="flex flex-col items-center justify-center py-16 gap-3"
                 style={{ background: 'var(--bg2)', border: '1px dashed var(--border)', borderRadius: 12 }}>
                 <div className="text-4xl opacity-20">📋</div>
-                <div className="mono text-xs" style={{ color: 'var(--text3)' }}>
-                  No trades yet
-                </div>
+                <div className="mono text-xs" style={{ color: 'var(--text3)' }}>No trades yet</div>
               </div>
             ) : (
               <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
@@ -507,7 +553,7 @@ export default function CompetitionTab() {
                       {fmtUSD(t.amountUSDT)}
                     </span>
                     <span className="mono text-[10px]" style={{ color: 'var(--text2)' }}>
-                      {t.price > 0 ? fmtUSD(t.price) : '—'}
+                      {t.price > 0 ? fmtUSD(t.price) : '-'}
                     </span>
                     <span className="mono text-[10px]" style={{
                       color: t.signalScore >= 65 ? 'var(--green)' : t.signalScore <= 35 ? 'var(--red)' : 'var(--yellow)',
@@ -545,8 +591,7 @@ export default function CompetitionTab() {
             ) : (
               <>
                 <div className="mono text-[10px]" style={{ color: 'var(--text3)' }}>
-                  Cycle at {fmtTime(lastCycle.cycleAt)} · {lastCycle.executed} executed ·
-                  {lastCycle.blocked} blocked · DD {lastCycle.drawdownPct.toFixed(1)}%
+                  Cycle at {fmtTime(lastCycle.cycleAt)} · {lastCycle.executed} executed · {lastCycle.blocked} blocked · DD {lastCycle.drawdownPct.toFixed(1)}%
                 </div>
                 {lastCycle.decisions.map((d: any, i: number) => (
                   <div key={i} className="rounded-xl p-4 flex items-start gap-3"
