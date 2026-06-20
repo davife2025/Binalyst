@@ -239,6 +239,610 @@ function CAPTestPanel({
   )
 }
 
+// ── Payment Panel (Session 6) ─────────────────────────────────────────────────
+
+function PaymentPanel({ agentAddress }: { agentAddress: string }) {
+  const [toAddress,    setToAddress]    = React.useState('')
+  const [amountUSDC,   setAmountUSDC]   = React.useState('0.10')
+  const [estimating,   setEstimating]   = React.useState(false)
+  const [estimate,     setEstimate]     = React.useState<any>(null)
+  const [sending,      setSending]      = React.useState(false)
+  const [sendResult,   setSendResult]   = React.useState<any>(null)
+  const [balances,     setBalances]     = React.useState<any>(null)
+  const [loadingBal,   setLoadingBal]   = React.useState(false)
+
+  // Load agent wallet balances on mount
+  React.useEffect(() => {
+    if (!agentAddress || agentAddress === '0x0000000000000000000000000000000000000000') return
+    setLoadingBal(true)
+    fetch(`/api/cap/pay?address=${agentAddress}`)
+      .then(r => r.json())
+      .then(d => setBalances(d))
+      .catch(() => {})
+      .finally(() => setLoadingBal(false))
+  }, [agentAddress])
+
+  async function handleEstimate() {
+    if (!toAddress || !amountUSDC) return
+    setEstimating(true)
+    setEstimate(null)
+    try {
+      const res  = await fetch(`/api/cap/pay?to=${toAddress}&amount=${amountUSDC}`)
+      const data = await res.json()
+      setEstimate(data)
+    } catch (err: any) {
+      setEstimate({ error: err.message })
+    } finally {
+      setEstimating(false)
+    }
+  }
+
+  async function handleSend(dryRun: boolean) {
+    setSending(true)
+    setSendResult(null)
+    try {
+      const res  = await fetch('/api/cap/pay', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ toAddress, amountUSDC: parseFloat(amountUSDC), dryRun }),
+      })
+      const data = await res.json()
+      setSendResult(data)
+    } catch (err: any) {
+      setSendResult({ success: false, error: err.message })
+    } finally {
+      setSending(false)
+    }
+  }
+
+  const noWallet = !agentAddress || agentAddress === '0x0000000000000000000000000000000000000000'
+
+  return (
+    <div className="flex flex-col gap-4">
+
+      {/* Wallet balances */}
+      <div className="rounded-xl p-4" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
+        <div className="font-bold text-sm mb-3" style={{ color: 'var(--text)' }}>Agent Wallet Balances</div>
+        {noWallet && (
+          <div className="text-xs" style={{ color: 'var(--yellow)' }}>
+            ⚠ AGENT_WALLET_ADDRESS not set — set it in .env.local to see balances.
+          </div>
+        )}
+        {loadingBal && <div className="text-xs" style={{ color: 'var(--text3)' }}>Loading balances…</div>}
+        {balances && !loadingBal && (
+          <div className="flex flex-col gap-2">
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { label: 'USDC (BSC)',  value: `$${balances.usdcBalance}`,  ok: balances.hasUSDC,      color: 'var(--green)' },
+                { label: 'BNB (gas)',   value: `${balances.bnbBalance} BNB`, ok: balances.hasBNBForGas, color: 'var(--yellow)' },
+              ].map(({ label, value, ok, color }) => (
+                <div key={label} className="rounded-lg p-3" style={{ background: 'var(--bg1)', border: '1px solid var(--border)' }}>
+                  <div className="text-[10px] uppercase" style={{ color: 'var(--text3)' }}>{label}</div>
+                  <div className="font-extrabold text-sm mono mt-1" style={{ color: ok ? color : 'var(--red)' }}>{value}</div>
+                  <div className="text-[10px] mt-0.5" style={{ color: ok ? 'var(--green)' : 'var(--red)' }}>
+                    {ok ? '✓ sufficient' : '✗ low'}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="text-[10px] mono truncate" style={{ color: 'var(--text3)' }}>
+              {agentAddress}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Send form */}
+      <div className="rounded-xl p-4" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
+        <div className="font-bold text-sm mb-3" style={{ color: 'var(--text)' }}>Send USDC to Agent</div>
+        <div className="flex flex-col gap-3">
+          <div>
+            <label className="text-[10px] mono mb-1 block" style={{ color: 'var(--text3)' }}>
+              Target Agent Wallet (BSC)
+            </label>
+            <input
+              type="text"
+              placeholder="0x…"
+              value={toAddress}
+              onChange={e => { setToAddress(e.target.value); setEstimate(null); setSendResult(null) }}
+              className="w-full px-3 py-2 rounded-lg text-sm mono"
+              style={{ background: 'var(--bg1)', border: '1px solid var(--border)', color: 'var(--text)' }}
+            />
+          </div>
+          <div>
+            <label className="text-[10px] mono mb-1 block" style={{ color: 'var(--text3)' }}>
+              Amount (USDC)
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="number"
+                min="0.01"
+                step="0.01"
+                value={amountUSDC}
+                onChange={e => { setAmountUSDC(e.target.value); setEstimate(null); setSendResult(null) }}
+                className="flex-1 px-3 py-2 rounded-lg text-sm mono"
+                style={{ background: 'var(--bg1)', border: '1px solid var(--border)', color: 'var(--text)' }}
+              />
+              {/* Quick amounts */}
+              {['0.05', '0.10', '0.25', '0.50'].map(v => (
+                <button
+                  key={v}
+                  onClick={() => { setAmountUSDC(v); setEstimate(null) }}
+                  className="px-2 py-1 rounded text-[11px] font-bold"
+                  style={{
+                    background: amountUSDC === v ? 'var(--blue)' : 'var(--bg1)',
+                    color:      amountUSDC === v ? '#fff'        : 'var(--text2)',
+                    border:     '1px solid var(--border)',
+                  }}
+                >
+                  ${v}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Estimate */}
+        <button
+          onClick={handleEstimate}
+          disabled={estimating || !toAddress}
+          className="w-full mt-3 py-2.5 rounded-xl font-bold text-sm transition"
+          style={{ background: 'var(--bg1)', color: 'var(--text2)', border: '1px solid var(--border)' }}
+        >
+          {estimating ? 'Estimating…' : '🔍 Estimate Gas + Check Balance'}
+        </button>
+
+        {estimate && !estimate.error && (
+          <div className="mt-3 rounded-lg p-3" style={{ background: 'var(--bg1)', border: '1px solid var(--border)' }}>
+            <div className="flex flex-col gap-1.5 text-xs">
+              {[
+                ['USDC Balance',    `$${estimate.usdcBalance}`,     estimate.canPay],
+                ['BNB Balance',     `${estimate.bnbBalance} BNB`,   true],
+                ['Est. Gas Cost',   `${estimate.estimatedGasETH} BNB (~$${estimate.estimatedGasUSD})`, true],
+                ['Can Pay',         estimate.canPay ? 'YES ✓' : `NO — shortfall $${estimate.shortfallUSDC ?? '?'}`, estimate.canPay],
+              ].map(([label, val, ok]) => (
+                <div key={String(label)} className="flex justify-between">
+                  <span style={{ color: 'var(--text3)' }}>{label}</span>
+                  <span className="mono font-semibold" style={{ color: ok ? 'var(--green)' : 'var(--red)' }}>{String(val)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {estimate?.error && (
+          <div className="mt-2 text-xs" style={{ color: 'var(--red)' }}>Error: {estimate.error}</div>
+        )}
+
+        {/* Send buttons */}
+        <div className="flex gap-2 mt-3">
+          <button
+            onClick={() => handleSend(true)}
+            disabled={sending || !toAddress}
+            className="flex-1 py-3 rounded-xl font-bold text-sm transition"
+            style={{ background: 'var(--bg1)', color: 'var(--text2)', border: '1px solid var(--border)' }}
+          >
+            {sending ? '…' : '🧪 Dry Run'}
+          </button>
+          <button
+            onClick={() => handleSend(false)}
+            disabled={sending || !toAddress || !(estimate?.canPay)}
+            className="flex-1 py-3 rounded-xl font-bold text-sm transition"
+            style={{
+              background: (!toAddress || !(estimate?.canPay)) ? 'var(--bg3)' : 'var(--green)',
+              color:      (!toAddress || !(estimate?.canPay)) ? 'var(--text3)' : '#000',
+            }}
+          >
+            {sending ? 'Sending…' : `⚡ Send $${amountUSDC} USDC`}
+          </button>
+        </div>
+
+        {/* Send result */}
+        {sendResult && (
+          <div
+            className="mt-3 rounded-lg p-3 text-xs"
+            style={{
+              background: sendResult.success ? 'rgba(14,203,129,0.08)' : 'rgba(246,70,93,0.08)',
+              border:     `1px solid ${sendResult.success ? 'var(--green)' : 'var(--red)'}`,
+            }}
+          >
+            <div className="font-bold mb-2" style={{ color: sendResult.success ? 'var(--green)' : 'var(--red)' }}>
+              {sendResult.dryRun
+                ? sendResult.success ? '✓ Dry run passed — ready to send' : '✗ Dry run failed'
+                : sendResult.success ? '✓ Payment confirmed on-chain' : '✗ Payment failed'}
+            </div>
+            {sendResult.txHash && (
+              <div className="flex flex-col gap-1">
+                <div className="flex justify-between">
+                  <span style={{ color: 'var(--text3)' }}>Tx Hash</span>
+                  <span className="mono text-[10px] truncate max-w-[160px]" style={{ color: 'var(--text)' }}>
+                    {sendResult.txHash.slice(0, 18)}…
+                  </span>
+                </div>
+                {sendResult.blockNumber && (
+                  <div className="flex justify-between">
+                    <span style={{ color: 'var(--text3)' }}>Block</span>
+                    <span className="mono" style={{ color: 'var(--text)' }}>{sendResult.blockNumber}</span>
+                  </div>
+                )}
+                {sendResult.gasUsed && (
+                  <div className="flex justify-between">
+                    <span style={{ color: 'var(--text3)' }}>Gas Used</span>
+                    <span className="mono" style={{ color: 'var(--text)' }}>{sendResult.gasUsed}</span>
+                  </div>
+                )}
+              </div>
+            )}
+            {sendResult.bscScan && (
+              <a
+                href={sendResult.bscScan}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block mt-2 text-center py-2 rounded-lg font-semibold"
+                style={{ background: 'var(--green)', color: '#000' }}
+              >
+                View on BscScan ↗
+              </a>
+            )}
+            {sendResult.error && (
+              <div style={{ color: 'var(--red)' }}>{sendResult.error}</div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Safety info */}
+      <div className="rounded-xl p-4" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
+        <div className="font-bold text-sm mb-2" style={{ color: 'var(--text)' }}>Safety Controls</div>
+        <div className="flex flex-col gap-1.5 text-xs" style={{ color: 'var(--text2)' }}>
+          {[
+            'Private key never leaves the server — set via AGENT_PRIVATE_KEY env var',
+            'Max single payment capped at $5 USDC by default (set CAP_MAX_PAYMENT_USDC to change)',
+            'Dry run always available — test without broadcasting',
+            'Pre-flight checks: USDC balance, BNB for gas, on-chain estimate before send',
+          ].map(t => (
+            <div key={t} className="flex gap-2">
+              <span style={{ color: 'var(--green)' }}>✓</span>
+              <span>{t}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── A2A Outbound Panel (Session 5) ───────────────────────────────────────────
+
+function OutboundPanel({ agentAddress }: { agentAddress: string }) {
+  const [agents,       setAgents]       = React.useState<any[]>([])
+  const [loadingAgents,setLoadingAgents]= React.useState(false)
+  const [track,        setTrack]        = React.useState('all')
+  const [keyword,      setKeyword]      = React.useState('')
+  const [selected,     setSelected]     = React.useState<any>(null)
+  const [selectedSvc,  setSelectedSvc]  = React.useState<any>(null)
+  const [params,       setParams]       = React.useState<Record<string,string>>({})
+  const [calling,      setCalling]      = React.useState(false)
+  const [callResult,   setCallResult]   = React.useState<any>(null)
+  const [callHistory,  setCallHistory]  = React.useState<any[]>([])
+  const [callStats,    setCallStats]    = React.useState<any>(null)
+  // S6 — payment mode
+  const [livePayment,  setLivePayment]  = React.useState(false)
+  const [walletBal,    setWalletBal]    = React.useState<any>(null)
+  const [payEstimate,  setPayEstimate]  = React.useState<any>(null)
+  const [loadingEst,   setLoadingEst]   = React.useState(false)
+
+  // Load call history on mount
+  React.useEffect(() => {
+    fetch('/api/cap/call')
+      .then(r => r.json())
+      .then(d => { setCallHistory(d.calls ?? []); setCallStats(d.stats) })
+      .catch(() => {})
+  }, [])
+
+  // S6 — wallet USDC balance
+  React.useEffect(() => {
+    const agentWallet = process.env.NEXT_PUBLIC_AGENT_WALLET ?? ''
+    if (!agentWallet) return
+    fetch(`/api/cap/pay?address=${agentWallet}`)
+      .then(r => r.json()).then(setWalletBal).catch(() => {})
+  }, [])
+
+  // S6 — payment estimate when service + live mode selected
+  React.useEffect(() => {
+    if (!selectedSvc || !selected?.wallet || !livePayment) { setPayEstimate(null); return }
+    const agentWallet = process.env.NEXT_PUBLIC_AGENT_WALLET ?? ''
+    if (!agentWallet) return
+    setLoadingEst(true)
+    fetch(`/api/cap/pay?address=${agentWallet}&to=${selected.wallet}&amount=${selectedSvc.priceUSDC}`)
+      .then(r => r.json()).then(setPayEstimate).catch(() => {})
+      .finally(() => setLoadingEst(false))
+  }, [selectedSvc, selected, livePayment])
+
+  async function discover() {
+    setLoadingAgents(true)
+    setAgents([])
+    try {
+      const params = new URLSearchParams()
+      if (track !== 'all') params.set('track', track)
+      if (keyword.trim())  params.set('q', keyword.trim())
+      params.set('limit', '8')
+      const res  = await fetch(`/api/cap/discover?${params}`)
+      const data = await res.json()
+      setAgents(data.agents ?? [])
+    } catch { /* ignore */ } finally {
+      setLoadingAgents(false)
+    }
+  }
+
+  // Auto-discover on mount
+  React.useEffect(() => { discover() }, [])
+
+  async function callAgent() {
+    if (!selected || !selectedSvc) return
+    setCalling(true)
+    setCallResult(null)
+    try {
+      const parsedParams: Record<string,any> = {}
+      for (const [k, v] of Object.entries(params)) {
+        try { parsedParams[k] = JSON.parse(v) } catch { parsedParams[k] = v }
+      }
+      const res  = await fetch('/api/cap/call', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          targetEndpoint: selected.endpoint,
+          targetAgentId:  selected.agentId,
+          targetName:     selected.name,
+          serviceId:      selectedSvc.id,
+          serviceName:    selectedSvc.name,
+          priceUSDC:      selectedSvc.priceUSDC,
+          params:         parsedParams,
+          dryRun:         true,  // DEMO mode — no real USDC
+        }),
+      })
+      const data = await res.json()
+      setCallResult(data)
+      if (data.callRecord) {
+        setCallHistory(h => [data.callRecord, ...h].slice(0, 20))
+      }
+    } catch (err: any) {
+      setCallResult({ success: false, error: err.message })
+    } finally {
+      setCalling(false)
+    }
+  }
+
+  const TRACKS = [
+    { id: 'all',                    label: 'All Tracks'          },
+    { id: 'research_intelligence',  label: 'Research & Intel'    },
+    { id: 'defi_onchain_ops',       label: 'DeFi / On-chain'     },
+    { id: 'data_verification',      label: 'Data & Verification' },
+    { id: 'open_a2a',               label: 'Open A2A'            },
+  ]
+
+  const TRACK_C: Record<string,string> = {
+    research_intelligence: 'var(--blue)',
+    defi_onchain_ops:      'var(--yellow)',
+    data_verification:     '#a855f7',
+    open_a2a:              'var(--green)',
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+
+      {/* Outbound stats */}
+      {callStats && (
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            { label: 'Agents Called',  value: callStats.agentsUsed },
+            { label: 'Total Calls',    value: callStats.totalCalls },
+            { label: 'USDC Spent',     value: `$${callStats.totalSpentUSDC}` },
+          ].map(({ label, value }) => (
+            <div key={label} className="rounded-xl p-3 text-center" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
+              <div className="font-extrabold text-base mono" style={{ color: 'var(--text)' }}>{value}</div>
+              <div className="text-[10px] uppercase mt-0.5" style={{ color: 'var(--text3)' }}>{label}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Discovery */}
+      <div className="rounded-xl p-4" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
+        <div className="font-bold text-sm mb-3" style={{ color: 'var(--text)' }}>Discover Agents</div>
+        <div className="flex gap-2 mb-3 overflow-x-auto pb-1">
+          {TRACKS.map(t => (
+            <button
+              key={t.id}
+              onClick={() => setTrack(t.id)}
+              className="px-3 py-1.5 rounded-lg text-[11px] font-semibold whitespace-nowrap shrink-0"
+              style={{
+                background: track === t.id ? 'var(--blue)' : 'var(--bg1)',
+                color:      track === t.id ? '#fff'        : 'var(--text2)',
+                border:     '1px solid var(--border)',
+              }}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            placeholder="Search agents…"
+            value={keyword}
+            onChange={e => setKeyword(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && discover()}
+            className="flex-1 px-3 py-2 rounded-lg text-sm"
+            style={{ background: 'var(--bg1)', border: '1px solid var(--border)', color: 'var(--text)' }}
+          />
+          <button
+            onClick={discover}
+            disabled={loadingAgents}
+            className="px-4 py-2 rounded-lg text-sm font-bold"
+            style={{ background: 'var(--blue)', color: '#fff' }}
+          >
+            {loadingAgents ? '…' : 'Search'}
+          </button>
+        </div>
+      </div>
+
+      {/* Agent list */}
+      {agents.length > 0 && (
+        <div className="flex flex-col gap-2">
+          {agents.map(agent => (
+            <div
+              key={agent.agentId}
+              onClick={() => { setSelected(agent); setSelectedSvc(null); setCallResult(null); setParams({}) }}
+              className="rounded-xl p-3 cursor-pointer transition"
+              style={{
+                background: selected?.agentId === agent.agentId ? 'rgba(59,130,246,0.12)' : 'var(--bg2)',
+                border:     `1px solid ${selected?.agentId === agent.agentId ? 'var(--blue)' : 'var(--border)'}`,
+              }}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <div className="font-bold text-sm" style={{ color: 'var(--text)' }}>{agent.name}</div>
+                  <div className="text-[10px] mono mt-0.5" style={{ color: 'var(--text3)' }}>{agent.agentId}</div>
+                </div>
+                <div className="flex gap-1 flex-wrap justify-end">
+                  {(agent.tags ?? []).slice(0, 2).map((tag: string) => (
+                    <span
+                      key={tag}
+                      className="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase"
+                      style={{ background: (TRACK_C[tag] ?? 'var(--text3)') + '22', color: TRACK_C[tag] ?? 'var(--text3)' }}
+                    >
+                      {tag.replace('_', ' ')}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <p className="text-[11px] mt-1.5 leading-relaxed" style={{ color: 'var(--text2)' }}>
+                {agent.description.slice(0, 100)}{agent.description.length > 100 ? '…' : ''}
+              </p>
+              <div className="flex gap-3 mt-2 text-[10px]" style={{ color: 'var(--text3)' }}>
+                <span>{agent.services?.length ?? 0} services</span>
+                <span>{(agent.chains ?? []).join(', ')}</span>
+                {agent.verified && <span style={{ color: 'var(--green)' }}>✓ verified</span>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Service selector + call panel */}
+      {selected && (
+        <div className="rounded-xl p-4" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
+          <div className="font-bold text-sm mb-3" style={{ color: 'var(--text)' }}>
+            Call {selected.name}
+          </div>
+
+          {/* Service picker */}
+          <div className="flex flex-col gap-2 mb-3">
+            {(selected.services ?? []).map((svc: any) => (
+              <button
+                key={svc.id}
+                onClick={() => { setSelectedSvc(svc); setParams({}); setCallResult(null) }}
+                className="flex items-center justify-between p-3 rounded-lg text-left"
+                style={{
+                  background: selectedSvc?.id === svc.id ? 'rgba(59,130,246,0.12)' : 'var(--bg1)',
+                  border:     `1px solid ${selectedSvc?.id === svc.id ? 'var(--blue)' : 'var(--border)'}`,
+                }}
+              >
+                <div>
+                  <div className="text-xs font-semibold" style={{ color: 'var(--text)' }}>{svc.name}</div>
+                  <div className="text-[10px] mt-0.5" style={{ color: 'var(--text2)' }}>{svc.description}</div>
+                </div>
+                <div className="text-xs font-bold mono ml-3 shrink-0" style={{ color: 'var(--green)' }}>
+                  ${svc.priceUSDC}
+                </div>
+              </button>
+            ))}
+          </div>
+
+          {selectedSvc && (
+            <>
+              {/* Params */}
+              <div className="mb-3">
+                <div className="text-[10px] mono mb-1" style={{ color: 'var(--text3)' }}>Parameters (optional)</div>
+                {['symbol', 'interval', 'walletAddress'].map(key => (
+                  <input
+                    key={key}
+                    type="text"
+                    placeholder={key}
+                    value={params[key] ?? ''}
+                    onChange={e => setParams(p => ({ ...p, [key]: e.target.value }))}
+                    className="w-full mb-1.5 px-3 py-2 rounded-lg text-sm mono"
+                    style={{ background: 'var(--bg1)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                  />
+                ))}
+              </div>
+
+              {/* DEMO badge */}
+              <div className="text-[10px] px-2 py-1 rounded mb-3 inline-block" style={{ background: 'rgba(240,185,11,0.15)', color: 'var(--yellow)' }}>
+                ⚡ DEMO mode — no USDC required during hackathon window
+              </div>
+
+              <button
+                onClick={callAgent}
+                disabled={calling}
+                className="w-full py-3 rounded-xl font-bold text-sm transition"
+                style={{ background: calling ? 'var(--bg3)' : 'var(--blue)', color: '#fff' }}
+              >
+                {calling ? 'Calling agent…' : `Call ${selectedSvc.name} · $${selectedSvc.priceUSDC} USDC`}
+              </button>
+
+              {callResult && (
+                <div
+                  className="mt-3 rounded-lg p-3 text-[10px] mono overflow-auto max-h-40"
+                  style={{
+                    background: callResult.success ? 'rgba(14,203,129,0.08)' : 'rgba(246,70,93,0.08)',
+                    border:     `1px solid ${callResult.success ? 'var(--green)' : 'var(--red)'}`,
+                    color:      'var(--text2)',
+                  }}
+                >
+                  <div className="font-bold mb-1 text-xs" style={{ color: callResult.success ? 'var(--green)' : 'var(--red)' }}>
+                    {callResult.success ? '✓ Response received' : '✗ Call failed'}
+                  </div>
+                  <pre className="whitespace-pre-wrap">
+                    {JSON.stringify(callResult.response?.result ?? callResult.error ?? callResult, null, 2)}
+                  </pre>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Outbound call history */}
+      {callHistory.length > 0 && (
+        <div className="rounded-xl p-4" style={{ background: 'var(--bg2)', border: '1px solid var(--border)' }}>
+          <div className="font-bold text-sm mb-3" style={{ color: 'var(--text)' }}>Outbound Call History</div>
+          <div className="flex flex-col gap-1.5">
+            {callHistory.slice(0, 8).map((c: any) => (
+              <div key={c.id} className="flex items-center justify-between text-xs py-1.5" style={{ borderBottom: '1px solid var(--border)' }}>
+                <div>
+                  <span className="font-semibold" style={{ color: 'var(--text)' }}>{c.targetName}</span>
+                  <span className="mx-1" style={{ color: 'var(--text3)' }}>→</span>
+                  <span style={{ color: 'var(--text2)' }}>{c.serviceName ?? c.serviceId}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="mono" style={{ color: 'var(--text3)' }}>${(c.priceUSDC ?? 0).toFixed(2)}</span>
+                  <span
+                    className="font-bold"
+                    style={{ color: c.status === 'completed' ? 'var(--green)' : c.status === 'failed' ? 'var(--red)' : 'var(--yellow)' }}
+                  >
+                    {c.status}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Registration Panel (Session 4) ───────────────────────────────────────────
 
 function RegistrationPanel({ agentAddress }: { agentAddress: string }) {
@@ -610,7 +1214,9 @@ export default function CrooTab() {
   const sections = [
     { id: 'overview',    label: 'Overview'    },
     { id: 'services',    label: 'Services'    },
-    { id: 'a2a',         label: 'A2A Live'    },
+    { id: 'a2a',         label: 'A2A Inbound'  },
+    { id: 'outbound',    label: 'A2A Outbound' },
+    { id: 'payment',     label: 'USDC Pay'     },
     { id: 'submission',  label: 'Submission'  },
     { id: 'register',    label: 'Register'    },
   ] as const
@@ -868,6 +1474,16 @@ Content-Type: application/json
       {/* ── Register (Session 4) ── */}
       {activeSection === 'register' && (
         <RegistrationPanel agentAddress={agentAddress} />
+      )}
+
+      {/* ── A2A Outbound (Session 5) ── */}
+      {activeSection === 'outbound' && (
+        <OutboundPanel agentAddress={agentAddress} />
+      )}
+
+      {/* ── USDC Payment Rail (Session 6) ── */}
+      {activeSection === 'payment' && (
+        <PaymentPanel agentAddress={agentAddress} />
       )}
 
       {/* Test panel modal */}
