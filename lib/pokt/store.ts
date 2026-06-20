@@ -39,11 +39,11 @@ export interface POKTQueryRecord {
 }
 
 export interface POKTChainPingRecord {
-  chainKey:    string
-  ok:          boolean
-  latencyMs:   number
-  blockNumber: number | undefined
-  pinnedAt:    number
+  chainKey:     string
+  ok:           boolean
+  latencyMs:    number
+  blockNumber?: number
+  pinnedAt:     number
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -189,7 +189,17 @@ export const usePOKTAgentStore = create<POKTAgentStore>()(
 
     {
       name:    'binalyst-pokt-agent',
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => {
+        // SSR guard — localStorage not available on server (Next.js build/SSR pass)
+        if (typeof window === 'undefined') {
+          return {
+            getItem:    () => null,
+            setItem:    () => {},
+            removeItem: () => {},
+          }
+        }
+        return localStorage
+      }),
       // Only persist non-sensitive, non-stale data
       partialize: (state) => ({
         selectedChain:   state.selectedChain,

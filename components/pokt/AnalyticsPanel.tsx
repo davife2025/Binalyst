@@ -62,9 +62,9 @@ function StatTile({ label, value, sub, color = 'var(--text)' }: {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function PriceChart({ data, days }: { data: PricePoint[]; days: number }) {
-  if (!data.length) return (
+  if (data.length < 2) return (
     <div className="flex items-center justify-center h-32 mono text-xs" style={{ color: 'var(--text3)' }}>
-      Price data unavailable
+      {data.length === 0 ? 'Price data unavailable' : 'Not enough data points to chart'}
     </div>
   )
 
@@ -89,8 +89,8 @@ function PriceChart({ data, days }: { data: PricePoint[]; days: number }) {
   const [lx, ly]  = lastPt.split(',').map(Number)
   const [fx]      = firstPt.split(',').map(Number)
 
-  const areaPath = `M ${polyline.replace(/,/g, ' ').split(' ').reduce((acc, v, i) =>
-    i % 2 === 0 ? acc + ' ' + v : acc + ',' + v, '').trim()} L ${lx} ${PAD.t + iH} L ${fx} ${PAD.t + iH} Z`
+  // Area fill path: trace the price line, then close down to the baseline
+  const areaPath = `M ${pts.join(' L ')} L ${lx} ${PAD.t + iH} L ${fx} ${PAD.t + iH} Z`
 
   const startP = prices[0]
   const endP   = prices[prices.length - 1]
@@ -171,7 +171,7 @@ function BurnMintChart({ data }: { data: BurnMintPoint[] }) {
   // Use last 14 data points for legibility
   const pts     = data.slice(-14)
   const barW    = iW / pts.length
-  const maxVal  = Math.max(...pts.map(p => Math.max(p.burned, p.minted)))
+  const maxVal  = Math.max(...pts.map(p => Math.max(p.burned, p.minted))) || 1
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: H }}>
@@ -223,9 +223,9 @@ function BurnMintChart({ data }: { data: BurnMintPoint[] }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function CUSparkline({ data }: { data: CUPoint[] }) {
-  if (!data.length) return (
+  if (data.length < 2) return (
     <div className="flex items-center justify-center h-20 mono text-xs" style={{ color: 'var(--text3)' }}>
-      CU data unavailable
+      {data.length === 0 ? 'CU data unavailable' : 'Not enough data points to chart'}
     </div>
   )
 

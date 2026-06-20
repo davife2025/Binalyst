@@ -97,6 +97,11 @@ export function usePOKTAgent() {
 
   // Mount: initial fetch + 30s interval
   useEffect(() => {
+    // Hydrate healthData from any persisted cache immediately (no flash of empty state)
+    if (metricsCache) {
+      setHealthData(prev => prev ?? { metrics: metricsCache, health: { score: 0, label: 'Unknown', color: 'var(--text3)' } })
+    }
+
     refreshMetrics()
 
     metricsIntervalRef.current = setInterval(() => {
@@ -108,16 +113,8 @@ export function usePOKTAgent() {
         clearInterval(metricsIntervalRef.current)
       }
     }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-  // ↑ intentionally empty deps — we want this to run once on mount
-
-  // Hydrate healthData from cache on first render (if cache exists)
-  useEffect(() => {
-    if (metricsCache && !healthData) {
-      // We have cached metrics but no healthData — rebuild it
-      refreshMetrics(false)
-    }
-  }, [metricsCache]) // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // intentionally empty deps — runs once on mount; refreshMetrics always fetches fresh health score
 
   // ─────────────────────────────────────────────────────────────────────────
   // Query — NL to on-chain via /api/pokt-agent/query

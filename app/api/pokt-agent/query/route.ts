@@ -1,49 +1,48 @@
 /**
- * app/api/pokt-agent/query/route.ts — Session P2 (new file)
+ * app/api/pokt-agent/query/route.ts — REVISED in review pass (post-P5)
  *
  * POKT Agent natural-language query endpoint.
- * Accepts a user message and conversation history, runs a Claude tool-use
- * loop, executes on-chain RPC calls via Pocket Network, and streams the
- * final answer back to the client.
  *
- * PURELY ADDITIVE — shares no code with BNB, Celo, Mantle, or Sui agents.
- * Rate-limit bucket: 'pokt-query' (independent of all existing buckets).
+ * BUGFIX: The original P2 version imported '@anthropic-ai/sdk' and used
+ * ANTHROPIC_API_KEY. Neither exists in this project — Binalyst's AI layer
+ * (lib/claude.ts) actually runs on Kimi K2 via Hugging Face's OpenAI-compatible
+ * router, using the 'openai' package already in package.json. The old version
+ * would have failed `npm run build` with "Module not found: @anthropic-ai/sdk".
  *
- * Request body:
- *   { messages: [{role, content}][], chainKey?: string }
+ * This version mirrors lib/claude.ts's runAgent() pattern exactly:
+ *   - Same model: moonshotai/Kimi-K2-Instruct
+ *   - Same client construction: new OpenAI({ baseURL: huggingface router })
+ *   - Same tool-loop shape (max 8 rounds, OpenAI tool_calls format)
  *
- * Response: streaming text/plain (SSE-style newline-delimited chunks)
+ * POKT_TOOLS (lib/pokt/skills.ts) was already written in OpenAI tool format
+ * ({ type: 'function', function: {...} }), so it works here unchanged.
  *
- * Tool-use flow:
- *   1. Send user message + history + POKT_TOOLS to Claude
- *   2. Claude calls tools (query_balance, query_block, get_network_metrics…)
- *   3. We execute each tool via executePOKTTool()
- *   4. Feed results back to Claude as tool_result messages
- *   5. Claude produces a final natural-language response
- *   6. Stream response tokens to client
+ * Zero changes to lib/claude.ts or any BNB-chain file — this route owns its
+ * own OpenAI client instance, scoped entirely to the POKT agent.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import Anthropic                     from '@anthropic-ai/sdk'
+import OpenAI                        from 'openai'
 import { rateLimit }                 from '@/lib/rateLimit'
 import { POKT_TOOLS, executePOKTTool, POKT_AGENT_SYSTEM } from '@/lib/pokt/skills'
 
 export const dynamic     = 'force-dynamic'
 export const maxDuration = 55
 
-// Lazy Anthropic client — key checked per request
-let _anthropic: Anthropic | null = null
-function getAnthropic(): Anthropic {
-  if (!_anthropic) {
-    _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
+// Lazy client — same Kimi K2 / Hugging Face router as lib/claude.ts
+let _kimi: OpenAI | null = null
+function getKimi(): OpenAI {
+  if (!_kimi) {
+    _kimi = new OpenAI({
+      apiKey:  process.env.HUGGINGFACE_API_KEY!,
+      baseURL: 'https://router.huggingface.co/v1',
+    })
   }
-  return _anthropic
+  return _kimi
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Max tool-use iterations per request (prevents runaway loops)
-// ─────────────────────────────────────────────────────────────────────────────
-const MAX_TOOL_ROUNDS = 4
+const MODEL = 'moonshotai/Kimi-K2-Instruct'
+const MAX_TOOL_ROUNDS = 8   // matches lib/claude.ts runAgent()
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get('x-forwarded-for') ?? 'unknown'
@@ -52,9 +51,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
   }
 
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!process.env.HUGGINGFACE_API_KEY) {
     return NextResponse.json(
-      { error: 'ANTHROPIC_API_KEY not set.' },
+      { error: 'HUGGINGFACE_API_KEY not set.' },
       { status: 500 },
     )
   }
@@ -71,110 +70,68 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'messages array is required' }, { status: 400 })
     }
 
-    const anthropic = getAnthropic()
+    const kimi = getKimi()
 
-    // Build Anthropic message history
-    // Inject active chain context into the last user message
     const systemPrompt = `${POKT_AGENT_SYSTEM}
 
 Current default chain: ${chainKey}. If the user doesn't specify a chain, use "${chainKey}" as the default for tool calls.`
 
-    // Convert to Anthropic message format
-    const anthropicMessages: Anthropic.MessageParam[] = messages.map(m => ({
-      role:    m.role,
-      content: m.content,
-    }))
+    const history: OpenAI.ChatCompletionMessageParam[] = [
+      { role: 'system', content: systemPrompt },
+      ...messages.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })),
+    ]
 
-    // ── Tool-use loop ─────────────────────────────────────────────────────
-    let round  = 0
-    let currentMessages = [...anthropicMessages]
+    const toolsUsed: string[] = []
 
-    while (round < MAX_TOOL_ROUNDS) {
-      round++
-
-      const response = await anthropic.messages.create({
-        model:      'claude-sonnet-4-6',
-        max_tokens: 1024,
-        system:     systemPrompt,
-        tools:      POKT_TOOLS as Anthropic.Tool[],
-        messages:   currentMessages,
+    for (let i = 0; i < MAX_TOOL_ROUNDS; i++) {
+      const response = await kimi.chat.completions.create({
+        model:       MODEL,
+        messages:    history,
+        tools:       POKT_TOOLS,
+        tool_choice: 'auto',
       })
 
-      // Check stop reason
-      if (response.stop_reason === 'end_turn') {
-        // No more tool calls — extract text and stream it
-        const textBlock = response.content.find(b => b.type === 'text')
-        const text = textBlock && textBlock.type === 'text' ? textBlock.text : ''
+      const msg = response.choices[0].message
+      history.push(msg as OpenAI.ChatCompletionMessageParam)
 
+      const text = msg.content ?? ''
+
+      if (!msg.tool_calls?.length) {
         return new Response(text, {
           headers: { 'Content-Type': 'text/plain; charset=utf-8' },
         })
       }
 
-      if (response.stop_reason !== 'tool_use') {
-        // Unexpected stop — return whatever text we have
-        const textBlock = response.content.find(b => b.type === 'text')
-        const text = textBlock && textBlock.type === 'text' ? textBlock.text : 'No response generated.'
-        return new Response(text, {
-          headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-        })
+      // Execute all tool calls for this round
+      for (const tc of msg.tool_calls) {
+        if (tc.type !== 'function') continue
+        toolsUsed.push(tc.function.name)
+        try {
+          const args   = JSON.parse(tc.function.arguments)
+          const result = await executePOKTTool(tc.function.name, args)
+          history.push({
+            role:         'tool',
+            tool_call_id: tc.id,
+            content:      JSON.stringify(result),
+          })
+        } catch (err: unknown) {
+          const msg2 = err instanceof Error ? err.message : String(err)
+          history.push({
+            role:         'tool',
+            tool_call_id: tc.id,
+            content:      JSON.stringify({ error: msg2 }),
+          })
+        }
       }
-
-      // ── Execute tool calls ───────────────────────────────────────────────
-      const toolUseBlocks = response.content.filter(
-        (b): b is Anthropic.ToolUseBlock => b.type === 'tool_use'
-      )
-
-      // Add the assistant's tool-use response to history
-      currentMessages.push({ role: 'assistant', content: response.content })
-
-      // Execute all tool calls in parallel
-      const toolResults = await Promise.all(
-        toolUseBlocks.map(async (block) => {
-          try {
-            const result = await executePOKTTool(
-              block.name,
-              block.input as Record<string, unknown>,
-            )
-            return {
-              type:        'tool_result' as const,
-              tool_use_id: block.id,
-              content:     JSON.stringify(result),
-            }
-          } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : String(err)
-            return {
-              type:        'tool_result' as const,
-              tool_use_id: block.id,
-              content:     JSON.stringify({ error: msg }),
-              is_error:    true,
-            }
-          }
-        })
-      )
-
-      // Feed tool results back
-      currentMessages.push({ role: 'user', content: toolResults })
     }
 
-    // Exceeded max rounds — ask Claude to summarise what it found
-    const finalResponse = await anthropic.messages.create({
-      model:      'claude-sonnet-4-6',
-      max_tokens: 512,
-      system:     systemPrompt,
-      messages:   [
-        ...currentMessages,
-        {
-          role:    'user',
-          content: 'Please summarise the data you retrieved in a concise response.',
-        },
-      ],
-    })
+    // Exceeded max rounds — collect whatever assistant text we have
+    const finalText = history
+      .filter(m => m.role === 'assistant')
+      .map(m => (m as { content?: string }).content ?? '')
+      .join('')
 
-    const textBlock = finalResponse.content.find(b => b.type === 'text')
-    const text = textBlock && textBlock.type === 'text' ? textBlock.text : 'Query complete.'
-
-    return new Response(text, {
+    return new Response(finalText || 'Query complete.', {
       headers: { 'Content-Type': 'text/plain; charset=utf-8' },
     })
 
