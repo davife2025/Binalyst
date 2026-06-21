@@ -5,14 +5,13 @@
 
 import { NextResponse } from 'next/server'
 import { BINALYST_SERVICES } from '@/lib/croo/capClient'
+import { callCounts, revenueUSDC } from '@/lib/croo/capMetrics' 
+
 
 export const dynamic = 'force-dynamic'
 
 const CORS = { 'Access-Control-Allow-Origin': '*' }
 
-// In-memory call counter (resets on cold start — upgrade to KV for production)
-const callCounts: Record<string, number> = {}
-const revenueUSDC: Record<string, number> = {}
 
 export function incrementCallCount(serviceId: string, priceUSDC: number) {
   callCounts[serviceId] = (callCounts[serviceId] ?? 0) + 1
