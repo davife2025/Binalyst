@@ -13,11 +13,6 @@ export const dynamic = 'force-dynamic'
 const CORS = { 'Access-Control-Allow-Origin': '*' }
 
 
-export function incrementCallCount(serviceId: string, priceUSDC: number) {
-  callCounts[serviceId] = (callCounts[serviceId] ?? 0) + 1
-  revenueUSDC[serviceId] = (revenueUSDC[serviceId] ?? 0) + priceUSDC
-}
-
 export async function GET() {
   const totalCalls   = Object.values(callCounts).reduce((a, b) => a + b, 0)
   const totalRevenue = Object.values(revenueUSDC).reduce((a, b) => a + b, 0)
