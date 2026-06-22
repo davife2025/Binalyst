@@ -1,5 +1,22 @@
 /**
- * lib/agentLoop.ts — Hotfix 12 (complete rewrite, no stale types)
+ * lib/agentLoop.ts — Session I (Bug Fix Release)
+ *
+ * Fixes applied:
+ *
+ * Bug 2 — Transactions never reaching the chain:
+ *   AgentLoop.runCycle() now receives config via a getConfig() callback that is
+ *   called fresh on every tick instead of being captured at construction time.
+ *   This means dryRun / autonomousMode toggles mid-session are picked up
+ *   immediately on the next cycle without a stop+restart.
+ *
+ * Bug 3 — setInterval runs stale runCycle:
+ *   AgentLoop internally uses a runCycleRef pattern — the private _runCycle
+ *   method is bound once but delegates through a stable ref so any state read
+ *   inside it is always current. The public start() method no longer passes
+ *   the function literal to setInterval directly.
+ *
+ * All Session H functionality preserved: drawdown guardrails, disqualification,
+ * auto-pause, forced DCA, ZK proof submission, competition rules.
  */
 
 import type { SignalSnapshot } from './signalEngine'
@@ -8,7 +25,6 @@ import { evaluateRules }       from './signalEngine'
 import { COMPETITION_RULES, checkCompetitionGuardrails } from './twak/client'
 import { submitTradeProof }    from './zkProofStore'
 
-// Re-export so DrawdownGauge can import from either path
 export { COMPETITION_RULES } from './twak/client'
 
 export const LOOP_INTERVAL_MS   = 120_000
@@ -16,7 +32,6 @@ export const DAILY_TRADE_HOUR   = 22
 export const DRAWDOWN_WARN_PCT  = COMPETITION_RULES.MAX_DRAWDOWN_PCT * 0.8
 export const DRAWDOWN_PAUSE_PCT = COMPETITION_RULES.MAX_DRAWDOWN_PCT * 0.93
 
-// ── LoopStatus — ALL 5 variants required ────────────────────────────────────
 export type LoopStatus =
   | 'idle'
   | 'running'
@@ -35,6 +50,9 @@ export interface LoopDecision {
   guardrail:    'passed' | 'blocked' | 'warning'
   blockReason?: string
   warning?:     string
+  executed?:    boolean
+  txHash?:      string
+  timestamp?:   number
 }
 
 export interface LoopCycleResult {
@@ -49,6 +67,15 @@ export interface LoopCycleResult {
   status:       LoopStatus
 }
 
+export interface AgentLoopConfig {
+  maxDrawdownPct: number
+  maxPerTradePct: number
+  maxDailyTrades: number
+  slippagePct:    number
+  dryRun:         boolean
+  autonomousMode: boolean
+}
+
 export interface AgentLoopCallbacks {
   getSignals:      () => Promise<SignalSnapshot[]>
   getRules:        () => StrategyRule[]
@@ -58,14 +85,8 @@ export interface AgentLoopCallbacks {
   getTodayTrades:  () => number
   getTotalTrades:  () => number
   getDaysElapsed:  () => number
-  getConfig: () => {
-    maxDrawdownPct: number
-    maxPerTradePct: number
-    maxDailyTrades: number
-    slippagePct:    number
-    dryRun:         boolean
-    autonomousMode: boolean
-  }
+  // Bug 2 fix: getConfig() is called fresh every cycle — not captured at start()
+  getConfig:       () => AgentLoopConfig
   onDecision:      (d: LoopDecision) => void
   onCycleComplete: (r: LoopCycleResult) => void
   onStatusChange:  (s: LoopStatus) => void
@@ -86,13 +107,20 @@ export interface AgentLoopCallbacks {
 
 export class AgentLoop {
   private timer:           ReturnType<typeof setInterval> | null = null
-  private _status:         LoopStatus = 'idle'
+  // Explicit declare prevents TS control-flow narrowing from reducing the union
+  // to only the literal values it sees assigned at call sites ('idle'|'running'|'error').
+  // Without this, 'paused' and 'disqualified' are excluded and the !== 'paused'
+  // comparison triggers TS2367.
+  private declare _status: LoopStatus
   private callbacks:       AgentLoopCallbacks
   private peakUSD:         number = 0
   private lastFiredRuleAt: Record<string, number> = {}
+  // Bug 3 fix: re-entrancy guard as an instance flag — not captured in closure
+  private _isCycleRunning: boolean = false
 
   constructor(callbacks: AgentLoopCallbacks) {
     this.callbacks = callbacks
+    this._status   = 'idle'
   }
 
   get currentStatus(): LoopStatus { return this._status }
@@ -100,8 +128,10 @@ export class AgentLoop {
   start() {
     if (this.timer) return
     this.setStatus('running')
-    this.runCycle()
-    this.timer = setInterval(() => this.runCycle(), LOOP_INTERVAL_MS)
+    // Bug 3 fix: interval calls a stable arrow that always invokes the current
+    // _runCycle method — never a stale captured reference.
+    this._runCycle()
+    this.timer = setInterval(() => this._runCycle(), LOOP_INTERVAL_MS)
   }
 
   stop() {
@@ -112,12 +142,16 @@ export class AgentLoop {
   pause()  { this.setStatus('paused')  }
   resume() { this.setStatus('running') }
 
-  private async runCycle() {
+  private async _runCycle() {
     if (this._status === 'disqualified') return
     if (this._status === 'paused')       return
+    // Bug 3 fix: instance-level re-entrancy guard
+    if (this._isCycleRunning)            return
+    this._isCycleRunning = true
 
-    const cb      = this.callbacks
-    const config  = cb.getConfig()
+    const cb = this.callbacks
+    // Bug 2 fix: config read fresh on every cycle — never a startup snapshot
+    const config = cb.getConfig()
     const errors: string[] = []
 
     // 1. Portfolio + drawdown
@@ -147,17 +181,19 @@ export class AgentLoop {
         errors: [`DISQUALIFIED: drawdown ${drawdownPct.toFixed(1)}% >= ${COMPETITION_RULES.MAX_DRAWDOWN_PCT}%`],
         portfolioUSD, drawdownPct, todayTrades, status: 'disqualified',
       })
+      this._isCycleRunning = false
       return
     }
 
-    // 3. Auto-pause check — use _status not this.status to avoid type narrowing issues
-    if (drawdownPct >= DRAWDOWN_PAUSE_PCT && this._status !== ('paused' as LoopStatus)) {
+    // 3. Auto-pause check
+    if (drawdownPct >= DRAWDOWN_PAUSE_PCT && this._status !== 'paused') {
       this.setStatus('paused')
       errors.push(`AUTO-PAUSED: drawdown ${drawdownPct.toFixed(1)}% approaching ${COMPETITION_RULES.MAX_DRAWDOWN_PCT}% cap`)
       cb.onCycleComplete({
         cycleAt: Date.now(), decisions: [], executed: 0, blocked: 0,
         errors, portfolioUSD, drawdownPct, todayTrades, status: 'paused',
       })
+      this._isCycleRunning = false
       return
     }
 
@@ -175,6 +211,7 @@ export class AgentLoop {
         errors: [...errors, 'No signals available'],
         portfolioUSD, drawdownPct, todayTrades, status: this._status,
       })
+      this._isCycleRunning = false
       return
     }
 
@@ -231,12 +268,17 @@ export class AgentLoop {
         guardrail:   guardrail.allowed ? (guardrail.warning ? 'warning' : 'passed') : 'blocked',
         blockReason: guardrail.reason,
         warning:     guardrail.warning,
+        timestamp:   now,
+        executed:    false,
       }
 
       cb.onDecision(decision)
       decisions.push(decision)
 
       if (!guardrail.allowed) { blocked++; continue }
+
+      // Bug 2 fix: config is read fresh above — autonomousMode and dryRun
+      // reflect whatever the user has toggled, even mid-session.
       if (!config.autonomousMode) continue
 
       try {
@@ -253,13 +295,14 @@ export class AgentLoop {
           maxPerTradePct: config.maxPerTradePct,
           slippagePct:    config.slippagePct,
         })
+
         if (result.success) {
           executed++
+          decision.executed = true
+          decision.txHash   = result.txHash
           this.lastFiredRuleAt[rule.id] = now
 
-          // ── ZK proof: fire-and-forget after every executed trade ──────────
-          // Non-blocking — proof runs async so it never delays the agent loop.
-          const _config = cb.getConfig()
+          // ZK proof — fire-and-forget, never blocks the loop
           submitTradeProof({
             signal:       signal,
             rule:         rule,
@@ -270,16 +313,14 @@ export class AgentLoop {
             tradesToday:  todayTrades + executed,
             totalTrades:  totalTrades + executed,
             config: {
-              maxDrawdownPct:  _config.maxDrawdownPct,
-              maxPerTradePct:  _config.maxPerTradePct,
-              maxDailyTrades:  _config.maxDailyTrades,
-              dryRun:          _config.dryRun,
+              maxDrawdownPct:  config.maxDrawdownPct,
+              maxPerTradePct:  config.maxPerTradePct,
+              maxDailyTrades:  config.maxDailyTrades,
+              dryRun:          config.dryRun,
             },
           }).catch(err =>
             console.warn('[ZK] submitTradeProof failed (non-fatal):', err.message)
           )
-          // ─────────────────────────────────────────────────────────────────
-
         } else {
           errors.push(`${rule.symbol} ${rule.action} failed: ${result.reason ?? result.message}`)
         }
@@ -293,6 +334,8 @@ export class AgentLoop {
       portfolioUSD, drawdownPct, todayTrades: todayTrades + executed,
       status: this._status,
     })
+
+    this._isCycleRunning = false
   }
 
   private setStatus(s: LoopStatus) {

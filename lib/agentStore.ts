@@ -1,13 +1,18 @@
 /**
- * lib/agentStore.ts — Session H: FINAL complete version
- * Merges all patches from Sessions A-G into one canonical file.
- * REPLACES all previous agentStore.ts and agentStore.PATCH.ts files.
+ * lib/agentStore.ts — Session I (Bug Fix Release)
+ *
+ * Fixes applied:
+ * - Bug 1: Added activeTab / setActiveTab so tab selection survives re-mounts.
+ *   Previously CompetitionTab used local useState which reset to 'overview' on
+ *   every parent re-render / unmount cycle.
+ *
+ * Everything else is preserved from Session H.
  */
 
-import { create }                 from 'zustand'
+import { create }                     from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import type { AgentConfig }       from './twak/client'
-import { DEFAULT_AGENT_CONFIG }   from './twak/client'
+import type { AgentConfig }           from './twak/client'
+import { DEFAULT_AGENT_CONFIG }       from './twak/client'
 
 export type AgentNetwork = 'mainnet' | 'testnet'
 
@@ -57,6 +62,9 @@ export interface StrategyRule {
   reasoning?:   string
 }
 
+// Bug 1 fix: tab type lives here so it persists across re-mounts
+export type CompetitionTab = 'overview' | 'trades' | 'decisions'
+
 interface AgentStore {
   // ── Network ───────────────────────────────────────────────────────────────
   network:    AgentNetwork
@@ -69,7 +77,6 @@ interface AgentStore {
   isWalletLoaded:  boolean
   bnbBalance:      number
   usdtBalance:     number
-  
 
   setWallet:       (address: string, privateKey: string) => void
   setEncryptedKey: (enc: string) => void
@@ -103,6 +110,10 @@ interface AgentStore {
   strategyText:   string
   strategyParsed: StrategyRule[]
   setStrategy:    (text: string, rules: StrategyRule[]) => void
+
+  // ── Bug 1 fix: Competition tab selection persisted in store ───────────────
+  activeCompetitionTab:    CompetitionTab
+  setActiveCompetitionTab: (tab: CompetitionTab) => void
 }
 
 const DEFAULT_SESSION: AgentSession = {
@@ -121,7 +132,7 @@ const DEFAULT_SESSION: AgentSession = {
 
 export const useAgentStore = create<AgentStore>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       // ── Network ────────────────────────────────────────────────────────
       network:    'testnet',
       setNetwork: (n) => set({ network: n }),
@@ -195,6 +206,10 @@ export const useAgentStore = create<AgentStore>()(
       strategyText:   '',
       strategyParsed: [],
       setStrategy:    (text, rules) => set({ strategyText: text, strategyParsed: rules }),
+
+      // ── Bug 1 fix: tab selection ──────────────────────────────────────────
+      activeCompetitionTab:    'overview',
+      setActiveCompetitionTab: (tab) => set({ activeCompetitionTab: tab }),
     }),
     {
       name:    'binalyst-agent',
@@ -211,15 +226,16 @@ export const useAgentStore = create<AgentStore>()(
       }),
       // CRITICAL: never persist privateKey
       partialize: (s) => ({
-        network:        s.network,
-        agentAddress:   s.agentAddress,
-        encryptedKey:   s.encryptedKey,
-        agentConfig:    s.agentConfig,
-        session:        s.session,
-        trades:         s.trades.slice(0, 100),
-        lastSignals:    s.lastSignals,
-        strategyText:   s.strategyText,
-        strategyParsed: s.strategyParsed,
+        network:                 s.network,
+        agentAddress:            s.agentAddress,
+        encryptedKey:            s.encryptedKey,
+        agentConfig:             s.agentConfig,
+        session:                 s.session,
+        trades:                  s.trades.slice(0, 100),
+        lastSignals:             s.lastSignals,
+        strategyText:            s.strategyText,
+        strategyParsed:          s.strategyParsed,
+        activeCompetitionTab:    s.activeCompetitionTab,
       }),
     }
   )
