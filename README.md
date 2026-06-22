@@ -12,8 +12,6 @@ Binalyst combines real-time market signals, natural-language strategy authoring,
 - **Natural Language Strategy Builder** — write strategies in plain English ("when RSI drops below 30 and MACD crosses bullish, buy 5%") and the engine converts them to executable rules
 - **Regime-Aware Adaptation** — detects TRENDING / RANGING / FLAT market states and switches strategy mode automatically
 - **Full Backtester** — validates strategies on real Binance OHLCV candles with no lookahead bias; returns Sharpe ratio, max drawdown, win rate, equity curve
-- **Celo Payments Agent** — autonomous recurring CELO/cUSD payment rules (daily, weekly subscriptions, DCA transfers) with guardrails
-- **Mantle AI Agent** — ERC-8004 onchain identity registration + AI trading loop on Mantle Mainnet/Sepolia
 - **Sui Agent** — Move-policy-gated agent wallet on Sui with Walrus activity logging and DeepBook order support
 - **ERC-8004 Identity** — every agent mints an onchain identity NFT on Celo and Mantle via the ERC-8004 registry
 
@@ -25,7 +23,7 @@ Binalyst combines real-time market signals, natural-language strategy authoring,
 |---|---|
 | Framework | Next.js 15, TypeScript, Tailwind CSS |
 | AI | Claude (Anthropic) via `claude.ts` |
-| Blockchain | Ethers.js v6 (BNB, Celo, Mantle), Sui SDK |
+| Blockchain | Ethers.js v6 (BNB SDK) |
 | Market Data | Binance public API, Bybit, CMC Fear & Greed, Bitget Skill Hub |
 | State | Zustand (independent stores per chain) |
 | Auth / DB | Supabase, NextAuth |

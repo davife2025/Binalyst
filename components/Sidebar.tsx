@@ -16,7 +16,7 @@ type NavItem = {
   icon:    any
   dot?:    boolean
   badge?:  string
-  section: 'intelligence' | 'agent' | 'binance' | 'tools' | 'sui' | 'mantle' | 'stellar' | 'pokt' | 'croo'
+  section: 'intelligence' | 'agent' | 'binance' | 'tools' | 'sui' | 'stellar' | 'pokt' | 'croo'
 }
 
 // ── Tiny inline SVG icon helper ───────────────────────────────────────────────
@@ -100,11 +100,6 @@ const NAV: NavItem[] = [
   { id: 'alerts',    label: 'Price Alerts',  section: 'binance',
     icon: <I><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></I> },
 
-  // ── Mantle ────────────────────────────────────────────────────────────────
-  { id: 'mantle-agent',      label: 'Mantle Agent',    badge: 'NEW', section: 'mantle',
-    icon: <I><polygon points="12 2 20.5 7 20.5 17 12 22 3.5 17 3.5 7"/></I> },
-  // { id: 'mantle-submission', label: 'Submit Hackathon', section: 'mantle',
-   // icon: <I><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/><path d="M4 22h16"/></I> },
 
      // ── Pocket Network (POKT) ─────────────────────────────────────────────────
   { id: 'pokt-agent' as const, label: 'POKT Agent', badge: 'NEW', section: 'pokt' as const,
@@ -129,7 +124,6 @@ const SECTIONS: { id: NavItem['section']; label: string; color: string }[] = [
   { id: 'intelligence', label: 'Intelligence',  color: '#3498db'  },
   { id: 'agent',        label: 'Trading Agent', color: '#F0B90B'  },
   { id: 'sui',          label: 'Sui Agent',     color: '#61DAFB'  },
-  { id: 'mantle',       label: 'Mantle Agent',  color: '#61DAFB'  },
     { id: 'pokt',         label: 'POKT Agent',   color: '#5C6BC0'  },
    { id: 'stellar',      label: 'Stellar Agent',   color: '#FCFF52'  },
     { id: 'croo',         label: 'CROO Agent Protocol',   color: '#f59e0b'  },
