@@ -3,29 +3,18 @@
 /**
  * hooks/useAgentLoop.ts — Session I (Bug Fix Release)
  *
- * Fixes applied:
- *
- * Bug 2 — Transactions never reaching the chain:
- *   Root cause: startLoop() captured agentConfig in the runCycle closure at call
- *   time. Any dryRun / autonomousMode toggle after startLoop() was invisible to
- *   the running loop. Fixed by keeping an agentConfigRef that is always current.
- *   runCycle reads agentConfigRef.current so it sees the latest config on every
- *   tick, not the snapshot from when the loop was started.
- *
- * Bug 3 — setInterval runs stale runCycle / manual refresh broken:
- *   Root cause: setInterval(runCycle, ...) in startLoop captured the runCycle
- *   function ref at mount time. useCallback recreates runCycle whenever its deps
- *   change (including isRunning, which flips every cycle), so the interval was
- *   perpetually calling an outdated version that saw stale state.
- *   Fixed by:
- *     a) Storing runCycle in runCycleRef and having the interval call
- *        runCycleRef.current() so it always invokes the latest version.
- *     b) Moving the isRunning guard to isRunningRef (a ref) so it is NOT in
- *        runCycle's dependency array — this prevents the needless recreation of
- *        runCycle on every cycle start/end.
- *
- * Session H functionality (network pass-through, SSR-safe localStorage,
- * todayTrades computation, ZK proof submission) is fully preserved.
+ * Fixes:
+ * Bug 2 — agentConfigRef: config reads are always live, never a startup snapshot
+ * Bug 3 — runCycleRef + isRunningRef: interval always calls latest cycle fn
+ * Bug 4 (new) — immediate disqualification on start:
+ *   initSession() is a Zustand setState call — it is async/batched.
+ *   startLoop() called runCycle() immediately after initSession(), but session
+ *   was still null in the closure, so startUSD/peakUSD sent to the API were 0.
+ *   The API computed drawdownPct against a 0 peak which triggered instant
+ *   disqualification.
+ *   Fix: startLoop() passes startingUSDT explicitly to runCycle via a
+ *   startUSDOverride ref. runCycle reads the override on the first call, then
+ *   falls back to session values on every subsequent call.
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react'
@@ -52,29 +41,22 @@ export function useAgentLoop() {
   const [loopStatus,  setLoopStatus]  = useState<LoopStatus>('idle')
   const [lastCycle,   setLastCycle]   = useState<LoopCycleResult | null>(null)
   const [nextRunIn,   setNextRunIn]   = useState<number>(0)
-  // Bug 3 fix: isRunning is now tracked both as state (for UI rendering) and as
-  // a ref (so runCycle can guard re-entrancy without being in the dep array).
   const [isRunning,   setIsRunning]   = useState(false)
   const [cycleError,  setCycleError]  = useState<string>('')
 
   const timerRef      = useRef<ReturnType<typeof setInterval> | null>(null)
   const countdownRef  = useRef<ReturnType<typeof setInterval> | null>(null)
   const lastRunRef    = useRef<number>(0)
-
-  // Bug 3 fix: re-entrancy guard as a ref — not state — so it doesn't appear in
-  // runCycle's dependency array and doesn't cause needless recreation.
   const isRunningRef  = useRef(false)
-
-  // Bug 3 fix: always-current ref to the latest runCycle function so the
-  // setInterval callback never calls a stale closure.
   const runCycleRef   = useRef<() => Promise<void>>()
 
-  // Bug 2 fix: always-current ref to agentConfig so mid-loop toggles of dryRun
-  // and autonomousMode are picked up immediately without restarting the loop.
+  // Bug 2 fix: always-current config ref
   const agentConfigRef = useRef(agentConfig)
-  useEffect(() => {
-    agentConfigRef.current = agentConfig
-  }, [agentConfig])
+  useEffect(() => { agentConfigRef.current = agentConfig }, [agentConfig])
+
+  // Bug 4 fix: startUSD override ref — set by startLoop() so the first cycle
+  // uses the correct starting capital even before Zustand session is committed.
+  const startUSDOverrideRef = useRef<number | null>(null)
 
   // ── Helpers ──────────────────────────────────────────────────────────────
   const getDaysElapsed = useCallback((): number => {
@@ -89,20 +71,25 @@ export function useAgentLoop() {
   }, [trades])
 
   // ── Core cycle ────────────────────────────────────────────────────────────
-  // Bug 3 fix: isRunningRef replaces isRunning in the guard and dep array.
-  // Bug 2 fix: every config read goes through agentConfigRef.current.
   const runCycle = useCallback(async () => {
     if (!privateKey || !isWalletLoaded)  return
     if (loopStatus === 'disqualified')   return
-    if (isRunningRef.current)            return   // Bug 3 fix: ref guard, not state
+    if (isRunningRef.current)            return
 
     isRunningRef.current = true
     setIsRunning(true)
     setCycleError('')
     lastRunRef.current = Date.now()
 
-    // Bug 2 fix: read live config from ref — not the closure snapshot
     const cfg = agentConfigRef.current
+
+    // Bug 4 fix: use the override on first cycle, then clear it so subsequent
+    // cycles read from the live session as normal.
+    const startUSD = startUSDOverrideRef.current ?? session?.startValueUSDT ?? 0
+    const peakUSD  = startUSDOverrideRef.current
+      ? Math.max(startUSDOverrideRef.current, session?.peakValueUSDT ?? 0)
+      : session?.peakValueUSDT ?? 0
+    startUSDOverrideRef.current = null   // consume the override
 
     try {
       const symbols = cfg.allowedTokens?.length
@@ -117,14 +104,11 @@ export function useAgentLoop() {
           network,
           rules:       strategyParsed,
           symbols,
-          startUSD:    session?.startValueUSDT  ?? 0,
-          peakUSD:     session?.peakValueUSDT   ?? 0,
+          startUSD,
+          peakUSD,
           tradesToday: getTodayTrades(),
-          totalTrades: session?.totalTrades     ?? 0,
+          totalTrades: session?.totalTrades ?? 0,
           daysElapsed: getDaysElapsed(),
-          // Bug 2 fix: these two fields now come from the live ref, so toggling
-          // dryRun or autonomousMode while the loop is running takes effect on
-          // the very next cycle — not only after a stop+restart.
           dryRun:      cfg.dryRun,
           config:      cfg,
         }),
@@ -148,7 +132,6 @@ export function useAgentLoop() {
         status:           newStatus,
       })
 
-      // Log trades + trigger ZK proofs for executed decisions
       for (const decision of data.decisions ?? []) {
         if (decision.guardrail === 'blocked') continue
 
@@ -160,7 +143,7 @@ export function useAgentLoop() {
           amountUSDT:  decision.amountUSDT,
           price:       data.snapshots?.find((s: any) => s.symbol === decision.symbol)?.price ?? 0,
           txHash:      decision.txHash ?? '',
-          dryRun:      cfg.dryRun,                         // Bug 2 fix: from live ref
+          dryRun:      cfg.dryRun,
           status:      decision.txHash ? 'confirmed' : cfg.dryRun ? 'confirmed' : 'pending',
           signalScore: decision.signalScore ?? 50,
           reasoning:   decision.reasoning  ?? '',
@@ -205,9 +188,9 @@ export function useAgentLoop() {
                 ruleId:       decision.ruleId,
                 guardrail:    decision.guardrail,
               },
-              portfolioUSD: portfolioUSD,
-              peakUSD:      Math.max(session?.peakValueUSDT ?? 0, portfolioUSD),
-              startUSD:     session?.startValueUSDT ?? 0,
+              portfolioUSD,
+              peakUSD: Math.max(session?.peakValueUSDT ?? 0, portfolioUSD),
+              startUSD,
               tradesToday:  getTodayTrades(),
               totalTrades:  (session?.totalTrades ?? 0) + (data.executed ?? 0),
               config: {
@@ -247,34 +230,36 @@ export function useAgentLoop() {
     isRunningRef.current = false
     setIsRunning(false)
   }, [
-    // Bug 3 fix: isRunning removed — guard is now the ref.
-    // Bug 2 fix: agentConfig removed — reads are through agentConfigRef.current.
-    // This dramatically reduces how often runCycle is recreated.
     privateKey, isWalletLoaded, network,
     strategyParsed, session, loopStatus,
     getDaysElapsed, getTodayTrades,
     updateSession, addTrade,
   ])
 
-  // Bug 3 fix: keep runCycleRef up to date every time runCycle is recreated.
-  // The setInterval callback calls runCycleRef.current() — never a stale copy.
-  useEffect(() => {
-    runCycleRef.current = runCycle
-  }, [runCycle])
+  useEffect(() => { runCycleRef.current = runCycle }, [runCycle])
 
   // ── Start / Stop ──────────────────────────────────────────────────────────
   const startLoop = useCallback(async (startingUSDT?: number) => {
     if (!privateKey || !isWalletLoaded) return
-    if (!session) initSession(startingUSDT ?? 100)
+
+    const capital = startingUSDT ?? 100
+
+    // Bug 4 fix: set the override BEFORE initSession and BEFORE runCycle fires.
+    // initSession() is a Zustand setState — it is batched/async and the session
+    // closure inside runCycle will still be null on the first call.
+    // The override ref is synchronous so runCycle reads it correctly.
+    startUSDOverrideRef.current = capital
+
+    if (!session) initSession(capital)
+
     setLoopStatus('running')
 
-    // Run the first cycle immediately using the ref so we get the latest version
+    // Run first cycle immediately — reads startUSDOverrideRef.current
     await runCycleRef.current?.()
 
     if (timerRef.current)     clearInterval(timerRef.current)
     if (countdownRef.current) clearInterval(countdownRef.current)
 
-    // Bug 3 fix: interval calls runCycleRef.current() — always the latest runCycle
     timerRef.current = setInterval(() => {
       runCycleRef.current?.()
     }, LOOP_INTERVAL_MS)
@@ -284,11 +269,12 @@ export function useAgentLoop() {
       setNextRunIn(Math.max(0, Math.floor(LOOP_INTERVAL_MS / 1000 - elapsed)))
     }, 1000)
   }, [privateKey, isWalletLoaded, session, initSession])
-  // Note: runCycle intentionally NOT in this dep array — we use the ref.
 
   const stopLoop = useCallback(() => {
     if (timerRef.current)     { clearInterval(timerRef.current);    timerRef.current = null }
     if (countdownRef.current) { clearInterval(countdownRef.current); countdownRef.current = null }
+    // Reset the override so a restart works cleanly
+    startUSDOverrideRef.current = null
     setLoopStatus('idle')
     setNextRunIn(0)
   }, [])
@@ -296,8 +282,6 @@ export function useAgentLoop() {
   const pauseLoop  = useCallback(() => setLoopStatus('paused'),  [])
   const resumeLoop = useCallback(() => setLoopStatus('running'), [])
 
-  // Expose runCycle for the "Run cycle now" button — reads through the ref
-  // so the manual trigger is also always fresh.
   const triggerManualCycle = useCallback(() => {
     runCycleRef.current?.()
   }, [])
@@ -307,7 +291,6 @@ export function useAgentLoop() {
     if (countdownRef.current) clearInterval(countdownRef.current)
   }, [])
 
-  // Derived
   const pnlPct      = session ? computePnLPct(session.startValueUSDT, session.currentValueUSDT) : 0
   const tradeStatus = tradeCountStatus(getTodayTrades(), session?.totalTrades ?? 0, getDaysElapsed())
   const isActive    = timerRef.current !== null
@@ -325,7 +308,6 @@ export function useAgentLoop() {
     isRegistered: session?.isRegistered ?? false,
     network,
     startLoop, stopLoop, pauseLoop, resumeLoop,
-    // Bug 3 fix: expose the ref-based trigger instead of raw runCycle
     runCycle: triggerManualCycle,
   }
 }

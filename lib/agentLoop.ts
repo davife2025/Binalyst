@@ -148,10 +148,13 @@ export class AgentLoop {
     }
 
     const startUSD    = cb.getStartUSD()
+    // Bug 4 fix: never compute drawdown when portfolioUSD is 0 — a failed
+    // getPortfolioUSD() returns 0, which would make drawdownPct = 100% and
+    // instantly disqualify the agent on the very first cycle.
     const peakUSD     = Math.max(this.peakUSD, startUSD, portfolioUSD)
-    const drawdownPct = peakUSD > 0
-      ? Math.max(0, ((peakUSD - portfolioUSD) / peakUSD) * 100)
-      : 0
+    const drawdownPct = (portfolioUSD <= 0 || peakUSD <= 0)
+      ? 0
+      : Math.max(0, ((peakUSD - portfolioUSD) / peakUSD) * 100)
 
     const todayTrades = cb.getTodayTrades()
     const totalTrades = cb.getTotalTrades()
@@ -352,4 +355,20 @@ export function tradeCountStatus(
   if (total < minTotal * 0.5)
     return { label: 'At risk',  color: 'var(--red)',   ok: false }
   return   { label: 'Watch',    color: 'var(--yellow)', ok: false }
+}
+
+// ── API route guard (used by /api/agent/loop) ────────────────────────────────
+// Prevents disqualification when portfolioUSD is 0 due to a failed fetch.
+// A 0 portfolio against any non-zero peak = 100% drawdown = instant disqualify.
+// Rule: never compute drawdown if portfolioUSD is 0 — treat it as a fetch error.
+export function safeDrawdownPct(
+  peakUSD: number,
+  portfolioUSD: number,
+  startUSD: number,
+): number {
+  // If portfolio came back as 0, we have no valid reading — return 0 to be safe
+  if (portfolioUSD <= 0) return 0
+  const peak = Math.max(peakUSD, startUSD, portfolioUSD)
+  if (peak <= 0) return 0
+  return Math.max(0, ((peak - portfolioUSD) / peak) * 100)
 }
