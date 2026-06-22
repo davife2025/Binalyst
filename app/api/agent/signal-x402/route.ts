@@ -22,7 +22,7 @@ const X402_AMOUNT   = '0.001'    // 0.001 USDT per signal request
 const X402_CURRENCY = 'USDT'
 const X402_PAYTO    = process.env.X402_PAYMENT_ADDRESS ?? '0x0000000000000000000000000000000000000000'
 
-export async function GET(req: NextRequest) {
+export async function POST(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const symbol           = searchParams.get('symbol')?.toUpperCase()
 

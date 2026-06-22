@@ -99,10 +99,6 @@ The `.env.celo.example` and `.env.mantle.example` files in the repo root documen
 |---|---|---|
 | `ANTHROPIC_API_KEY` | NL strategy parsing, AI chat | Yes |
 | `BINANCE_API_KEY` / `BINANCE_SECRET_KEY` | Live trade execution on BSC | For live trading |
-| `CELO_AGENT_PRIVATE_KEY` | Celo payments agent wallet | For Celo agent |
-| `CELO_AGENT_NETWORK` | `alfajores` (testnet) or `mainnet` | For Celo agent |
-| `MANTLE_AGENT_PRIVATE_KEY` | Mantle trading agent wallet | For Mantle agent |
-| `MANTLE_AGENT_NETWORK` | `testnet` or `mainnet` | For Mantle agent |
 | `BITGET_API_KEY` | Bitget Skill Hub routing (optional) | No — falls back to local computation |
 | `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Auth & persistence | For auth features |
 
@@ -118,23 +114,6 @@ The `.env.celo.example` and `.env.mantle.example` files in the repo root documen
 - Adaptive strategy engine with TRENDING / RANGING / FLAT regimes
 - Full backtester at `/api/backtest`
 
-### Celo (Payments Agent)
-- Autonomous recurring payment rules: CELO and cUSD transfers
-- Mento swap quotes on mainnet
-- ERC-8004 identity registration on Celo Mainnet (`0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`)
-- Testnet: Alfajores faucet at [faucet.celo.org/alfajores](https://faucet.celo.org/alfajores)
-
-### Mantle (AI Trading Agent)
-- Independent agent loop powered by Bybit market data
-- Benchmarking suite (`lib/mantle/benchmark.ts`)
-- ERC-8004 identity registration on Mantle Mainnet
-- Testnet: Mantle Sepolia faucet at [faucet.sepolia.mantle.xyz](https://faucet.sepolia.mantle.xyz)
-
-### Sui (Policy-Gated Agent)
-- Move smart contract (`move/sources/agent_policy.move`) gates agent actions
-- DeepBook order support via `lib/deepbook/`
-- Walrus decentralised storage for activity logs (`lib/walrus/`)
-- X Layer volume data integration
 
 ---
 
@@ -144,8 +123,7 @@ The `.env.celo.example` and `.env.mantle.example` files in the repo root documen
 2. **Strategy Builder** — load the _BTC Adaptive_ template, click Parse
 3. **Backtest tab** — run BTC/1h/90d/$10k starting capital → see equity curve and metrics
 4. **Agent tab** — start the agent, watch live regime detection update every 2 minutes
-5. **Celo Agent tab** — add a payment rule, switch to mainnet, register ERC-8004 identity
-6. **Mantle Agent tab** — generate wallet, fund it, register identity, start loop
+
 
 ---
 

@@ -11,7 +11,7 @@ import { rateLimit }                 from '@/lib/rateLimit'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET(req: NextRequest) {
+export async function POST(req: NextRequest) {
   const ip = req.headers.get('x-forwarded-for') ?? 'unknown'
   const rl = rateLimit(`alerts:${ip}`, 'market')
   if (!rl.allowed) return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
