@@ -42,12 +42,10 @@ import WorldCupTab        from '@/components/tabs/WorldCupTab'   // Session 4
 
 // ── Chain Specific Agents (Celo, Sui, Mantle) ─────────────────────────────────
 import BacktestTab         from '@/components/tabs/BacktestTab'
-import CeloAgentTab        from '@/components/tabs/CeloAgentTab'
 import SuiAgentTab         from '@/components/tabs/SuiAgentTab'
 import DeepBookTab         from '@/components/tabs/DeepBookTab'
 import RevocationTab       from '@/components/tabs/RevocationDemo'
-import MantleAgentTab      from '@/components/tabs/MantleAgentTab'
-import MantleSubmissionTab from '@/components/tabs/MantleSubmissionTab'
+
 
 // ── Stellar ZK (Session R — Stellar Hacks) ────────────────────────────────────
 import ZKProofTab          from '@/components/tabs/ZKProofTab'
@@ -84,17 +82,10 @@ const TABS: Record<string, React.ReactNode> = {
   // X Layer World Cup (Sessions 1-6)
   'world-cup':       <WorldCupTab />, // ← FIXED TYPO (was 'worldcup')
 
-  // Celo Agent
-  'celo-agent':      <CeloAgentTab />, // ← ADDED
-
   // Sui Agent
   'sui-agent':       <SuiAgentTab />, // ← ADDED
   'deepbook':        <DeepBookTab />, // ← ADDED
   'revocation':      <RevocationTab />, // ← ADDED
-
-  // Mantle Agent
-  'mantle-agent':      <MantleAgentTab />, // ← ADDED
-  'mantle-submission': <MantleSubmissionTab />, // ← ADDED
 
   // Stellar ZK (Session R)
   'zk-proofs':         <ZKProofTab />, // ← ADDED
