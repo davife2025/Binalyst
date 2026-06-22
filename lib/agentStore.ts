@@ -69,6 +69,7 @@ interface AgentStore {
   isWalletLoaded:  boolean
   bnbBalance:      number
   usdtBalance:     number
+  
 
   setWallet:       (address: string, privateKey: string) => void
   setEncryptedKey: (enc: string) => void

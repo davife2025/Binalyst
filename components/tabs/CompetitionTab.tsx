@@ -57,10 +57,13 @@ export default function CompetitionTab() {
     startLoop, stopLoop, pauseLoop, resumeLoop, runCycle,
   } = useAgentLoop()
 
+  
+
   const { data: fg }                    = useFearAndGreed()
   const [startCapital, setStartCapital] = useState('100')
   const [activeView, setActiveView]     = useState<'overview' | 'trades' | 'decisions'>('overview')
   const [tradeFilter, setTradeFilter]   = useState<'all' | 'buy' | 'sell' | 'live'>('all')
+// CompetitionTab.tsx — replace useState
 
   // FIX: Track the config state at the moment the loop was started so we can
   // detect mid-session changes that won't take effect until a restart.

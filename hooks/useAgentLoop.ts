@@ -42,6 +42,11 @@ export function useAgentLoop() {
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const lastRunRef   = useRef<number>(0)
 
+
+  
+const agentConfigRef = useRef(agentConfig)
+useEffect(() => { agentConfigRef.current = agentConfig }, [agentConfig])
+
   // ── Helpers ──────────────────────────────────────────────────────────────
   const getDaysElapsed = useCallback((): number => {
     if (!session?.startedAt) return 0
@@ -58,15 +63,16 @@ export function useAgentLoop() {
   const runCycle = useCallback(async () => {
     if (!privateKey || !isWalletLoaded) return
     if (loopStatus === 'disqualified')  return
-    if (isRunning)                       return
+    const isRunningRef = useRef(false)
 
-    setIsRunning(true)
+      isRunningRef.current = (false)
+
     setCycleError('')
     lastRunRef.current = Date.now()
 
     try {
-      const symbols = agentConfig.allowedTokens.length
-        ? agentConfig.allowedTokens
+      const symbols = agentConfigRef.current.allowedTokens.length
+        ? agentConfigRef.current.allowedTokens
         : ['ETH', 'ADA', 'AVAX', 'LINK', 'CAKE', 'DOGE', 'DOT', 'BNB']
 
       const res = await fetch('/api/agent/loop', {
@@ -82,8 +88,8 @@ export function useAgentLoop() {
           tradesToday: getTodayTrades(),
           totalTrades: session?.totalTrades     ?? 0,
           daysElapsed: getDaysElapsed(),
-          config:      agentConfig,
-          dryRun:      agentConfig.dryRun,
+          config:      agentConfigRef.current,
+          dryRun:      agentConfigRef.current.dryRun,
         }),
       })
 
@@ -116,8 +122,8 @@ export function useAgentLoop() {
           amountUSDT:  decision.amountUSDT,
           price:       data.snapshots?.find((s: any) => s.symbol === decision.symbol)?.price ?? 0,
           txHash:      decision.txHash ?? '',
-          dryRun:      agentConfig.dryRun,
-          status:      decision.txHash ? 'confirmed' : agentConfig.dryRun ? 'confirmed' : 'pending',
+          dryRun:      agentConfigRef.current.dryRun,
+          status:      decision.txHash ? 'confirmed' : agentConfigRef.current.dryRun ? 'confirmed' : 'pending',
           signalScore: decision.signalScore ?? 50,
           reasoning:   decision.reasoning  ?? '',
         })
@@ -174,10 +180,10 @@ export function useAgentLoop() {
               tradesToday:  getTodayTrades(),
               totalTrades:  (session?.totalTrades ?? 0) + (data.executed ?? 0),
               config: {
-                maxDrawdownPct:  agentConfig.maxDrawdownPct  ?? 30,
-                maxPerTradePct:  agentConfig.maxPerTradePct  ?? 15,
-                maxDailyTrades:  agentConfig.maxDailyTrades  ?? 8,
-                dryRun:          agentConfig.dryRun          ?? true,
+                maxDrawdownPct:  agentConfigRef.current.maxDrawdownPct  ?? 30,
+                maxPerTradePct:  agentConfigRef.current.maxPerTradePct  ?? 15,
+                maxDailyTrades:  agentConfigRef.current.maxDailyTrades  ?? 8,
+                dryRun:          agentConfigRef.current.dryRun          ?? true,
               },
             }).catch(err =>
               console.warn('[ZK] submitTradeProof failed (non-fatal):', err.message)
@@ -208,7 +214,7 @@ export function useAgentLoop() {
       setLoopStatus('error')
     }
 
-    setIsRunning(false)
+   
   }, [
     privateKey, isWalletLoaded, network, agentConfig,
     strategyParsed, session, loopStatus, isRunning,
@@ -216,6 +222,9 @@ export function useAgentLoop() {
   ])
 
   // ── Start / Stop ──────────────────────────────────────────────────────────
+const runCycleRef = useRef(runCycle)
+useEffect(() => { runCycleRef.current = runCycle }, [runCycle])
+
   const startLoop = useCallback(async (startingUSDT?: number) => {
     if (!privateKey || !isWalletLoaded) return
     if (!session) initSession(startingUSDT ?? 100)
@@ -223,7 +232,7 @@ export function useAgentLoop() {
     await runCycle()
     if (timerRef.current)     clearInterval(timerRef.current)
     if (countdownRef.current) clearInterval(countdownRef.current)
-    timerRef.current = setInterval(runCycle, LOOP_INTERVAL_MS)
+   timerRef.current = setInterval(() => runCycleRef.current(), LOOP_INTERVAL_MS)
     countdownRef.current = setInterval(() => {
       const elapsed = (Date.now() - lastRunRef.current) / 1000
       setNextRunIn(Math.max(0, Math.floor(LOOP_INTERVAL_MS / 1000 - elapsed)))
