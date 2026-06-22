@@ -147,9 +147,6 @@ The `.env.celo.example` and `.env.mantle.example` files in the repo root documen
 app/
   api/
     agent/          # BNB agent endpoints (loop, execute, strategy, portfolio)
-    celo-agent/     # Celo agent endpoints (loop, register)
-    mantle-agent/   # Mantle agent endpoints (loop, register, benchmark)
-    sui/            # Sui agent endpoints
     binance/        # Market data + trade execution
     backtest/       # Backtester route
     ai/chat/        # Claude chat route
@@ -157,9 +154,6 @@ components/
   tabs/             # AgentTab, BacktestTab, CeloAgentTab, MantleAgentTab, etc.
   agent/            # PnLChart, PortfolioBreakdown, FearGreedGauge, DrawdownGauge
 lib/
-  mantle/           # client, config, erc8004, benchmark
-  celo/             # client, config, erc8004 (via celoAgentStore)
-  sui/              # client, types
   skills/           # bitget-technicals, cmc, byreal, web3, square
   signalEngine.ts   # Regime detection + technical signal evaluation
   playbook.ts       # Bitget Playbook JSON export
