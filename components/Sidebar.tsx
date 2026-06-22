@@ -16,7 +16,7 @@ type NavItem = {
   icon:    any
   dot?:    boolean
   badge?:  string
-  section: 'intelligence' | 'agent' | 'binance' | 'tools' | 'sui' | 'stellar' | 'pokt' | 'croo'
+  section: 'intelligence' | 'agent' | 'binance' | 'tools' | 'stellar' | 'pokt' | 'croo'
 }
 
 // ── Tiny inline SVG icon helper ───────────────────────────────────────────────
@@ -69,22 +69,9 @@ const NAV: NavItem[] = [
     icon: <I><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/><path d="M4 22h16"/></I> },
   { id: 'performance',  label: 'Performance',   section: 'agent',
     icon: <I><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></I> },
-  { id: 'submission',   label: 'Submission',    section: 'agent',
-    icon: <I><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/></I> },
   { id: 'agent',        label: 'Rules Engine',  section: 'agent',
     icon: <I><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16" r="1"/></I> },
 
-  // ── Celo ──────────────────────────────────────────────────────────────────
- // { id: 'celo-agent', label: 'Celo Agent', dot: true, section: 'celo',
-  //  icon: <I><circle cx="12" cy="12" r="9"/><path d="M8.56 2.75c4.37 6.03 6.02 9.42 8.03 17.72m2.54-15.38c-3.72 4.35-8.94 5.66-16.88 5.85m19.5 1.9c-3.5-.93-6.63-.82-8.94 0-2.58.92-5.01 2.86-7.44 6.32"/></I> },
-
-  // ── Sui ───────────────────────────────────────────────────────────────────
-  { id: 'sui-agent',  label: 'Sui Agent',  section: 'sui',
-    icon: <I><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></I> },
-  { id: 'deepbook',   label: 'DeepBook',   section: 'sui',
-    icon: <I><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></I> },
-  { id: 'revocation', label: 'Revocation', section: 'sui',
-    icon: <I><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></I> },
 
       // ── Stellar ZK (Session R — Stellar Hacks) ───────────────────────────────
   { id: 'zk-proofs',    label: 'ZK Proofs',  section: 'stellar' ,
@@ -123,7 +110,6 @@ const NAV: NavItem[] = [
 const SECTIONS: { id: NavItem['section']; label: string; color: string }[] = [
   { id: 'intelligence', label: 'Intelligence',  color: '#3498db'  },
   { id: 'agent',        label: 'Trading Agent', color: '#F0B90B'  },
-  { id: 'sui',          label: 'Sui Agent',     color: '#61DAFB'  },
     { id: 'pokt',         label: 'POKT Agent',   color: '#5C6BC0'  },
    { id: 'stellar',      label: 'Stellar Agent',   color: '#FCFF52'  },
     { id: 'croo',         label: 'CROO Agent Protocol',   color: '#f59e0b'  },
