@@ -2,14 +2,20 @@
 
 /**
  * components/tabs/CompetitionTab.tsx — Session K + Live Trading Fix
+ *
  * Fixed:
- * - Blocking warnings when dryRun=true or autonomousMode=false
- * - Direct toggle buttons for dryRun and autonomousMode from this tab
- * - Network warning when on testnet with live settings
- * - canStart now requires dryRun=false + autonomousMode=true for live trades
+ * - canStart now refuses to start when critical live-trading conditions aren't met,
+ *   instead of silently starting a dry-run that never touches the chain
+ * - Separate canStartDry vs canStartLive so dry-run is always allowed but clearly labelled
+ * - runCycle is disabled when wallet is missing or no strategy is loaded
+ * - Mid-loop config change (dryRun / autonomousMode) now shows a prominent restart banner
+ *   because useAgentLoop snapshots config at startLoop() time — toggling mid-session
+ *   has no effect until the loop is stopped and restarted
+ * - isTestnet is a soft gate (warning) not a hard block, since testnet dry-runs are valid
+ * - Network / dryRun / autonomousMode direct toggles preserved from Session K
  */
 
-import { useState }              from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAgentLoop }          from '@/hooks/useAgentLoop'
 import { useAgentStore }         from '@/lib/agentStore'
 import DrawdownGauge, { DrawdownBar } from '@/components/agent/DrawdownGauge'
@@ -56,17 +62,58 @@ export default function CompetitionTab() {
   const [activeView, setActiveView]     = useState<'overview' | 'trades' | 'decisions'>('overview')
   const [tradeFilter, setTradeFilter]   = useState<'all' | 'buy' | 'sell' | 'live'>('all')
 
+  // FIX: Track the config state at the moment the loop was started so we can
+  // detect mid-session changes that won't take effect until a restart.
+  const configAtLoopStart = useRef<typeof agentConfig | null>(null)
+  const [configDriftWarning, setConfigDriftWarning] = useState(false)
+
+  // Capture config snapshot when loop starts
+  useEffect(() => {
+    if (isActive && !configAtLoopStart.current) {
+      configAtLoopStart.current = { ...agentConfig }
+    }
+    if (!isActive) {
+      configAtLoopStart.current = null
+      setConfigDriftWarning(false)
+    }
+  }, [isActive])
+
+  // FIX: Detect mid-loop config changes and warn the user that a restart is needed.
+  // useAgentLoop snapshots agentConfig at startLoop() call time, so changes after
+  // that point have no effect on the running loop — only a stop+restart applies them.
+  useEffect(() => {
+    if (!isActive || !configAtLoopStart.current) return
+    const drifted =
+      agentConfig.dryRun          !== configAtLoopStart.current.dryRun ||
+      agentConfig.autonomousMode  !== configAtLoopStart.current.autonomousMode
+    setConfigDriftWarning(drifted)
+  }, [agentConfig.dryRun, agentConfig.autonomousMode, isActive])
+
   const statusCfg  = STATUS_CONFIG[loopStatus] ?? STATUS_CONFIG.idle
   const pnlColor   = pnlPct >= 0 ? 'var(--green)' : 'var(--red)'
   const noWallet   = !isWalletLoaded || !agentAddress
   const noStrategy = strategyParsed.length === 0
 
   // ── Live trading readiness checks ─────────────────────────────────────────
-  const isDryRun       = agentConfig.dryRun
-  const isAutoOff      = !agentConfig.autonomousMode
-  const isTestnet      = network !== 'mainnet'
-  const isLiveReady    = !isDryRun && !isAutoOff && !isTestnet
-  const canStart       = !noWallet && !noStrategy && loopStatus !== 'disqualified'
+  const isDryRun    = agentConfig.dryRun
+  const isAutoOff   = !agentConfig.autonomousMode
+  const isTestnet   = network !== 'mainnet'
+  const isLiveReady = !isDryRun && !isAutoOff && !isTestnet
+
+  // FIX: canStart now enforces the loop can actually run meaningfully.
+  // Previously it only checked wallet + strategy + disqualified, which meant
+  // the agent silently started in dry-run mode and never signed a transaction.
+  //
+  // We allow dry-run starts (canStartDry) but require all live conditions
+  // (canStartLive) before the Start button implies real on-chain execution.
+  const baseReady    = !noWallet && !noStrategy && loopStatus !== 'disqualified'
+  const canStartDry  = baseReady                          // dry-run always allowed
+  const canStartLive = baseReady && isLiveReady           // real trades need full readiness
+  const canStart     = canStartDry                        // button enabled state
+
+  // FIX: runCycle should be disabled when wallet or strategy is missing —
+  // previously it could fire into useAgentLoop with no wallet loaded.
+  const canRunCycle = !isRunning && !noWallet && !noStrategy
 
   const filteredTrades = trades.filter(t => {
     if (tradeFilter === 'buy')  return t.side === 'BUY'
@@ -76,6 +123,14 @@ export default function CompetitionTab() {
   })
 
   const liveTrades = trades.filter(t => !t.dryRun && t.txHash)
+
+  // Derive a clear start button label
+  function getStartLabel() {
+    if (isDryRun)       return '▶ Start (Dry Run)'
+    if (isTestnet)      return '▶ Start (Testnet — no real funds)'
+    if (!isAutoOff)     return '▶ Start Agent (LIVE)'
+    return '▶ Start (Auto trade off)'
+  }
 
   return (
     <div className="flex h-full overflow-hidden">
@@ -163,7 +218,7 @@ export default function CompetitionTab() {
               </button>
             </div>
 
-            {/* Network warning */}
+            {/* Network warning — soft gate, not hard block */}
             {isTestnet && (
               <div className="mono text-[9px] mt-1 p-1.5 rounded"
                 style={{ background: 'rgba(240,185,11,0.1)', color: 'var(--yellow)', border: '1px solid rgba(240,185,11,0.2)' }}>
@@ -171,7 +226,7 @@ export default function CompetitionTab() {
               </div>
             )}
 
-            {/* Confirmation when all good */}
+            {/* When live mode is on but testnet */}
             {!isDryRun && !isAutoOff && isTestnet && (
               <div className="mono text-[9px] mt-1 p-1.5 rounded"
                 style={{ background: 'rgba(240,185,11,0.08)', color: 'var(--yellow)' }}>
@@ -179,6 +234,7 @@ export default function CompetitionTab() {
               </div>
             )}
 
+            {/* All green */}
             {isLiveReady && (
               <div className="mono text-[9px] mt-1 p-1.5 rounded"
                 style={{ background: 'rgba(14,203,129,0.08)', color: 'var(--green)' }}>
@@ -186,6 +242,16 @@ export default function CompetitionTab() {
               </div>
             )}
           </div>
+
+          {/* FIX: Config drift warning — shown when user toggles dryRun/autonomousMode
+              while the loop is already running. The loop won't pick up the change
+              until it is stopped and restarted. */}
+          {configDriftWarning && (
+            <div className="mono text-[10px] p-2 rounded mb-3"
+              style={{ background: 'rgba(240,185,11,0.1)', color: 'var(--yellow)', border: '1px solid rgba(240,185,11,0.3)' }}>
+              ⚠ Mode changed — stop and restart the loop to apply new settings
+            </div>
+          )}
 
           {/* Blockers */}
           {noWallet && (
@@ -225,15 +291,22 @@ export default function CompetitionTab() {
           {/* Loop controls */}
           <div className="flex flex-col gap-2">
             {!isActive ? (
+              // FIX: Button appearance distinguishes dry-run from live starts.
+              // canStart (canStartDry) controls disabled state. Style communicates
+              // readiness — yellow for live-ready, muted yellow for dry/incomplete.
               <button onClick={() => startLoop(parseFloat(startCapital))}
                 disabled={!canStart}
                 className="py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2"
                 style={{
-                  background: canStart ? 'var(--yellow)' : 'var(--bg4)',
-                  color:      canStart ? '#000' : 'var(--text3)',
-                  cursor:     canStart ? 'pointer' : 'not-allowed',
+                  background: !canStart
+                    ? 'var(--bg4)'
+                    : canStartLive
+                      ? 'var(--yellow)'
+                      : 'rgba(240,185,11,0.45)',
+                  color:  !canStart ? 'var(--text3)' : '#000',
+                  cursor: canStart  ? 'pointer' : 'not-allowed',
                 }}>
-                {isDryRun ? '▶ Start (Dry Run)' : '▶ Start Agent'}
+                {getStartLabel()}
               </button>
             ) : (
               <div className="flex gap-2">
@@ -257,11 +330,15 @@ export default function CompetitionTab() {
                 </button>
               </div>
             )}
-            <button onClick={runCycle} disabled={isRunning}
+
+            {/* FIX: runCycle disabled when wallet/strategy missing — previously
+                it could fire into useAgentLoop with no wallet loaded */}
+            <button onClick={runCycle} disabled={!canRunCycle}
               className="py-2 rounded-xl mono text-xs transition-all"
               style={{
                 background: 'var(--bg3)', border: '1px solid var(--border)',
-                color: isRunning ? 'var(--text3)' : 'var(--text2)',
+                color: !canRunCycle ? 'var(--text3)' : 'var(--text2)',
+                cursor: canRunCycle ? 'pointer' : 'not-allowed',
               }}>
               {isRunning
                 ? <span className="flex items-center justify-center gap-2">

@@ -4,15 +4,21 @@
  * components/tabs/AgentPerformanceTab.tsx
  * Session G: Live agent portfolio, PnL chart, and price alert manager.
  * Replaces the placeholder PortfolioTab for agent-connected users.
+ *
+ * Fixed:
+ * - Alert interval no longer resets on every state change (race condition eliminated)
+ * - alertsRef keeps the interval stable; state updates via setAlerts still work normally
+ * - Notification.requestPermission() called on mount so browser alerts actually fire
+ * - Alert API errors are now logged (empty catch replaced)
  */
 
-import { useState, useEffect } from 'react'
-import { useAgentStore }       from '@/lib/agentStore'
-import { usePortfolio }        from '@/hooks/usePortfolio'
-import PnLChart, { PnLSparkline } from '@/components/agent/PnLChart'
-import PortfolioBreakdown      from '@/components/agent/PortfolioBreakdown'
-import { DrawdownBar }         from '@/components/agent/DrawdownGauge'
-import { COMPETITION_RULES }   from '@/lib/twak/client'
+import { useState, useEffect, useRef } from 'react'
+import { useAgentStore }               from '@/lib/agentStore'
+import { usePortfolio }                from '@/hooks/usePortfolio'
+import PnLChart, { PnLSparkline }      from '@/components/agent/PnLChart'
+import PortfolioBreakdown              from '@/components/agent/PortfolioBreakdown'
+import { DrawdownBar }                 from '@/components/agent/DrawdownGauge'
+import { COMPETITION_RULES }           from '@/lib/twak/client'
 
 interface PriceAlert {
   id:        string
@@ -50,31 +56,61 @@ export default function AgentPerformanceTab() {
   const [checking,     setChecking]     = useState(false)
   const [triggered,    setTriggered]    = useState<PriceAlert[]>([])
 
-  useEffect(() => { setAlerts(loadAlerts()) }, [])
+  // FIX: Keep a ref to current alerts so the polling interval never needs to
+  // restart when alerts state changes. Without this, the interval was cleared
+  // and re-created on every add/remove/toggle, causing double-fire race conditions.
+  const alertsRef = useRef<PriceAlert[]>([])
 
-  // Check alerts every 60s
+  // Sync ref whenever state changes
   useEffect(() => {
-    const active = alerts.filter(a => a.active)
-    if (!active.length) return
+    alertsRef.current = alerts
+  }, [alerts])
 
+  // On mount: load persisted alerts and request notification permission
+  useEffect(() => {
+    setAlerts(loadAlerts())
+
+    // FIX: We must call requestPermission() before we can show notifications.
+    // The original code only checked Notification.permission === 'granted' but
+    // never prompted the user, so browser alerts silently never fired.
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission().catch(() => {
+        // Permission denied or browser doesn't support it — fail silently
+      })
+    }
+  }, [])
+
+  // FIX: Poll alerts every 60s using a stable interval that runs for the
+  // lifetime of the component. alertsRef always reflects current state so we
+  // never need to tear down the interval when alerts change.
+  useEffect(() => {
     async function checkAlerts() {
+      const active = alertsRef.current.filter(a => a.active)
+      if (!active.length) return
+
       setChecking(true)
       try {
         const params = encodeURIComponent(JSON.stringify(
           active.map(({ id, symbol, condition, target }) => ({ id, symbol, condition, target }))
         ))
-        const res  = await fetch(`/api/agent/alert?alerts=${params}`)
+        const res = await fetch(`/api/agent/alert?alerts=${params}`)
+
+        // FIX: Surface non-200 responses rather than silently swallowing them
+        if (!res.ok) throw new Error(`Alert API returned ${res.status} ${res.statusText}`)
+
         const data = await res.json()
         if (data.success && data.triggered?.length > 0) {
           const ids = new Set(data.triggered.map((t: any) => t.id))
           setTriggered(data.triggered)
-          // Mark as triggered
+
+          // Mark triggered alerts in state + persist
           setAlerts(prev => {
             const updated = prev.map(a => ids.has(a.id) ? { ...a, triggered: true } : a)
             saveAlerts(updated)
             return updated
           })
-          // Browser notification
+
+          // Browser notifications (permission already requested on mount)
           if (Notification.permission === 'granted') {
             data.triggered.forEach((t: any) => {
               new Notification(`🔔 Binalyst Alert: ${t.symbol}`, {
@@ -83,14 +119,18 @@ export default function AgentPerformanceTab() {
             })
           }
         }
-      } catch {}
+      } catch (err) {
+        // FIX: Log errors instead of swallowing them
+        console.error('[AgentPerformanceTab] Alert check failed:', err)
+      }
       setChecking(false)
     }
 
+    // Run immediately on mount, then every 60s
     checkAlerts()
-    const t = setInterval(checkAlerts, 60000)
+    const t = setInterval(checkAlerts, 60_000)
     return () => clearInterval(t)
-  }, [alerts])
+  }, []) // Empty deps — interval is stable; alertsRef provides live data
 
   function addAlert() {
     if (!alertSymbol || !alertTarget) return
@@ -187,7 +227,7 @@ export default function AgentPerformanceTab() {
           <div className="mono text-[10px] uppercase tracking-widest mb-2" style={{ color: 'var(--text3)' }}>
             Holdings
           </div>
-          {snapshot?.items.length ? snapshot.items.map((item, i) => (
+          {snapshot?.items.length ? snapshot.items.map((item) => (
             <div key={item.symbol} className="flex items-center justify-between py-1.5 border-b"
               style={{ borderColor: 'var(--border)' }}>
               <span className="mono text-xs font-bold" style={{ color: 'var(--text)' }}>{item.symbol}</span>
@@ -296,6 +336,14 @@ export default function AgentPerformanceTab() {
         {view === 'alerts' && (
           <div className="px-6 py-5 flex flex-col gap-4">
 
+            {/* Checking indicator */}
+            {checking && (
+              <div className="mono text-[10px] flex items-center gap-2" style={{ color: 'var(--text3)' }}>
+                <span className="w-3 h-3 rounded-full border-2 border-current border-t-transparent animate-spin-slow" />
+                Checking prices...
+              </div>
+            )}
+
             {/* Triggered banner */}
             {triggered.length > 0 && (
               <div className="rounded-xl p-4"
@@ -308,6 +356,16 @@ export default function AgentPerformanceTab() {
                     {t.symbol} {t.condition} ${t.target} — now ${t.currentPrice?.toFixed(4)}
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* Notification permission banner */}
+            {'Notification' in window && Notification.permission === 'denied' && (
+              <div className="rounded-xl p-3"
+                style={{ background: 'rgba(246,70,93,0.06)', border: '1px solid rgba(246,70,93,0.2)' }}>
+                <div className="mono text-[10px]" style={{ color: 'var(--red)' }}>
+                  ⚠ Browser notifications blocked — enable them in your browser settings to receive alert popups
+                </div>
               </div>
             )}
 
