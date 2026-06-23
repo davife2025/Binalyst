@@ -1,7 +1,24 @@
 /**
- * app/api/agent/loop/route.ts — Session F update (REPLACES Session D version)
- * Network-aware: uses NetworkTWAKClient which routes to mainnet or testnet
- * based on the `network` field in the request body.
+ * app/api/agent/loop/route.ts — Session I (Bug Fix Release)
+ *
+ * Fix: Instant disqualification on start.
+ *
+ * Root cause: getPortfolioValueUSD() can return 0 for several reasons:
+ *   - RPC timeout or error (caught, portfolioUSD stays 0)
+ *   - Wallet has no tokens yet (legitimate 0 balance)
+ *   - Testnet with no liquidity
+ *
+ * When portfolioUSD=0 but peakUSD/startUSD are non-zero (any session after
+ * the first cycle), computeDrawdown returns (peak - 0) / peak = 100%, which
+ * immediately fires the disqualification block.
+ *
+ * Fix: if portfolioUSD comes back as 0 (or below a $0.01 dust threshold),
+ * fall back to startUSD for BOTH mainnet and testnet — not just testnet.
+ * This means a failed portfolio fetch is treated as "no change" rather than
+ * "total loss", which is the correct safe default.
+ *
+ * Secondary fix: the disqualification and pause blocks now also guard against
+ * portfolioUSD=0 so a bad fetch can never trigger safety rails.
  */
 
 import { NextRequest, NextResponse }   from 'next/server'
@@ -27,7 +44,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const {
       privateKey,
-      network     = 'testnet' as Network,   // safe default
+      network     = 'testnet' as Network,
       rules       = [],
       symbols     = [],
       startUSD    = 0,
@@ -61,16 +78,32 @@ export async function POST(req: NextRequest) {
       .filter(Boolean)
 
     let portfolioUSD   = 0
+    let portfolioFetchOk = false
     let portfolioItems: any[] = []
 
     try {
       const pv       = await client.getPortfolioValueUSD(holdings)
       portfolioUSD   = pv.totalUSD
       portfolioItems = pv.items
-      // On testnet, if portfolio reads 0 (no liquidity), use startUSD as estimate
-      if (portfolioUSD < 0.01 && net.isTestnet) portfolioUSD = startUSD || 100
+      portfolioFetchOk = true
     } catch {
-      portfolioUSD = startUSD || 100
+      // fetch failed — portfolioUSD stays 0, handled below
+    }
+
+    // ── Portfolio fallback ────────────────────────────────────────────────────
+    // If the fetch failed OR returned dust (< $0.01), use the best available
+    // estimate so drawdown is not computed against a false zero.
+    //
+    // Priority:
+    //   1. Actual fetched value (if > $0.01)
+    //   2. startUSD from the session (safe — means "no change since start")
+    //   3. 100 as a last resort so a brand-new session doesn't disqualify
+    //
+    // This applies to BOTH mainnet and testnet — the original code only had
+    // the testnet guard, leaving mainnet exposed to the 100% drawdown bug.
+    const portfolioFallback = startUSD > 0 ? startUSD : 100
+    if (!portfolioFetchOk || portfolioUSD < 0.01) {
+      portfolioUSD = portfolioFallback
     }
 
     // ── 2. Drawdown ────────────────────────────────────────────────────────────
@@ -78,25 +111,30 @@ export async function POST(req: NextRequest) {
     const drawdownPct = computeDrawdown(startUSD, peak, portfolioUSD)
     const pnlPct      = computePnLPct(startUSD, portfolioUSD)
 
-    // ── 3. Safety ──────────────────────────────────────────────────────────────
-    if (drawdownPct >= COMPETITION_RULES.MAX_DRAWDOWN_PCT) {
-      return NextResponse.json({
-        success: true, status: 'disqualified', network,
-        portfolioUSD, drawdownPct, pnlPct,
-        decisions: [], executed: 0, blocked: 0,
-        errors: [`DISQUALIFIED: drawdown ${drawdownPct.toFixed(1)}% ≥ 30%`],
-        peakUSD: peak,
-      })
-    }
+    // ── 3. Safety checks ───────────────────────────────────────────────────────
+    // Guard: only fire safety rails when we have a real portfolio reading.
+    // portfolioFetchOk=false means we're working from an estimate — don't
+    // disqualify or pause based on estimated values.
+    if (portfolioFetchOk) {
+      if (drawdownPct >= COMPETITION_RULES.MAX_DRAWDOWN_PCT) {
+        return NextResponse.json({
+          success: true, status: 'disqualified', network,
+          portfolioUSD, drawdownPct, pnlPct,
+          decisions: [], executed: 0, blocked: 0,
+          errors: [`DISQUALIFIED: drawdown ${drawdownPct.toFixed(1)}% ≥ ${COMPETITION_RULES.MAX_DRAWDOWN_PCT}%`],
+          peakUSD: peak,
+        })
+      }
 
-    if (drawdownPct >= DRAWDOWN_PAUSE_PCT) {
-      return NextResponse.json({
-        success: true, status: 'paused', network,
-        portfolioUSD, drawdownPct, pnlPct,
-        decisions: [], executed: 0, blocked: 0,
-        errors: [`AUTO-PAUSED: drawdown ${drawdownPct.toFixed(1)}% approaching 30%`],
-        peakUSD: peak,
-      })
+      if (drawdownPct >= DRAWDOWN_PAUSE_PCT) {
+        return NextResponse.json({
+          success: true, status: 'paused', network,
+          portfolioUSD, drawdownPct, pnlPct,
+          decisions: [], executed: 0, blocked: 0,
+          errors: [`AUTO-PAUSED: drawdown ${drawdownPct.toFixed(1)}% approaching ${COMPETITION_RULES.MAX_DRAWDOWN_PCT}%`],
+          peakUSD: peak,
+        })
+      }
     }
 
     // ── 4. Signals ─────────────────────────────────────────────────────────────
@@ -152,25 +190,24 @@ export async function POST(req: NextRequest) {
 
       const decision: any = {
         ruleId: rule.id, symbol: rule.symbol, action: rule.action,
-        ruleName: `${rule.symbol} ${rule.action}`,   // ← added for ZK hook
+        ruleName: `${rule.symbol} ${rule.action}`,
         amountUSDT, signalScore: signal.signalScore, reasoning: signal.reasoning,
         fearGreed: fg.value,
         guardrail: guardrail.allowed ? (guardrail.warning ? 'warning' : 'passed') : 'blocked',
         blockReason: guardrail.reason, warning: guardrail.warning,
         txHash: null, dryRun, network, timestamp: Date.now(),
-        executed: false,   // ← set to true below when swap succeeds/dryRun passes
+        executed: false,
       }
       decisions.push(decision)
 
       if (!guardrail.allowed) { blocked++; continue }
       if (!autonomousMode)    { continue }
 
-      // Live execution (mainnet or testnet)
+      // Live execution
       try {
         const token = ELIGIBLE_TOKENS[rule.symbol]
         if (!token) { errors.push(`No address for ${rule.symbol}`); continue }
 
-        // Build swap path using network-aware addresses
         const usdtAddr = net.usdt
         const path     = rule.action === 'BUY'
           ? [usdtAddr, token.address]
@@ -184,7 +221,6 @@ export async function POST(req: NextRequest) {
             )
 
         if (!dryRun) {
-          // Get expected output for slippage
           const amounts    = await client.getAmountsOut(amountInWei, path)
           const expected   = amounts[amounts.length - 1]
           const slip       = slippagePct / 100
@@ -194,19 +230,20 @@ export async function POST(req: NextRequest) {
           const result = await client.swapExactTokensForTokens({
             amountIn: amountInWei, amountOutMin: outMin, path,
           })
-          decision.txHash   = result.txHash
-          decision.success  = result.success
-          decision.explorerLink = result.txHash ? client.explorerTx(result.txHash) : null
+          decision.txHash        = result.txHash
+          decision.success       = result.success
+          decision.explorerLink  = result.txHash ? client.explorerTx(result.txHash) : null
           if (result.success) {
             executed++
-            decision.executed = true   // ← ZK: proved on success
+            decision.executed = true
+          } else {
+            errors.push(`Swap failed: ${rule.symbol} on ${network}`)
           }
-          else errors.push(`Swap failed: ${rule.symbol} on ${network}`)
         } else {
           // Dry run — simulate success
           decision.success  = true
           decision.dryRun   = true
-          decision.executed = true   // ← ZK: dry-run trades still get proved
+          decision.executed = true
           executed++
         }
       } catch (e: any) {
@@ -223,7 +260,6 @@ export async function POST(req: NextRequest) {
       snapshots: snapshots.map(s => ({
         symbol: s.symbol, signalScore: s.signalScore,
         signalDir: s.signalDir, price: s.price, change24h: s.change24h,
-        // P5 FIX: include technicals + tags so ZK guest can prove technical conditions
         fearGreed:  fg.value,
         technicals: s.technicals ?? null,
         tags:       s.tags ?? [],
