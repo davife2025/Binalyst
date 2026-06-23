@@ -266,6 +266,19 @@ export async function POST(req: NextRequest) {
       }
     }
 
+   console.log('[loop]', {
+      dryRun,
+      executed,
+      blocked,
+      decisionsCount: decisions.length,
+      errors,
+      drawdownPct,
+      portfolioUSD,
+      rulesCount:     rules.length,
+      snapshotsCount: snapshots.length,
+      firedCount:     fired.length,
+    })
+
     return NextResponse.json({
       success:      true,
       status:       'running',
@@ -297,6 +310,7 @@ export async function POST(req: NextRequest) {
 
   } catch (err: any) {
     console.error('[agent/loop]', err.message)
+ 
     return NextResponse.json({ error: err.message }, { status: 500 })
   }
 }
