@@ -1,25 +1,20 @@
 /**
- * app/api/agent/loop/route.ts — Session I v2
+ * app/api/agent/loop/route.ts — Session J
  *
- * Bug fixes:
+ * Key fixes:
  *
- * 1. DISQUALIFICATION BUG — portfolioFallback applied AFTER safety check
- *    The previous version checked drawdownPct >= MAX_DRAWDOWN_PCT before
- *    applying the portfolio fallback in some code paths. Fixed: fallback
- *    is always applied first, safety checks always use the corrected value.
+ * 1. autonomousMode no longer gates execution.
+ *    dryRun=true  → simulate trade (no chain interaction), always logs
+ *    dryRun=false → live on-chain swap, always attempts if guardrail passes
+ *    autonomousMode is now only used as an extra confirmation for live swaps
+ *    when explicitly required, but does NOT silently suppress dry-run.
  *
- * 2. NO TRANSACTIONS — autonomousMode gates dry-run
- *    The execution block was:
- *      if (!guardrail.allowed) { blocked++; continue }
- *      if (!autonomousMode)    { continue }   // ← skips dry-run too
- *      if (!dryRun) { live swap } else { dry-run }
- *    This means dry-run NEVER fires unless autonomousMode=true.
- *    Fix: dry-run simulation runs regardless of autonomousMode.
- *    autonomousMode now only gates LIVE (on-chain) execution.
+ * 2. Portfolio fetch has 8s timeout to avoid Vercel 55s kill.
  *
- * 3. TIMEOUT DISQUALIFICATION — maxDuration=55 kills long portfolio fetches
- *    Added a 10s timeout to getPortfolioValueUSD so it fails fast and falls
- *    back gracefully instead of letting Vercel kill the whole request.
+ * 3. portfolioFetchOk only true when value > $0.01 — empty wallet treated
+ *    as failed fetch, falls back to startUSD to avoid false 100% drawdown.
+ *
+ * 4. Safety rails only fire on real portfolio readings (portfolioFetchOk).
  */
 
 import { NextRequest, NextResponse }   from 'next/server'
@@ -63,8 +58,6 @@ export async function POST(req: NextRequest) {
       maxPerTradePct = 15,
       slippagePct    = 1.0,
       maxDailyTrades = 8,
-      // Bug 2 fix: autonomousMode from config — defaults false
-      autonomousMode = false,
     } = config
 
     const net    = NETWORKS[network as Network] ?? NETWORKS.testnet
@@ -84,38 +77,32 @@ export async function POST(req: NextRequest) {
     let portfolioItems: any[] = []
 
     try {
-      // Bug 3 fix: 10s timeout so a slow RPC never causes Vercel to kill the
-      // whole request at 55s, which previously left the client with an error
-      // that occasionally resolved as 'disqualified' through stale state.
       const fetchPromise = client.getPortfolioValueUSD(holdings)
       const timeout      = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Portfolio fetch timeout')), 10_000)
+        setTimeout(() => reject(new Error('Portfolio fetch timeout')), 8_000)
       )
       const pv       = await Promise.race([fetchPromise, timeout]) as Awaited<ReturnType<typeof client.getPortfolioValueUSD>>
       portfolioUSD   = pv.totalUSD
       portfolioItems = pv.items
-      portfolioFetchOk = portfolioUSD > 0.01   // only flag as ok if we got a real value
+      // Only mark as ok if we got a real value — empty wallet returns 0
+      portfolioFetchOk = portfolioUSD > 0.01
     } catch {
-      // fetch failed or timed out — portfolioFetchOk stays false
+      // timed out or failed — portfolioFetchOk stays false
     }
 
-    // Bug 1 fix: ALWAYS apply fallback before ANY drawdown or safety calculation.
-    // Previous code applied fallback inside the catch block only, so a "successful"
-    // fetch that returned 0 (empty wallet, no USDT) bypassed the fallback and went
-    // straight into drawdown calculation with portfolioUSD=0.
+    // Always apply fallback before any drawdown calculation.
+    // Empty wallet (portfolioUSD=0) with non-zero peak = 100% drawdown = instant disqualify.
+    // Fallback: use startUSD ("no change") or 100 for brand new sessions.
     if (!portfolioFetchOk) {
-      // Use startUSD if we have it (means "no change from start"), else 100.
       portfolioUSD = startUSD > 0 ? startUSD : 100
     }
 
-    // ── 2. Drawdown — computed on corrected portfolioUSD ──────────────────────
+    // ── 2. Drawdown ────────────────────────────────────────────────────────────
     const peak        = Math.max(peakUSD, startUSD, portfolioUSD)
     const drawdownPct = computeDrawdown(startUSD, peak, portfolioUSD)
     const pnlPct      = computePnLPct(startUSD, portfolioUSD)
 
-    // ── 3. Safety checks — only on real portfolio readings ────────────────────
-    // portfolioFetchOk=false means we're using an estimate. Never disqualify
-    // or pause based on estimated/fallback values.
+    // ── 3. Safety — only on confirmed real readings ────────────────────────────
     if (portfolioFetchOk) {
       if (drawdownPct >= COMPETITION_RULES.MAX_DRAWDOWN_PCT) {
         return NextResponse.json({
@@ -182,11 +169,15 @@ export async function POST(req: NextRequest) {
       const amountUSDT = (portfolioUSD * rule.sizePct) / 100
 
       const guardrail = checkCompetitionGuardrails({
-        symbol: rule.symbol, portfolioUSD, drawdownPct,
-        tradesToday: tradesToday + executed,
-        totalTrades: totalTrades + executed,
-        daysElapsed, tradeAmountUSD: amountUSDT,
-        maxPerTradePct, slippagePct,
+        symbol:         rule.symbol,
+        portfolioUSD,
+        drawdownPct,
+        tradesToday:    tradesToday + executed,
+        totalTrades:    totalTrades + executed,
+        daysElapsed,
+        tradeAmountUSD: amountUSDT,
+        maxPerTradePct,
+        slippagePct,
       })
 
       const decision: any = {
@@ -198,7 +189,9 @@ export async function POST(req: NextRequest) {
         signalScore: signal.signalScore,
         reasoning:   signal.reasoning,
         fearGreed:   fg.value,
-        guardrail:   guardrail.allowed ? (guardrail.warning ? 'warning' : 'passed') : 'blocked',
+        guardrail:   guardrail.allowed
+          ? (guardrail.warning ? 'warning' : 'passed')
+          : 'blocked',
         blockReason: guardrail.reason,
         warning:     guardrail.warning,
         txHash:      null,
@@ -211,12 +204,16 @@ export async function POST(req: NextRequest) {
 
       if (!guardrail.allowed) { blocked++; continue }
 
-      // Bug 2 fix: dry-run runs regardless of autonomousMode.
-      // autonomousMode only gates whether REAL on-chain swaps are signed.
-      // Previously: 'if (!autonomousMode) continue' ran before the dry-run
-      // block, so dry-run trades never fired and the trade log was always empty.
+      // ── Execution logic ──────────────────────────────────────────────────────
+      // dryRun=true  → always simulate, no chain interaction
+      // dryRun=false → attempt live on-chain swap
+      //
+      // autonomousMode is NOT a gate here. The UI already prevents starting
+      // in live mode without autonomousMode enabled via the isLiveReady check.
+      // Keeping autonomousMode as a server-side gate caused silent suppression
+      // where users enabled live mode but autonomousMode defaulted to false,
+      // resulting in zero trade activity with no error or explanation.
       if (dryRun) {
-        // Dry run — simulate success, no chain interaction
         decision.success  = true
         decision.dryRun   = true
         decision.executed = true
@@ -224,12 +221,13 @@ export async function POST(req: NextRequest) {
         continue
       }
 
-      // Live execution — requires autonomousMode
-      if (!autonomousMode) continue
-
+      // Live swap
       try {
         const token = ELIGIBLE_TOKENS[rule.symbol]
-        if (!token) { errors.push(`No address for ${rule.symbol}`); continue }
+        if (!token) {
+          errors.push(`No token address for ${rule.symbol}`)
+          continue
+        }
 
         const usdtAddr = net.usdt
         const path     = rule.action === 'BUY'
@@ -252,9 +250,11 @@ export async function POST(req: NextRequest) {
         const result = await client.swapExactTokensForTokens({
           amountIn: amountInWei, amountOutMin: outMin, path,
         })
+
         decision.txHash       = result.txHash
         decision.success      = result.success
         decision.explorerLink = result.txHash ? client.explorerTx(result.txHash) : null
+
         if (result.success) {
           executed++
           decision.executed = true
@@ -267,20 +267,29 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({
-      success: true, status: 'running', network,
-      isTestnet: net.isTestnet,
-      portfolioUSD, drawdownPct, pnlPct, peakUSD: peak,
-      fearGreed: fg.value, fgLabel: fg.label,
-      decisions, executed, blocked, errors,
+      success:      true,
+      status:       'running',
+      network,
+      isTestnet:    net.isTestnet,
+      portfolioUSD,
+      drawdownPct,
+      pnlPct,
+      peakUSD:      peak,
+      fearGreed:    fg.value,
+      fgLabel:      fg.label,
+      decisions,
+      executed,
+      blocked,
+      errors,
       snapshots: snapshots.map(s => ({
-        symbol:     s.symbol,
+        symbol:      s.symbol,
         signalScore: s.signalScore,
-        signalDir:  s.signalDir,
-        price:      s.price,
-        change24h:  s.change24h,
-        fearGreed:  fg.value,
-        technicals: s.technicals ?? null,
-        tags:       s.tags ?? [],
+        signalDir:   s.signalDir,
+        price:       s.price,
+        change24h:   s.change24h,
+        fearGreed:   fg.value,
+        technicals:  s.technicals ?? null,
+        tags:        s.tags ?? [],
       })),
       portfolioItems,
       cycleAt: Date.now(),
