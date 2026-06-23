@@ -67,6 +67,10 @@ export type ActiveTab =
   | 'zk-proofs'
   | 'pokt-agent'
   | 'croo-cap'
+  | 'bitget-tools'
+  | 'bitget-connect'
+  
+
 
 interface OpenClawStore {
   // ── Credentials ────────────────────────────────────────────────────────────

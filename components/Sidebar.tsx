@@ -16,7 +16,7 @@ type NavItem = {
   icon:    any
   dot?:    boolean
   badge?:  string
-  section: 'intelligence' | 'agent' | 'binance' | 'tools' | 'stellar' | 'pokt' | 'croo'
+  section: 'intelligence' | 'agent' | 'binance' | 'tools' | 'stellar' | 'pokt' | 'croo' | 'bitget'
 }
 
 // ── Tiny inline SVG icon helper ───────────────────────────────────────────────
@@ -71,6 +71,10 @@ const NAV: NavItem[] = [
     icon: <I><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></I> },
   { id: 'agent',        label: 'Rules Engine',  section: 'agent',
     icon: <I><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16" r="1"/></I> },
+  { id: 'bitget-tools',        label: 'Bitget Tools',  section: 'bitget',
+    icon: <I><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16" r="1"/></I> },
+  { id: 'bitget-connect',        label: 'Bitget Connect',  section: 'bitget',
+    icon: <I><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16" r="1"/></I> },
 
 
       // ── Stellar ZK (Session R — Stellar Hacks) ───────────────────────────────
@@ -110,6 +114,7 @@ const NAV: NavItem[] = [
 const SECTIONS: { id: NavItem['section']; label: string; color: string }[] = [
   { id: 'intelligence', label: 'Intelligence',  color: '#3498db'  },
   { id: 'agent',        label: 'Trading Agent', color: '#F0B90B'  },
+    { id: 'bitget',         label: 'Bitget',   color: '#0bf5d6'  },
     { id: 'pokt',         label: 'POKT Agent',   color: '#5C6BC0'  },
    { id: 'stellar',      label: 'Stellar Agent',   color: '#FCFF52'  },
     { id: 'croo',         label: 'CROO Agent Protocol',   color: '#f59e0b'  },
