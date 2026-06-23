@@ -69,12 +69,12 @@ const NAV: NavItem[] = [
     icon: <I><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/><path d="M4 22h16"/></I> },
   { id: 'performance',  label: 'Performance',   section: 'agent',
     icon: <I><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></I> },
-  { id: 'agent',        label: 'Rules Engine',  section: 'agent',
+  { id: 'agent',        label: 'Rules Engine',  section: 'bitget',
     icon: <I><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16" r="1"/></I> },
   { id: 'bitget-tools',        label: 'Bitget Tools',  section: 'bitget',
-    icon: <I><rect x="1" y="9" width="18" height="10" rx="2"/><path d="M7 11V7a5 3 0 0 1 7 0v4"/><circle cx="12" cy="16" r="1"/></I> },
+    icon: <I><rect x="1" y="9" width="18" height="10" rx="2"/><path d="M8 11V7a5 3 0 0 1 7 0v4"/><circle cx="12" cy="16" r="1"/></I> },
   { id: 'bitget-connect',        label: 'Bitget Connect',  section: 'bitget',
-    icon: <I><rect x="2" y="10" width="18" height="10" rx="2"/><path d="M7 11V7a5 3 0 0 1 8 0v4"/><circle cx="12" cy="16" r="1"/></I> },
+    icon: <I><rect x="2" y="10" width="18" height="10" rx="2"/><path d="M9 11V7a5 3 0 0 1 8 0v4"/><circle cx="12" cy="16" r="1"/></I> },
 
 
       // ── Stellar ZK (Session R — Stellar Hacks) ───────────────────────────────
