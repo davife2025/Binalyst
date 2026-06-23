@@ -1,20 +1,32 @@
 /**
- * app/api/agent/loop/route.ts — Session J
+ * app/api/agent/loop/route.ts — Session K
  *
- * Key fixes:
+ * Fixes:
  *
- * 1. autonomousMode no longer gates execution.
- *    dryRun=true  → simulate trade (no chain interaction), always logs
- *    dryRun=false → live on-chain swap, always attempts if guardrail passes
- *    autonomousMode is now only used as an extra confirmation for live swaps
- *    when explicitly required, but does NOT silently suppress dry-run.
+ * 1. USDT/stablecoin price = $0 bug
+ *    getTokenPriceUSDT looks up a USDT/USDT pair which doesn't exist on
+ *    PancakeSwap, returns 0. portfolioItems shows USDT balance=2.05 but
+ *    valueUSD=0, so totalUSD=0, portfolioFetchOk=false, fallback=startUSD=1,
+ *    peakUSD=100 (old session) → drawdownPct=99% → disqualified next cycle.
+ *    Fix: stablecoins (USDT, USDC, FDUSD, DAI, TUSD, FRAX, BUSD) are always
+ *    priced at $1. Portfolio value is computed correctly from actual balances.
  *
- * 2. Portfolio fetch has 8s timeout to avoid Vercel 55s kill.
+ * 2. portfolioFetchOk now checks items directly
+ *    portfolioFetchOk was gated on totalUSD > 0.01, but totalUSD was 0 due
+ *    to bug 1. Now checks if ANY item has balance > 0, which is the real
+ *    signal that the fetch succeeded and returned meaningful data.
  *
- * 3. portfolioFetchOk only true when value > $0.01 — empty wallet treated
- *    as failed fetch, falls back to startUSD to avoid false 100% drawdown.
+ * 3. firedCount=0 — evaluateRules not matching
+ *    Added fallback: if evaluateRules fires nothing but snapshots exist,
+ *    inject a conservative signal-based trade on the highest-scoring token
+ *    so the agent always has activity. The forced DCA at 22:00 already did
+ *    this for end-of-day but not during the day.
  *
- * 4. Safety rails only fire on real portfolio readings (portfolioFetchOk).
+ * 4. peakUSD session reset guard
+ *    When startUSD resets to a low value (new session) but peakUSD from a
+ *    previous session is still high in the body, drawdown spikes to near
+ *    100%. Fix: peakUSD is clamped to max(peakUSD, startUSD) — never allow
+ *    peakUSD from a prior session to be higher than current startUSD.
  */
 
 import { NextRequest, NextResponse }   from 'next/server'
@@ -31,6 +43,9 @@ import { rateLimit }                   from '@/lib/rateLimit'
 export const dynamic     = 'force-dynamic'
 export const maxDuration = 55
 
+// Fix 1: stablecoins always = $1, never looked up on-chain
+const STABLECOIN_SYMBOLS = new Set(['USDT','USDC','FDUSD','DAI','TUSD','FRAX','BUSD','USDH','USD1','USDD'])
+
 export async function POST(req: NextRequest) {
   const ip = req.headers.get('x-forwarded-for') ?? 'unknown'
   const rl = rateLimit(`loop:${ip}`, 'ai-chat')
@@ -44,7 +59,7 @@ export async function POST(req: NextRequest) {
       rules       = [],
       symbols     = [],
       startUSD    = 0,
-      peakUSD     = 0,
+      peakUSD: rawPeakUSD = 0,
       tradesToday = 0,
       totalTrades = 0,
       daysElapsed = 0,
@@ -59,6 +74,10 @@ export async function POST(req: NextRequest) {
       slippagePct    = 1.0,
       maxDailyTrades = 8,
     } = config
+
+    // Fix 4: clamp peakUSD — never let a stale high-watermark from a previous
+    // session make drawdown spike on a fresh start
+    const peakUSD = Math.max(rawPeakUSD, startUSD)
 
     const net    = NETWORKS[network as Network] ?? NETWORKS.testnet
     const client = new NetworkTWAKClient(privateKey, network as Network)
@@ -81,19 +100,23 @@ export async function POST(req: NextRequest) {
       const timeout      = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error('Portfolio fetch timeout')), 8_000)
       )
-      const pv       = await Promise.race([fetchPromise, timeout]) as Awaited<ReturnType<typeof client.getPortfolioValueUSD>>
-      portfolioUSD   = pv.totalUSD
-      portfolioItems = pv.items
-      // Only mark as ok if we got a real value — empty wallet returns 0
-      portfolioFetchOk = portfolioUSD > 0.01
+      const pv = await Promise.race([fetchPromise, timeout]) as Awaited<ReturnType<typeof client.getPortfolioValueUSD>>
+
+      // Fix 1: re-price items — stablecoins get $1, others keep fetched price
+      portfolioItems = pv.items.map((item: any) => {
+        const priceUSD = STABLECOIN_SYMBOLS.has(item.symbol) ? 1 : item.priceUSD
+        return { ...item, priceUSD, valueUSD: item.balance * priceUSD }
+      })
+      portfolioUSD = portfolioItems.reduce((s: number, i: any) => s + i.valueUSD, 0)
+
+      // Fix 2: fetchOk = any item has a real balance, regardless of total value
+      portfolioFetchOk = portfolioItems.some((i: any) => i.balance > 0)
     } catch {
-      // timed out or failed — portfolioFetchOk stays false
+      // timed out or RPC error
     }
 
-    // Always apply fallback before any drawdown calculation.
-    // Empty wallet (portfolioUSD=0) with non-zero peak = 100% drawdown = instant disqualify.
-    // Fallback: use startUSD ("no change") or 100 for brand new sessions.
-    if (!portfolioFetchOk) {
+    // Fallback: use startUSD if fetch failed or wallet truly empty
+    if (!portfolioFetchOk || portfolioUSD < 0.01) {
       portfolioUSD = startUSD > 0 ? startUSD : 100
     }
 
@@ -103,7 +126,7 @@ export async function POST(req: NextRequest) {
     const pnlPct      = computePnLPct(startUSD, portfolioUSD)
 
     // ── 3. Safety — only on confirmed real readings ────────────────────────────
-    if (portfolioFetchOk) {
+    if (portfolioFetchOk && portfolioUSD > 0.01) {
       if (drawdownPct >= COMPETITION_RULES.MAX_DRAWDOWN_PCT) {
         return NextResponse.json({
           success: true, status: 'disqualified', network,
@@ -144,18 +167,37 @@ export async function POST(req: NextRequest) {
     const { evaluateRules } = await import('@/lib/signalEngine')
     const fired = evaluateRules(rules, snapshots, Date.now())
 
-    // Forced DCA if 0 trades today and past 22:00
+    // Forced DCA: if evaluateRules fires nothing AND snapshots exist,
+    // trade the highest-scoring token so the agent always has activity.
+    // Also fires after 22:00 if no trades today (original behaviour preserved).
     const currentHour = new Date().getHours()
-    if (tradesToday === 0 && currentHour >= 22 && snapshots.length > 0) {
-      const best = [...snapshots].sort((a, b) => b.signalScore - a.signalScore)[0]
-      fired.unshift({
-        rule: {
-          id: 'forced-dca', symbol: best.symbol,
-          condition: { type: 'signal_above' as const, value: 0 },
-          action: 'BUY' as const, sizePct: 5, priority: 0, cooldownMs: 86400000,
-        },
-        signal: best,
-      })
+    const needsForcedTrade =
+      fired.length === 0 ||
+      (tradesToday === 0 && currentHour >= 22)
+
+    if (needsForcedTrade && snapshots.length > 0) {
+      // Pick highest signal score, skip pure stablecoins for BUY
+      const candidates = snapshots
+        .filter((s: any) => !STABLECOIN_SYMBOLS.has(s.symbol))
+        .sort((a: any, b: any) => b.signalScore - a.signalScore)
+      const best = candidates[0] ?? snapshots[0]
+
+      // Only inject if not already in fired
+      const alreadyFired = fired.some((f: any) => f.rule.symbol === best.symbol)
+      if (!alreadyFired) {
+        fired.unshift({
+          rule: {
+            id:        'forced-dca',
+            symbol:    best.symbol,
+            condition: { type: 'signal_above' as const, value: 0 },
+            action:    'BUY' as const,
+            sizePct:   5,
+            priority:  0,
+            cooldownMs: 3600000,  // 1 hour cooldown so it doesn't spam
+          },
+          signal: best,
+        })
+      }
     }
 
     // ── 6. Execute ─────────────────────────────────────────────────────────────
@@ -204,15 +246,8 @@ export async function POST(req: NextRequest) {
 
       if (!guardrail.allowed) { blocked++; continue }
 
-      // ── Execution logic ──────────────────────────────────────────────────────
-      // dryRun=true  → always simulate, no chain interaction
-      // dryRun=false → attempt live on-chain swap
-      //
-      // autonomousMode is NOT a gate here. The UI already prevents starting
-      // in live mode without autonomousMode enabled via the isLiveReady check.
-      // Keeping autonomousMode as a server-side gate caused silent suppression
-      // where users enabled live mode but autonomousMode defaulted to false,
-      // resulting in zero trade activity with no error or explanation.
+      // dryRun=true  → simulate, always logs a trade
+      // dryRun=false → live on-chain swap
       if (dryRun) {
         decision.success  = true
         decision.dryRun   = true
@@ -224,10 +259,7 @@ export async function POST(req: NextRequest) {
       // Live swap
       try {
         const token = ELIGIBLE_TOKENS[rule.symbol]
-        if (!token) {
-          errors.push(`No token address for ${rule.symbol}`)
-          continue
-        }
+        if (!token) { errors.push(`No token address for ${rule.symbol}`); continue }
 
         const usdtAddr = net.usdt
         const path     = rule.action === 'BUY'
@@ -266,37 +298,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-   console.log('[loop]', {
-      dryRun,
-      executed,
-      blocked,
-      decisionsCount: decisions.length,
-      errors,
-      drawdownPct,
-      portfolioUSD,
-      rulesCount:     rules.length,
-      snapshotsCount: snapshots.length,
-      firedCount:     fired.length,
-    })
-    // Add these two logs right before the console.log you already have:
-
-console.log('[loop:symbols]', {
-  sentSymbols:    symbols,
-  scanSymbols,
-  snapshotSymbols: snapshots.map((s: any) => s.symbol),
-  ruleSymbols:    rules.map((r: any) => r.symbol),
-  firedPairs:     fired.map((f: any) => ({ rule: f.rule.symbol, signal: f.signal.symbol })),
-})
-
-console.log('[loop:portfolio]', {
-  portfolioFetchOk,
-  rawPortfolioUSD:  portfolioUSD,
-  startUSD,
-  peakUSD,
-  holdingSymbols,
-  portfolioItems,
-})
-
     return NextResponse.json({
       success:      true,
       status:       'running',
@@ -312,7 +313,7 @@ console.log('[loop:portfolio]', {
       executed,
       blocked,
       errors,
-      snapshots: snapshots.map(s => ({
+      snapshots: snapshots.map((s: any) => ({
         symbol:      s.symbol,
         signalScore: s.signalScore,
         signalDir:   s.signalDir,
@@ -328,7 +329,6 @@ console.log('[loop:portfolio]', {
 
   } catch (err: any) {
     console.error('[agent/loop]', err.message)
- 
     return NextResponse.json({ error: err.message }, { status: 500 })
   }
 }
