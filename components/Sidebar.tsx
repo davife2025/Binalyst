@@ -72,9 +72,9 @@ const NAV: NavItem[] = [
   { id: 'agent',        label: 'Rules Engine',  section: 'agent',
     icon: <I><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16" r="1"/></I> },
   { id: 'bitget-tools',        label: 'Bitget Tools',  section: 'bitget',
-    icon: <I><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16" r="1"/></I> },
+    icon: <I><rect x="1" y="9" width="18" height="10" rx="2"/><path d="M7 11V7a5 3 0 0 1 7 0v4"/><circle cx="12" cy="16" r="1"/></I> },
   { id: 'bitget-connect',        label: 'Bitget Connect',  section: 'bitget',
-    icon: <I><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16" r="1"/></I> },
+    icon: <I><rect x="2" y="10" width="18" height="10" rx="2"/><path d="M7 11V7a5 3 0 0 1 8 0v4"/><circle cx="12" cy="16" r="1"/></I> },
 
 
       // ── Stellar ZK (Session R — Stellar Hacks) ───────────────────────────────

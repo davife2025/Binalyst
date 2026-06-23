@@ -50,6 +50,10 @@ import POKTAgentTab from '@/components/tabs/POKTAgentTab'
 
 import CrooTab from '@/components/tabs/CrooTab'
 
+import BitgetToolsTab from '@/components/tabs/BitgetToolsTab'
+
+import BitgetConnectTab from '@/components/tabs/BitgetConnectTab'
+
 const TABS: Record<string, React.ReactNode> = {
   // Core Binalyst
   home:         <DashboardTab />,
@@ -84,6 +88,8 @@ const TABS: Record<string, React.ReactNode> = {
     'pokt-agent':      <POKTAgentTab />,
 
       'croo-cap':        <CrooTab />,
+      'bitget-tools':    <BitgetToolsTab />,
+      'bitget-connect':  <BitgetConnectTab />,
 }
 
 export default function App() {
