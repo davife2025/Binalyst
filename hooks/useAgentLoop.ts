@@ -36,7 +36,7 @@ export function useAgentLoop() {
     trades, addTrade,
   } = useAgentStore()
 
-  const network = (useAgentStore() as any).network ?? 'testnet'
+  const network = (useAgentStore() as any).network ?? 'mainnet'
 
   const [loopStatus,  setLoopStatus]  = useState<LoopStatus>('idle')
   const [lastCycle,   setLastCycle]   = useState<LoopCycleResult | null>(null)
@@ -126,6 +126,8 @@ export function useAgentLoop() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
       if (!data.success) throw new Error(data.error ?? 'Cycle failed')
+
+    
 
       const portfolioUSD = data.portfolioUSD ?? 0
       const drawdownPct  = data.drawdownPct  ?? 0
@@ -235,6 +237,8 @@ export function useAgentLoop() {
       setCycleError(e.message)
       setLoopStatus('error')
     }
+
+    startUSDOverrideRef.current = null
 
     isRunningRef.current = false
     setIsRunning(false)

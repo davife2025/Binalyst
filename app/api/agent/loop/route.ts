@@ -140,7 +140,7 @@ export async function POST(req: NextRequest) {
 
     // Fallback: use startUSD if fetch failed or wallet truly empty
     if (!portfolioFetchOk || portfolioUSD < 0.01) {
-      portfolioUSD = startUSD > 0 ? startUSD : 100
+      portfolioUSD = startUSD > 0 ? startUSD : 1
     }
 
     // ── 2. Drawdown ────────────────────────────────────────────────────────────
