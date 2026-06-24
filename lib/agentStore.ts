@@ -161,7 +161,14 @@ export const useAgentStore = create<AgentStore>()(
       // ── Session ─────────────────────────────────────────────────────────
       session: null,
 
-      initSession: (startUSDT) =>
+      initSession: (startUSDT) => {
+        // Wipe localStorage first so the persisted session (which may have a
+        // stale peakValueUSDT from a previous run) is fully replaced.
+        // Without this, Zustand rehydrates the old peak on page load and
+        // the route receives peakUSD=100 / startUSD=1 → drawdownPct=99%.
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('binalyst-agent')
+        }
         set({
           session: {
             ...DEFAULT_SESSION,
@@ -170,7 +177,9 @@ export const useAgentStore = create<AgentStore>()(
             currentValueUSDT: startUSDT,
             peakValueUSDT:    startUSDT,
           },
-        }),
+          trades: [],   // clear old trades so they don't show against new session
+        })
+      },
 
       updateSession: (updates) =>
         set(s => ({

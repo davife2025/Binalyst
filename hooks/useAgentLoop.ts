@@ -86,10 +86,19 @@ export function useAgentLoop() {
     // Bug 4 fix: use the override on first cycle, then clear it so subsequent
     // cycles read from the live session as normal.
     const startUSD = startUSDOverrideRef.current ?? session?.startValueUSDT ?? 0
-    const peakUSD  = startUSDOverrideRef.current
+    const rawPeak  = startUSDOverrideRef.current
       ? Math.max(startUSDOverrideRef.current, session?.peakValueUSDT ?? 0)
       : session?.peakValueUSDT ?? 0
     startUSDOverrideRef.current = null   // consume the override
+
+    // Safety clamp: peakUSD must never be higher than startUSD when startUSD
+    // is itself low (e.g. new session with startUSD=1 but stale peakUSD=100
+    // from localStorage). That combination sends drawdownPct=99% to the route
+    // which immediately disqualifies even before the STABLECOIN fix runs.
+    // Rule: if rawPeak is more than 10x startUSD, reset it to startUSD.
+    const peakUSD = (startUSD > 0 && rawPeak > startUSD * 10)
+      ? startUSD
+      : Math.max(rawPeak, startUSD)
 
     try {
       const symbols = cfg.allowedTokens?.length
