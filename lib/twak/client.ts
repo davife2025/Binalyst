@@ -31,7 +31,7 @@ export const COMPETITION_RULES = {
   MAX_DRAWDOWN_PCT:      30,
   MIN_TRADES_PER_DAY:    1,
   MIN_TRADES_TOTAL:      7,
-  MIN_PORTFOLIO_USD:     1,
+  MIN_PORTFOLIO_USD:     0.1,
   TRADING_DAYS:          7,
   COMPETITION_CONTRACT,
 }
@@ -132,8 +132,8 @@ export function checkCompetitionGuardrails(params: {
   if (!ALL_ELIGIBLE_SYMBOLS.includes(symbol))
     return { allowed: false, reason: `${symbol} is not in the eligible token list.` }
 
-  if (portfolioUSD <= 1)
-    return { allowed: false, reason: `Portfolio $${portfolioUSD.toFixed(2)} at or below $1 floor.` }
+  if (portfolioUSD <= 0.1)
+    return { allowed: false, reason: `Portfolio $${portfolioUSD.toFixed(2)} at or below $0.1 floor.` }
 
   if (drawdownPct >= COMPETITION_RULES.MAX_DRAWDOWN_PCT)
     return { allowed: false, reason: `Drawdown ${drawdownPct.toFixed(1)}% exceeds ${COMPETITION_RULES.MAX_DRAWDOWN_PCT}% cap.` }
