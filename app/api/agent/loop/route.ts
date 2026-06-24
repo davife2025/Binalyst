@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const {
       privateKey,
-      network     = 'testnet' as Network,
+      network     = 'mainnet' as Network,
       rules       = [],
       symbols     = [],
       startUSD    = 0,
