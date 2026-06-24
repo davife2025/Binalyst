@@ -1,11 +1,13 @@
 /**
- * lib/twak/client.ts — Session C update (REPLACES Session A version)
+ * lib/twak/client.ts — Session K patch
  *
- * Key changes:
- * - Full 149-token BEP-20 eligible list
- * - Competition rules enforced: deadline check, min 1 trade/day,
- *   $1 floor guard, drawdown cap (30% disqualifies)
- * - TWAK CLI + MCP registration helpers
+ * Fix: getPortfolioValueUSD priced stablecoins at $0.
+ * getTokenPriceUSDT looks up a USDT/USDT pair which doesn't exist on
+ * PancakeSwap and returns 0. Any wallet holding only USDT showed $0
+ * portfolio value, triggering the fallback and stale-peakUSD disqualification.
+ *
+ * Fix: STABLECOIN_SYMBOLS set — these tokens are always priced at $1.
+ * All other tokens use the existing on-chain price lookup.
  */
 
 import { ethers } from 'ethers'
@@ -20,22 +22,20 @@ export const PANCAKE_FACTORY      = '0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73'
 export const WBNB_ADDRESS         = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c'
 export const USDT_BSC_ADDRESS     = '0x55d398326f99059fF775485246999027B3197955'
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Competition rules (hardcoded per contest spec)
-// ─────────────────────────────────────────────────────────────────────────────
+// Stablecoins always priced at $1 — never look up on PancakeSwap
+const STABLECOIN_SYMBOLS = new Set([
+  'USDT','USDC','FDUSD','DAI','TUSD','FRAX','BUSD','USDH','USD1','USDD','DUSD','FRXUSD',
+])
+
 export const COMPETITION_RULES = {
-  MAX_DRAWDOWN_PCT:      30,    // disqualified if drawdown exceeds this
+  MAX_DRAWDOWN_PCT:      30,
   MIN_TRADES_PER_DAY:    1,
-  MIN_TRADES_TOTAL:      7,     // over the 7-day window
-  MIN_PORTFOLIO_USD:     1,     // sub-$1 = 0% for that hour
+  MIN_TRADES_TOTAL:      7,
+  MIN_PORTFOLIO_USD:     1,
   TRADING_DAYS:          7,
-  // Registration deadline enforced on-chain — entries after window opens are rejected
   COMPETITION_CONTRACT,
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Full 149-token eligible list (BEP-20 on BSC, competition spec)
-// ─────────────────────────────────────────────────────────────────────────────
 export const ALL_ELIGIBLE_SYMBOLS = [
   'ETH','USDT','USDC','XRP','TRX','DOGE','ZEC','ADA','LINK','BCH',
   'DAI','TON','USD1','USDe','M','LTC','AVAX','SHIB','XAUt','WLFI',
@@ -55,7 +55,6 @@ export const ALL_ELIGIBLE_SYMBOLS = [
   'PEAQ','COAI','BDCA','XAUM',
 ]
 
-// Liquid subset with known BSC addresses — used for actual swaps
 export const ELIGIBLE_TOKENS: Record<string, { symbol: string; address: string; decimals: number }> = {
   USDT:    { symbol: 'USDT',    address: '0x55d398326f99059fF775485246999027B3197955', decimals: 18 },
   USDC:    { symbol: 'USDC',    address: '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d', decimals: 18 },
@@ -111,10 +110,6 @@ export const ELIGIBLE_TOKENS: Record<string, { symbol: string; address: string; 
   XCN:     { symbol: 'XCN',     address: '0x7324c7C0d95CEBC73eEa7E85CbAac0dBdf88a05b', decimals: 18 },
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Competition guardrail checker
-// ─────────────────────────────────────────────────────────────────────────────
-
 export interface GuardrailResult {
   allowed:  boolean
   reason?:  string
@@ -132,52 +127,30 @@ export function checkCompetitionGuardrails(params: {
   maxPerTradePct:  number
   slippagePct:     number
 }): GuardrailResult {
-  const {
-    symbol, portfolioUSD, drawdownPct,
-    tradeAmountUSD, maxPerTradePct, slippagePct,
-  } = params
+  const { symbol, portfolioUSD, drawdownPct, tradeAmountUSD, maxPerTradePct, slippagePct } = params
 
-  // 1. Token must be in eligible list
-  if (!ALL_ELIGIBLE_SYMBOLS.includes(symbol)) {
-    return { allowed: false, reason: `${symbol} is not in the eligible token list. Trades outside the list do not count.` }
-  }
+  if (!ALL_ELIGIBLE_SYMBOLS.includes(symbol))
+    return { allowed: false, reason: `${symbol} is not in the eligible token list.` }
 
-  // 2. Portfolio floor — sub-$1 is treated as no capital at work
-  if (portfolioUSD <= 1) {
-    return { allowed: false, reason: `Portfolio value $${portfolioUSD.toFixed(2)} is at or below $1 floor. Keep capital deployed.` }
-  }
+  if (portfolioUSD <= 1)
+    return { allowed: false, reason: `Portfolio $${portfolioUSD.toFixed(2)} at or below $1 floor.` }
 
-  // 3. Drawdown cap — 30% disqualifies
-  if (drawdownPct >= COMPETITION_RULES.MAX_DRAWDOWN_PCT) {
-    return { allowed: false, reason: `Drawdown ${drawdownPct.toFixed(1)}% exceeds ${COMPETITION_RULES.MAX_DRAWDOWN_PCT}% cap. Agent DISQUALIFIED.` }
-  }
+  if (drawdownPct >= COMPETITION_RULES.MAX_DRAWDOWN_PCT)
+    return { allowed: false, reason: `Drawdown ${drawdownPct.toFixed(1)}% exceeds ${COMPETITION_RULES.MAX_DRAWDOWN_PCT}% cap.` }
 
-  // 4. Drawdown warning zone
   const warning = drawdownPct >= COMPETITION_RULES.MAX_DRAWDOWN_PCT * 0.8
-    ? `⚠ Drawdown at ${drawdownPct.toFixed(1)}% — approaching ${COMPETITION_RULES.MAX_DRAWDOWN_PCT}% disqualification threshold.`
+    ? `⚠ Drawdown at ${drawdownPct.toFixed(1)}% — approaching ${COMPETITION_RULES.MAX_DRAWDOWN_PCT}% threshold.`
     : undefined
 
-  // 5. Per-trade size limit
   const tradePct = (tradeAmountUSD / portfolioUSD) * 100
-  if (tradePct > maxPerTradePct) {
-    return {
-      allowed: false,
-      reason: `Trade size ${tradePct.toFixed(1)}% exceeds per-trade limit of ${maxPerTradePct}%.`,
-      warning,
-    }
-  }
+  if (tradePct > maxPerTradePct)
+    return { allowed: false, reason: `Trade size ${tradePct.toFixed(1)}% exceeds ${maxPerTradePct}% limit.`, warning }
 
-  // 6. Slippage sanity
-  if (slippagePct > 5) {
-    return { allowed: false, reason: `Slippage ${slippagePct}% is dangerously high. Max recommended: 5%.`, warning }
-  }
+  if (slippagePct > 5)
+    return { allowed: false, reason: `Slippage ${slippagePct}% too high. Max: 5%.`, warning }
 
   return { allowed: true, warning }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// TWAKClient
-// ─────────────────────────────────────────────────────────────────────────────
 
 export interface AgentConfig {
   maxDrawdownPct:  number
@@ -190,7 +163,7 @@ export interface AgentConfig {
 }
 
 export const DEFAULT_AGENT_CONFIG: AgentConfig = {
-  maxDrawdownPct:  25,      // conservative — below 30% disqualification line
+  maxDrawdownPct:  25,
   maxPerTradePct:  15,
   maxDailyTrades:  8,
   allowedTokens:   [],
@@ -221,14 +194,13 @@ export class TWAKClient {
       'function decimals() view returns (uint8)',
     ]
     const contract = new ethers.Contract(tokenAddress, abi, this.provider)
-    const [bal, dec] = await Promise.all([contract.balanceOf(this.address), contract.decimals()])
+    const [bal, dec] = await Promise.all([
+      contract.balanceOf(this.address),
+      contract.decimals(),
+    ])
     return parseFloat(ethers.formatUnits(bal, dec))
   }
 
-  /**
-   * Register for competition.
-   * Contract enforces deadline — entries after trading window opens are rejected on-chain.
-   */
   async registerForCompetition(): Promise<{ txHash: string; success: boolean; message: string }> {
     const abi = ['function register() external']
     const contract = new ethers.Contract(COMPETITION_CONTRACT, abi, this.wallet)
@@ -238,14 +210,10 @@ export class TWAKClient {
       return { txHash: rec.hash, success: true, message: `Registered! Tx: ${rec.hash}` }
     } catch (err: any) {
       const msg = err?.reason || err?.message || 'Registration failed'
-      // Already registered = not fatal
-      if (msg.toLowerCase().includes('already')) {
-        return { txHash: '', success: true, message: 'Already registered for competition.' }
-      }
-      // Deadline passed
-      if (msg.toLowerCase().includes('deadline') || msg.toLowerCase().includes('closed')) {
-        return { txHash: '', success: false, message: 'Registration deadline has passed — trading window is open.' }
-      }
+      if (msg.toLowerCase().includes('already'))
+        return { txHash: '', success: true, message: 'Already registered.' }
+      if (msg.toLowerCase().includes('deadline') || msg.toLowerCase().includes('closed'))
+        return { txHash: '', success: false, message: 'Registration deadline has passed.' }
       return { txHash: '', success: false, message: msg }
     }
   }
@@ -301,7 +269,7 @@ export class TWAKClient {
       const factory  = new ethers.Contract(PANCAKE_FACTORY, factoryAbi, this.provider)
       const pairAddr = await factory.getPair(tokenAddress, USDT_BSC_ADDRESS)
       if (pairAddr === ethers.ZeroAddress) return 0
-      const pair   = new ethers.Contract(pairAddr, pairAbi, this.provider)
+      const pair     = new ethers.Contract(pairAddr, pairAbi, this.provider)
       const [r0, r1] = await pair.getReserves()
       const token0   = await pair.token0()
       const isToken0 = token0.toLowerCase() === tokenAddress.toLowerCase()
@@ -312,19 +280,37 @@ export class TWAKClient {
     } catch { return 0 }
   }
 
-  async getPortfolioValueUSD(holdings: Array<{ symbol: string; address: string; decimals: number }>): Promise<{
+  // Fixed: stablecoins always priced at $1, never looked up on-chain.
+  // Previously USDT was passed to getTokenPriceUSDT which tried to find a
+  // USDT/USDT pair — it doesn't exist, returns 0, making all USDT worth $0.
+  async getPortfolioValueUSD(
+    holdings: Array<{ symbol: string; address: string; decimals: number }>
+  ): Promise<{
     items: Array<{ symbol: string; balance: number; priceUSD: number; valueUSD: number }>
     totalUSD: number
   }> {
     const items = await Promise.all(
       holdings.map(async h => {
-        const [balance, priceUSD] = await Promise.allSettled([
-          this.getTokenBalance(h.address),
-          this.getTokenPriceUSDT(h.address, h.decimals),
-        ])
-        const bal   = balance.status  === 'fulfilled' ? balance.value  : 0
-        const price = priceUSD.status === 'fulfilled' ? priceUSD.value : 0
-        return { symbol: h.symbol, balance: bal, priceUSD: price, valueUSD: bal * price }
+        const balResult = await Promise.allSettled([this.getTokenBalance(h.address)])
+        const balance   = balResult[0].status === 'fulfilled' ? balResult[0].value : 0
+
+        let priceUSD: number
+        if (STABLECOIN_SYMBOLS.has(h.symbol)) {
+          // Stablecoins = exactly $1, no chain lookup needed
+          priceUSD = 1
+        } else {
+          const priceResult = await Promise.allSettled([
+            this.getTokenPriceUSDT(h.address, h.decimals),
+          ])
+          priceUSD = priceResult[0].status === 'fulfilled' ? priceResult[0].value : 0
+        }
+
+        return {
+          symbol:   h.symbol,
+          balance,
+          priceUSD,
+          valueUSD: balance * priceUSD,
+        }
       })
     )
     const totalUSD = items.reduce((s, i) => s + i.valueUSD, 0)

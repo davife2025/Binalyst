@@ -102,14 +102,37 @@ export async function POST(req: NextRequest) {
       )
       const pv = await Promise.race([fetchPromise, timeout]) as Awaited<ReturnType<typeof client.getPortfolioValueUSD>>
 
-      // Fix 1: re-price items — stablecoins get $1, others keep fetched price
-      portfolioItems = pv.items.map((item: any) => {
-        const priceUSD = STABLECOIN_SYMBOLS.has(item.symbol) ? 1 : item.priceUSD
-        return { ...item, priceUSD, valueUSD: item.balance * priceUSD }
-      })
+      // Re-price every item:
+      // - Stablecoins always = $1 (getTokenPriceUSDT returns 0 for USDT/USDT pair)
+      // - Other tokens use fetched price
+      // This is the only place prices are corrected — pv.items has real balances
+      // from balanceOf() calls, just wrong prices for stablecoins.
+      portfolioItems = await Promise.all(
+        pv.items.map(async (item: any) => {
+          let priceUSD: number
+          if (STABLECOIN_SYMBOLS.has(item.symbol)) {
+            priceUSD = 1
+          } else if (item.priceUSD > 0) {
+            priceUSD = item.priceUSD
+          } else {
+            // Re-fetch price independently for tokens that returned 0
+            try {
+              const token = ELIGIBLE_TOKENS[item.symbol]
+              priceUSD = token
+                ? await client.getTokenPriceUSDT(token.address, token.decimals)
+                : 0
+            } catch {
+              priceUSD = 0
+            }
+          }
+          return { ...item, priceUSD, valueUSD: item.balance * priceUSD }
+        })
+      )
       portfolioUSD = portfolioItems.reduce((s: number, i: any) => s + i.valueUSD, 0)
 
-      // Fix 2: fetchOk = any item has a real balance, regardless of total value
+      // fetchOk = wallet responded with at least one real balance
+      // Do NOT gate on portfolioUSD > 0 — that fails when wallet only has
+      // stablecoins (which were priced 0 by getPortfolioValueUSD).
       portfolioFetchOk = portfolioItems.some((i: any) => i.balance > 0)
     } catch {
       // timed out or RPC error
@@ -297,37 +320,7 @@ export async function POST(req: NextRequest) {
         errors.push(`${rule.symbol}: ${e.message}`)
       }
     }
- console.log('[loop]', {
-      dryRun,
-      executed,
-      blocked,
-      decisionsCount: decisions.length,
-      errors,
-      drawdownPct,
-      portfolioUSD,
-      rulesCount:     rules.length,
-      snapshotsCount: snapshots.length,
-      firedCount:     fired.length,
-    })
 
-
-console.log('[loop:symbols]', {
-  sentSymbols:    symbols,
-  scanSymbols,
-  snapshotSymbols: snapshots.map((s: any) => s.symbol),
-  ruleSymbols:    rules.map((r: any) => r.symbol),
-  firedPairs:     fired.map((f: any) => ({ rule: f.rule.symbol, signal: f.signal.symbol })),
-})
-
-console.log('[loop:portfolio]', {
-  portfolioFetchOk,
-  rawPortfolioUSD:  portfolioUSD,
-  startUSD,
-  peakUSD,
-  holdingSymbols,
-  portfolioItems,
-})
-    
     return NextResponse.json({
       success:      true,
       status:       'running',
