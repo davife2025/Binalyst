@@ -297,27 +297,6 @@ export async function POST(req: NextRequest) {
         errors.push(`${rule.symbol}: ${e.message}`)
       }
     }
-console.log('[loop]', { dryRun, executed, blocked, decisionsCount: decisions.length, errors, drawdownPct, portfolioUSD, rules: rules.length, snapshots: snapshots.length })
-
-// Add these two logs right before the console.log you already have:
-
-console.log('[loop:symbols]', {
-  sentSymbols:    symbols,
-  scanSymbols,
-  snapshotSymbols: snapshots.map((s: any) => s.symbol),
-  ruleSymbols:    rules.map((r: any) => r.symbol),
-  firedPairs:     fired.map((f: any) => ({ rule: f.rule.symbol, signal: f.signal.symbol })),
-})
-
-console.log('[loop:portfolio]', {
-  portfolioFetchOk,
-  rawPortfolioUSD:  portfolioUSD,
-  startUSD,
-  peakUSD,
-  holdingSymbols,
-  portfolioItems,
-})
-
 
     return NextResponse.json({
       success:      true,

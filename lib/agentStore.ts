@@ -177,7 +177,10 @@ export const useAgentStore = create<AgentStore>()(
           session: s.session ? { ...s.session, ...updates } : null,
         })),
 
-      resetSession: () => set({ session: null, trades: [] }),
+      resetSession: () => {
+        if (typeof window !== 'undefined') localStorage.removeItem('binalyst-agent')
+        set({ session: null, trades: [] })
+      },
 
       // ── Trade log ────────────────────────────────────────────────────────
       trades: [],

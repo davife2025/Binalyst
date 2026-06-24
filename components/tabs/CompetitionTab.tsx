@@ -49,7 +49,7 @@ const STATUS_CONFIG: Record<string, { color: string; bg: string; label: string }
 export default function CompetitionTab() {
   const {
     agentAddress, isWalletLoaded, agentConfig, strategyParsed, trades, session,
-    setAgentConfig,
+    setAgentConfig, resetSession,
     activeCompetitionTab: activeView,
     setActiveCompetitionTab: setActiveView,
   } = useAgentStore()
@@ -297,6 +297,21 @@ export default function CompetitionTab() {
               style={{ background: 'rgba(246,70,93,0.08)', color: 'var(--red)' }}>
               {cycleError}
             </div>
+          )}
+
+          {/* Reset session — clears localStorage so stale peakUSD never causes
+              instant disqualification on the next start */}
+          {!isActive && session && (
+            <button
+              onClick={() => { stopLoop(); resetSession() }}
+              className="mt-2 py-1.5 rounded-lg mono text-[10px] w-full transition-all"
+              style={{
+                background: 'var(--bg3)',
+                border: '1px solid var(--border)',
+                color: 'var(--text3)',
+              }}>
+              ↺ Reset session &amp; clear history
+            </button>
           )}
         </div>
 
