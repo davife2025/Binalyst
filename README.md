@@ -98,7 +98,6 @@ The `.env.celo.example` and `.env.mantle.example` files in the repo root documen
 | Variable | Purpose | Required |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | NL strategy parsing, AI chat | Yes |
-| `BINANCE_API_KEY` / `BINANCE_SECRET_KEY` | Live trade execution on BSC | For live trading |
 | `BITGET_API_KEY` | Bitget Skill Hub routing (optional) | No — falls back to local computation |
 | `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Auth & persistence | For auth features |
 
@@ -147,7 +146,7 @@ The `.env.celo.example` and `.env.mantle.example` files in the repo root documen
 app/
   api/
     agent/          # BNB agent endpoints (loop, execute, strategy, portfolio)
-    binance/        # Market data + trade execution
+  
     backtest/       # Backtester route
     ai/chat/        # Claude chat route
 components/

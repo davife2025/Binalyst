@@ -69,13 +69,40 @@ const NAV: NavItem[] = [
     icon: <I><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/><path d="M4 22h16"/></I> },
   { id: 'performance',  label: 'Performance',   section: 'agent',
     icon: <I><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></I> },
-  { id: 'agent',        label: 'Rules Engine',  section: 'bitget',
-    icon: <I><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16" r="1"/></I> },
-  { id: 'bitget-tools',        label: 'Bitget Tools',  section: 'bitget',
-    icon: <I><rect x="1" y="9" width="18" height="10" rx="2"/><path d="M8 11V7a5 3 0 0 1 7 0v4"/><circle cx="12" cy="16" r="1"/></I> },
-  { id: 'bitget-connect',        label: 'Bitget Connect',  section: 'bitget',
-    icon: <I><rect x="2" y="10" width="18" height="10" rx="2"/><path d="M9 11V7a5 3 0 0 1 8 0v4"/><circle cx="12" cy="16" r="1"/></I> },
+  // Rules Engine — CPU/logic chip with pins + active dot
+{ id: 'agent', label: 'Rules Engine', section: 'bitget',
+  icon: <I>
+    <rect x="6" y="6" width="10" height="10" rx="1.5"/>
+    <line x1="2" y1="8.5" x2="6" y2="8.5"/>
+    <line x1="2" y1="11" x2="6" y2="11"/>
+    <line x1="2" y1="13.5" x2="6" y2="13.5"/>
+    <line x1="16" y1="8.5" x2="20" y2="8.5"/>
+    <line x1="16" y1="11" x2="20" y2="11"/>
+    <line x1="16" y1="13.5" x2="20" y2="13.5"/>
+    <line x1="9" y1="2" x2="9" y2="6"/>
+    <line x1="13" y1="2" x2="13" y2="6"/>
+    <line x1="9" y1="16" x2="9" y2="20"/>
+    <line x1="13" y1="16" x2="13" y2="20"/>
+    <circle cx="11" cy="11" r="1.5" fill="currentColor" stroke="none"/>
+  </I> },
 
+// Bitget Tools — wrench + lightning bolt
+{ id: 'bitget-tools', label: 'Bitget Tools', section: 'bitget',
+  icon: <I>
+    <path d="M14.7 3.3a4 4 0 0 0-4.9 4.9L3.3 14.7a1.8 1.8 0 0 0 2.5 2.5l6.5-6.5a4 4 0 0 0 4.9-4.9l-2.2 2.2-1.8-1.8 2.2-2.2"/>
+    <path d="M17 10l-2 3h3l-2 3" strokeWidth="1.2"/>
+  </I> },
+
+// Bitget Connect — two nodes linked by a signal cable
+{ id: 'bitget-connect', label: 'Bitget Connect', section: 'bitget',
+  icon: <I>
+    <circle cx="5" cy="11" r="2.5"/>
+    <circle cx="17" cy="11" r="2.5"/>
+    <path d="M7.5 11 C10 7,12 7,14.5 11"/>
+    <path d="M7.5 11 C10 15,12 15,14.5 11"/>
+    <circle cx="11" cy="8.2" r="1" fill="currentColor" stroke="none"/>
+    <circle cx="11" cy="13.8" r="1" fill="currentColor" stroke="none"/>
+  </I> },
 
       // ── Stellar ZK (Session R — Stellar Hacks) ───────────────────────────────
   { id: 'zk-proofs',    label: 'ZK Proofs',  section: 'stellar' ,
