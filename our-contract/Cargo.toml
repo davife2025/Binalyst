@@ -1,0 +1,26 @@
+[package]
+name    = "binalyst-zk-recorder"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+soroban-sdk    = { version = "21.0.0", features = ["alloc"] }
+
+# The official client interface for calling the NethermindEth router.
+# This crate exposes RiscZeroVerifierRouterClient — no VK bytes, no pairing
+# math on our side. We just call router.verify(seal, image_id, journal_digest).
+risc0-interface = { git = "https://github.com/NethermindEth/stellar-risc0-verifier", package = "risc0-interface" }
+
+[dev-dependencies]
+soroban-sdk = { version = "21.0.0", features = ["testutils"] }
+
+[profile.release]
+opt-level        = "z"
+overflow-checks  = true
+debug            = false
+strip            = "symbols"
+lto              = true
+codegen-units    = 1

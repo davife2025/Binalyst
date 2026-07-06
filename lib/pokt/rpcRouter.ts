@@ -84,10 +84,6 @@ const ALIAS_MAP: Record<string, string> = {
   'sol':       'solana',
   'solana':    'solana',
 
-  // Harmony
-  'one':       'harmony',
-  'harmony':   'harmony',
-  '1666600000':'harmony',
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -118,10 +114,7 @@ export function getPOKTRpcUrl(alias: string): string | null {
   const key = resolvePOKTChainKey(alias)
   if (!key) return null
   const chain     = POKT_CHAINS[key]
-  const gatewayKey = process.env.POKT_GATEWAY_KEY
-  if (gatewayKey && chain.rpcUrlKeyed) {
-    return chain.rpcUrlKeyed + gatewayKey
-  }
+  // POKT public portal: no API key required — all endpoints are open
   return chain.rpcUrl
 }
 

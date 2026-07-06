@@ -8,11 +8,14 @@ name = "binalyst-zk-host"
 path = "src/main.rs"
 
 [dependencies]
-risc0-zkvm  = { version = "1.1", features = ["std", "prove"] }
-serde       = { version = "1",   features = ["derive"] }
-serde_json  = "1"
-bincode     = "1"          # receipt serialisation
-base64      = "0.21"       # base64 encoding for receiptB64
+# Pinned to ^3.0 per NethermindEth docs — encode_seal() format must match
+# the deployed Groth16Verifier's expected layout.
+risc0-zkvm                = { version = "^3.0", features = ["std", "prove"] }
+risc0-ethereum-contracts  = "^3.0"     # provides encode_seal()
+sha2                      = "0.10"     # journal_digest = sha256(journal)
+hex                       = "0.4"
+serde                     = { version = "1", features = ["derive"] }
+serde_json                = "1"
 
 [build-dependencies]
-risc0-build = { version = "1.1" }
+risc0-build = "^3.0"

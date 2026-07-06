@@ -118,10 +118,7 @@ const ERC20_ABI = [
 const _providerCache: Map<string, ethers.JsonRpcProvider> = new Map()
 
 function buildRpcUrl(chain: POKTChain): string {
-  const gatewayKey = process.env.POKT_GATEWAY_KEY
-  if (gatewayKey && chain.rpcUrlKeyed) {
-    return chain.rpcUrlKeyed + gatewayKey
-  }
+  // POKT public portal — no API key required
   return chain.rpcUrl
 }
 

@@ -40,7 +40,7 @@ export const POKT_TOOLS = [
         type: 'object',
         properties: {
           address:  { type: 'string', description: 'The wallet address to check (0x... for EVM)' },
-          chainKey: { type: 'string', description: 'Chain to query: ethereum, bsc, polygon, arbitrum, optimism, base, avalanche, gnosis, solana, harmony', enum: ['ethereum','bsc','polygon','arbitrum','optimism','base','avalanche','gnosis','solana','harmony'] },
+          chainKey: { type: 'string', description: 'Chain to query: ethereum, bsc, polygon, arbitrum, optimism, base, avalanche, gnosis, solana', enum: ['ethereum','bsc','polygon','arbitrum','optimism','base','avalanche','gnosis','solana'] },
         },
         required: ['address'],
       },
@@ -57,7 +57,7 @@ export const POKT_TOOLS = [
         properties: {
           address:      { type: 'string', description: 'The wallet address' },
           tokenAddress: { type: 'string', description: 'The ERC-20 token contract address' },
-          chainKey:     { type: 'string', description: 'Chain to query', enum: ['ethereum','bsc','polygon','arbitrum','optimism','base','avalanche','gnosis','harmony'] },
+          chainKey:     { type: 'string', description: 'Chain to query', enum: ['ethereum','bsc','polygon','arbitrum','optimism','base','avalanche','gnosis'] },
         },
         required: ['address', 'tokenAddress'],
       },
@@ -72,7 +72,7 @@ export const POKT_TOOLS = [
       parameters: {
         type: 'object',
         properties: {
-          chainKey:  { type: 'string', description: 'Chain to query', enum: ['ethereum','bsc','polygon','arbitrum','optimism','base','avalanche','gnosis','harmony'] },
+          chainKey:  { type: 'string', description: 'Chain to query', enum: ['ethereum','bsc','polygon','arbitrum','optimism','base','avalanche','gnosis'] },
           blockTag:  { type: 'string', description: '"latest" or a specific block number as a string' },
         },
         required: ['chainKey'],
@@ -89,7 +89,7 @@ export const POKT_TOOLS = [
         type: 'object',
         properties: {
           hash:     { type: 'string', description: 'Transaction hash (0x...)' },
-          chainKey: { type: 'string', description: 'Chain to query', enum: ['ethereum','bsc','polygon','arbitrum','optimism','base','avalanche','gnosis','harmony'] },
+          chainKey: { type: 'string', description: 'Chain to query', enum: ['ethereum','bsc','polygon','arbitrum','optimism','base','avalanche','gnosis'] },
         },
         required: ['hash', 'chainKey'],
       },
@@ -105,7 +105,7 @@ export const POKT_TOOLS = [
         type: 'object',
         properties: {
           address:  { type: 'string', description: 'Address to inspect' },
-          chainKey: { type: 'string', description: 'Chain to query', enum: ['ethereum','bsc','polygon','arbitrum','optimism','base','avalanche','gnosis','harmony'] },
+          chainKey: { type: 'string', description: 'Chain to query', enum: ['ethereum','bsc','polygon','arbitrum','optimism','base','avalanche','gnosis'] },
         },
         required: ['address', 'chainKey'],
       },
@@ -120,7 +120,7 @@ export const POKT_TOOLS = [
       parameters: {
         type: 'object',
         properties: {
-          chainKey: { type: 'string', description: 'Chain to query', enum: ['ethereum','bsc','polygon','arbitrum','optimism','base','avalanche','gnosis','harmony'] },
+          chainKey: { type: 'string', description: 'Chain to query', enum: ['ethereum','bsc','polygon','arbitrum','optimism','base','avalanche','gnosis'] },
         },
         required: ['chainKey'],
       },
@@ -135,7 +135,7 @@ export const POKT_TOOLS = [
       parameters: {
         type: 'object',
         properties: {
-          chainKey: { type: 'string', description: 'Chain to ping', enum: ['ethereum','bsc','polygon','arbitrum','optimism','base','avalanche','gnosis','solana','harmony'] },
+          chainKey: { type: 'string', description: 'Chain to ping', enum: ['ethereum','bsc','polygon','arbitrum','optimism','base','avalanche','gnosis','solana'] },
         },
         required: ['chainKey'],
       },

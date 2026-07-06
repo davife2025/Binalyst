@@ -55,8 +55,6 @@ const NAV: NavItem[] = [
     icon: <I><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></I> },
   { id: 'web3',      label: 'Web3 Intel',               section: 'intelligence',
     icon: <I><polygon points="12 2 20.5 7 20.5 17 12 22 3.5 17 3.5 7"/></I> },
-  { id: 'world-cup', label: 'World Cup',                section: 'intelligence',
-    icon: <I><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10"/><line x1="2" y1="12" x2="22" y2="12"/></I> },
 
   // ── Trading Agent ─────────────────────────────────────────────────────────
   { id: 'agent-wallet', label: 'Agent Wallet',  section: 'agent',
