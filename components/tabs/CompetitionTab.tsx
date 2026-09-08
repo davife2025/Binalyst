@@ -23,6 +23,7 @@ import { useState } from 'react'
 import { useAgentLoop }          from '@/hooks/useAgentLoop'
 import { useAgentStore }         from '@/lib/agentStore'
 import DrawdownGauge, { DrawdownBar } from '@/components/agent/DrawdownGauge'
+import AgentOSBadge              from '@/components/agent/AgentOSBadge'
 import { FearGreedMini }         from '@/components/agent/FearGreedGauge'
 import { useFearAndGreed }       from '@/hooks/useSignals'
 import { COMPETITION_RULES }     from '@/lib/twak/client'
@@ -143,6 +144,9 @@ export default function CompetitionTab() {
               <div className="mono text-[9px]" style={{ color: 'var(--text3)' }}>TWAK local signing · {network}</div>
             </div>
           </div>
+
+          {/* Binance Agent OS connection badge */}
+          <AgentOSBadge />
 
           {/* ── Trade mode panel ─────────────────────────────────────────── */}
           <div className="rounded-lg p-3 mb-3 flex flex-col gap-2"

@@ -105,6 +105,20 @@ The `.env.celo.example` and `.env.mantle.example` files in the repo root documen
 
 ---
 
+## Binance Agent OS Integration
+
+*Built for the Binance Agent OS Mini Hackathon — Track A.*
+
+Binalyst connects directly to Binance's official **Agent OS MCP server** (`https://agent.binance.com/mcp/agentic`) as a live, read-only data source alongside its existing direct Binance REST integration:
+
+- `lib/agentOS.ts` — a minimal MCP client that performs the `initialize` → `tools/list` → `tools/call` handshake over Agent OS's Streamable HTTP transport, using only the **public, no-auth market-data scope**.
+- `app/api/agent/agentos/route.ts` — exposes that connection as `/api/agent/agentos`.
+- The **Agent OS** badge in the Agent tab polls this route every 30s and shows the live tool count / ticker pulled straight from Binance's MCP endpoint — you can verify it's real by checking `agent.binance.com` in the network tab.
+
+Account, trade, and transfer scopes on the Agent OS MCP server require a per-user browser OAuth flow (see Binance's [docs](https://developers.binance.com/en/docs/agent-native/mcp-server/agentic)) and are out of scope for this integration; Binalyst's own trading agent continues to execute through its existing signed BEP-20 flow via `lib/binance.ts` / TWAK.
+
+---
+
 ## Chain Modules
 
 ### BNB Chain (Core Trading Agent)
