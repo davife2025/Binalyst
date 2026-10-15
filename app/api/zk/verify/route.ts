@@ -6,13 +6,14 @@
 //
 // Flow:
 //   1. Receive ZKVerifyRequest (proofId + sealHex + journalHex)
-//   2. Call StellarVerifierClient.verifyTradeProof(sealHex, journalHex)
+//   2. Call StellarVerifierClient.verifyTradeProof({ sealHex, journalDigestHex, journalJson })
 //   3. Poll Stellar RPC until tx confirmed
 //   4. Return ZKVerifyResponse with Stellar tx hash + on-chain proof index
 //
 // In mock mode (STELLAR_MOCK=true), skips the Stellar call and returns
 // a deterministic mock response — use this until the contract is deployed.
 
+import { createHash }                 from 'crypto'
 import { NextRequest, NextResponse }  from 'next/server'
 import { rateLimit }                  from '@/lib/rateLimit'
 import { getStellarClient, STELLAR_CONFIG } from '@/lib/stellar/client'
@@ -47,7 +48,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     // ── Real Stellar submission ─────────────────────────────────────────────
     const client = getStellarClient()
-    const result = await client.verifyTradeProof(sealHex, journalHex)
+
+    // The contract takes sha256(journal) plus the raw journal JSON. journalHex is the
+    // hex-encoded UTF-8 journal, so derive both here (or use values the caller supplied).
+    const journalBytes     = Buffer.from(journalHex, 'hex')
+    const journalJson      = body.journalJson ?? journalBytes.toString('utf8')
+    const journalDigestHex = body.journalDigestHex ?? createHash('sha256').update(journalBytes).digest('hex')
+
+    const result = await client.verifyTradeProof({ sealHex, journalDigestHex, journalJson })
 
     return NextResponse.json<ZKVerifyResponse>({
       success:     true,

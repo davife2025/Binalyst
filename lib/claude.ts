@@ -12,7 +12,7 @@ import {
 } from './skills/web3'
 
 const kimi = new OpenAI({
-  apiKey:  process.env.HUGGINGFACE_API_KEY!,
+  apiKey:  process.env.HUGGINGFACE_API_KEY || 'placeholder',
   baseURL: 'https://router.huggingface.co/v1',
 })
 

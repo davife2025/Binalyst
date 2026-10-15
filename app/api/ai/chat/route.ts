@@ -13,7 +13,7 @@ export const maxDuration = 60
 
 // Lazy client — created with placeholder at module load, key checked per request
 const kimi = new OpenAI({
-  apiKey:  process.env.HUGGINGFACE_API_KEY ?? 'placeholder',
+  apiKey:  process.env.HUGGINGFACE_API_KEY || 'placeholder',
   baseURL: 'https://router.huggingface.co/v1',
 })
 

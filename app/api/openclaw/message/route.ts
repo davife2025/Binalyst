@@ -14,7 +14,7 @@ export const maxDuration = 30
 
 // ── Kimi K2 via HuggingFace — same pattern as /api/ai/chat ──────────────────
 const kimi = new OpenAI({
-  apiKey:  process.env.HUGGINGFACE_API_KEY ?? 'placeholder',
+  apiKey:  process.env.HUGGINGFACE_API_KEY || 'placeholder',
   baseURL: 'https://router.huggingface.co/v1',
 })
 

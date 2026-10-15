@@ -158,9 +158,11 @@ export interface ZKProveResponse {
 
 // POST /api/zk/verify
 export interface ZKVerifyRequest {
-  proofId:    string
-  sealHex:    string
-  journalHex: string
+  proofId:           string
+  sealHex:           string
+  journalHex:        string
+  journalDigestHex?: string   // optional: sha256(journal); derived from journalHex if omitted
+  journalJson?:      string   // optional: raw journal JSON; derived from journalHex if omitted
 }
 
 export interface ZKVerifyResponse {
